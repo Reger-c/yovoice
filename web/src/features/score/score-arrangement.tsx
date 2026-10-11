@@ -1,4 +1,4 @@
-import { useEffect, useRef, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Selector } from '../../shared/selector';
 import { Switch } from '@astryxdesign/core/Switch';
@@ -8,9 +8,10 @@ import { useTranslator } from '@astryxdesign/core/i18n';
 import { formatTime, type Score, type ScoreRole, type ScoreTrack } from '../../shared/workbench';
 import { beatsPerBar, scoreBars, scoreDuration, scoreRoles, scoreSeconds, targetLevel } from './score-draft';
 import { gmPrograms } from './score-instruments';
+import { TrackZoom } from '../media/playback-toolbar';
 
 // 一个声部的音块：横向是时间（按段落变速换算），纵向是该声部自己的音域，深浅对应力度。
-function ScoreLane({ score, track }: { score: Score; track: ScoreTrack }) {
+function ScoreLane({ score, track, zoom }: { score: Score; track: ScoreTrack; zoom: number }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const element = canvas.current;
@@ -54,43 +55,67 @@ function ScoreLane({ score, track }: { score: Score; track: ScoreTrack }) {
     const observer = new ResizeObserver(draw);
     observer.observe(element);
     return () => observer.disconnect();
-  }, [score, track]);
+  }, [score, track, zoom]);
   // 画布绝对定位在外框里，行高由轨头决定，避免画布自身尺寸反过来撑高这一行。
   return <HStack className="score-lane" gap={0}><canvas ref={canvas} aria-hidden="true" /></HStack>;
 }
 
-// 编曲视图：参照 GarageBand、Logic 的轨道区，上方是段落标尺，每个声部一行——左边轨头（色点切换角色）调音色、电平和发声，右边是对齐时间的音块。
-export function ScoreArrangement({ score, selected, select, label, updateTrack }: {
+// 编曲视图：参照 GarageBand、Logic 的轨道区，上方是段落标尺，每个声部一行——左边窄轨头（色点切换角色，名称、电平、发声一行，音色在下一行），
+// 右边是对齐时间的音块。轨道区可以像底部播放器一样缩放、横向滚动，播放时显示指针并跟随，点标尺跳到对应位置。
+export function ScoreArrangement({ score, selected, select, label, updateTrack, playhead, seek }: {
   score: Score; selected?: string; select: (id: string) => void; label: string; updateTrack: (id: string, patch: Partial<ScoreTrack>) => void;
+  playhead?: { time: number; playing: boolean }; seek: (time: number) => void;
 }) {
   const t = useTranslator();
   const total = Math.max(1, scoreDuration(score));
   const roleLabel = (role: ScoreRole) => t(`@yovoice.score.role.${role}`);
   const sections = score.sections?.length ? score.sections : [{ name: '', start: 1, end: scoreBars(score) }];
+  const [zoom, setZoom] = useState(1);
+  const scroller = useRef<HTMLElement>(null);
+  const at = (fraction: number) => `calc(var(--score-head) + (100% - var(--score-head)) * ${fraction})`;
+  const progress = playhead ? Math.min(1, playhead.time / total) : 0;
+  // 播放时指针离开可见区域就翻页，让指针回到轨道区左侧。
+  useEffect(() => {
+    const element = scroller.current, head = element?.querySelector<HTMLElement>('.score-track-head');
+    if (!element || !head || !playhead?.playing) return;
+    const lane = element.scrollWidth - head.offsetWidth, x = progress * lane;
+    if (x < element.scrollLeft || x > element.scrollLeft + element.clientWidth - head.offsetWidth) element.scrollLeft = x;
+  }, [progress, playhead?.playing]);
+  const seekAt = (event: ReactPointerEvent<HTMLElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    seek(Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)) * total);
+  };
   return <VStack className="score-arrangement" gap={0} role="group" aria-label={label}>
-    <HStack className="score-ruler-row" gap={0}>
-      <HStack className="score-track-head score-ruler-head" gap={2} vAlign="center"><small>{t('@yovoice.score.tracks')}</small><small className="score-ruler-total">{formatTime(total)}</small></HStack>
-      <HStack className="score-ruler grow" gap={0}>
-        {sections.map((section, i) => {
-          const start = scoreSeconds(score, section.start), end = scoreSeconds(score, section.end + 1);
-          return <VStack key={`${section.name}-${section.start}`} className="score-ruler-section" data-odd={i % 2 === 1} gap={0} style={{ flexGrow: Math.max(.01, end - start) } as CSSProperties}>
-            <b>{section.name || ' '}</b><small>{formatTime(start)}</small>
-          </VStack>;
-        })}
-      </HStack>
-    </HStack>
-    {score.tracks.map((track, index) => <HStack key={track.id} className="score-track" data-role={track.role ?? 'other'} data-muted={!!track.mute} aria-current={track.id === selected ? 'true' : undefined} gap={0}
-      style={{ '--track-index': Math.min(index, 12) } as CSSProperties} onPointerDown={() => select(track.id)}>
-      <HStack className="score-track-head" gap={2} vAlign="center">
-        <DropdownMenu hasChevron={false} button={{ size: 'sm', variant: 'ghost', isIconOnly: true, className: 'score-role-button', icon: <Circle className="score-role-dot" />, label: t('@yovoice.score.roleOf', { name: track.name }) }}
-          items={scoreRoles.map(role => ({ label: roleLabel(role), icon: <Circle className="score-role-dot" data-role={role} />, endContent: role === (track.role ?? 'other') ? <Check size={14} aria-hidden /> : undefined, onClick: () => updateTrack(track.id, { role, level: undefined }) }))} />
-        <b className="score-track-name" title={`${track.name} · ${roleLabel(track.role ?? 'other')}`}>{track.name}</b>
-        {track.drums ? <small className="grow score-drum-kit">{t('@yovoice.score.drumKit')}</small>
-          : <HStack className="grow score-instrument-slot" gap={0}><Selector label={t('@yovoice.score.instrumentOf', { name: track.name })} isLabelHidden size="sm" variant="ghost" width="100%" className="score-instrument" value={String(track.program)} options={gmPrograms.map((name, program) => ({ value: String(program), label: name }))} onChange={value => updateTrack(track.id, { program: Number(value) })} /></HStack>}
-        <label className="number-field compact"><input type="number" aria-label={t('@yovoice.score.levelOf', { name: track.name })} min={-60} max={0} step={1} value={targetLevel(track)} onChange={event => { const level = Number(event.target.value); if (level >= -60 && level < 0) updateTrack(track.id, { level }); }} />dB</label>
-        <Switch label={t('@yovoice.score.playTrack', { name: track.name })} isLabelHidden size="sm" value={!track.mute} onChange={on => updateTrack(track.id, { mute: !on || undefined })} />
-      </HStack>
-      <ScoreLane score={score} track={track} />
-    </HStack>)}
+    <VStack className="score-scroll" ref={scroller} gap={0}>
+      <VStack className="score-content" gap={0} style={{ width: at(zoom) }}>
+        <HStack className="score-ruler-row" gap={0}>
+          <HStack className="score-track-head score-ruler-head" gap={2} vAlign="center"><small className="score-ruler-total" title={t('@yovoice.score.tracks')}>{formatTime(total)}</small><TrackZoom value={zoom} change={setZoom} disabled={false} /></HStack>
+          <HStack className="score-ruler grow" gap={0} onPointerDown={playhead ? seekAt : undefined} data-seekable={!!playhead}>
+            {sections.map((section, i) => {
+              const start = scoreSeconds(score, section.start), end = scoreSeconds(score, section.end + 1);
+              return <VStack key={`${section.name}-${section.start}`} className="score-ruler-section" data-odd={i % 2 === 1} gap={0} style={{ flexGrow: Math.max(.01, end - start) } as CSSProperties}>
+                <b>{section.name || ' '}</b><small>{formatTime(start)}</small>
+              </VStack>;
+            })}
+          </HStack>
+        </HStack>
+        {score.tracks.map((track, index) => <HStack key={track.id} className="score-track" data-role={track.role ?? 'other'} data-muted={!!track.mute} aria-current={track.id === selected ? 'true' : undefined} gap={0}
+          style={{ '--track-index': Math.min(index, 12) } as CSSProperties} onPointerDown={() => select(track.id)}>
+          <VStack className="score-track-head" gap={0}>
+            <HStack gap={1} vAlign="center">
+              <DropdownMenu hasChevron={false} button={{ size: 'sm', variant: 'ghost', isIconOnly: true, className: 'score-role-button', icon: <Circle className="score-role-dot" />, label: t('@yovoice.score.roleOf', { name: track.name }) }}
+                items={scoreRoles.map(role => ({ label: roleLabel(role), icon: <Circle className="score-role-dot" data-role={role} />, endContent: role === (track.role ?? 'other') ? <Check size={14} aria-hidden /> : undefined, onClick: () => updateTrack(track.id, { role, level: undefined }) }))} />
+              <b className="score-track-name grow" title={`${track.name} · ${roleLabel(track.role ?? 'other')}`}>{track.name}</b>
+              <label className="number-field compact"><input type="number" aria-label={t('@yovoice.score.levelOf', { name: track.name })} min={-60} max={0} step={1} value={targetLevel(track)} onChange={event => { const level = Number(event.target.value); if (level >= -60 && level < 0) updateTrack(track.id, { level }); }} />dB</label>
+              <Switch label={t('@yovoice.score.playTrack', { name: track.name })} isLabelHidden size="sm" value={!track.mute} onChange={on => updateTrack(track.id, { mute: !on || undefined })} />
+            </HStack>
+            {track.drums ? <small className="score-track-sub score-drum-kit">{t('@yovoice.score.drumKit')}</small>
+              : <HStack className="score-track-sub score-instrument-slot" gap={0}><Selector label={t('@yovoice.score.instrumentOf', { name: track.name })} isLabelHidden size="sm" variant="ghost" width="100%" className="score-instrument" value={String(track.program)} options={gmPrograms.map((name, program) => ({ value: String(program), label: name }))} onChange={value => updateTrack(track.id, { program: Number(value) })} /></HStack>}
+          </VStack>
+          <ScoreLane score={score} track={track} zoom={zoom} />
+        </HStack>)}
+        {playhead ? <i className="score-playhead" style={{ left: at(progress) }} aria-hidden="true" /> : null}
+      </VStack>
+    </VStack>
   </VStack>;
 }

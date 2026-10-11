@@ -4,9 +4,7 @@ import { Button } from '@astryxdesign/core/Button';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { List, ListItem } from '@astryxdesign/core/List';
 import { StatusDot } from '@astryxdesign/core/StatusDot';
-import { Switch } from '@astryxdesign/core/Switch';
 import { TextInput } from '@astryxdesign/core/TextInput';
-import { Token } from '@astryxdesign/core/Token';
 import { useTranslator } from '@astryxdesign/core/i18n';
 import { ArrowUpRight, Check, Play, Plus, RefreshCw, Search, Trash2 } from 'lucide-react';
 import { ConfirmDelete } from '../../shared/ui/app-dialog';
@@ -40,8 +38,9 @@ function ProviderIcon({ preset, name, size = 'sm', active = false }: { preset?: 
 }
 
 // 右侧详情：密钥、服务地址和模型在同一页直接编辑；测试和同步模型前先保存。
-function ProviderDetail({ provider, preset, current, run, saved, removed }: {
-  provider?: AIProvider; preset: AIPreset; current: boolean; run: (task: () => Promise<unknown>) => void;
+// 当前使用哪个服务和模型在写作栏里切换，这里只保留必要的配置，标题行固定一行，切换服务时布局不跳动。
+function ProviderDetail({ provider, preset, run, saved, removed }: {
+  provider?: AIProvider; preset: AIPreset; run: (task: () => Promise<unknown>) => void;
   saved: (id: string) => void; removed: () => void;
 }) {
   const t = useTranslator();
@@ -80,16 +79,10 @@ function ProviderDetail({ provider, preset, current, run, saved, removed }: {
   }
   const testMessage = test ? test.ok ? t('@yovoice.ai.testOk') : t('@yovoice.ai.testFailed', { reason: formatCallError(t, new CallError(test.code as never, test.params as never)) }) : '';
   return <VStack className="ai-detail grow" gap={5} aria-label={title}>
-    <HStack className="ai-detail-head" hAlign="between" vAlign="center" gap={3} wrap="wrap">
-      <HStack gap={3} vAlign="center">
-        <ProviderIcon preset={preset} name={title} size="md" active={!!provider} />
-        <VStack gap={0}><h2>{title}</h2>{preset.plan === 'coding' ? <small className="ai-plan-hint">{t('@yovoice.ai.codingPlanHint')}</small> : null}</VStack>
-        {provider ? current ? <Token size="sm" color="green" label={t('@yovoice.ai.inUse')} /> : null : <Token size="sm" label={t('@yovoice.ai.notAdded')} />}
-      </HStack>
-      {provider ? <HStack gap={4} vAlign="center">
-        <Button size="sm" label={t('@yovoice.ai.test')} icon={<Play />} isLoading={busy === 'test'} isDisabled={!!busy || !value.model.trim()} onClick={() => void act('test')} />
-        <Switch label={t('@yovoice.ai.enable')} value={current} onChange={on => run(() => call('ai.provider.use', { id: on ? provider.id : '' }))} />
-      </HStack> : null}
+    <HStack className="ai-detail-head" vAlign="center" gap={3}>
+      <ProviderIcon preset={preset} name={title} size="md" active={!!provider} />
+      <h2 className="grow">{title}</h2>
+      {provider ? <Button size="sm" label={t('@yovoice.ai.test')} icon={<Play />} isLoading={busy === 'test'} isDisabled={!!busy || !value.model.trim()} onClick={() => void act('test')} /> : null}
     </HStack>
 
     {preset.endpoint === 'custom' ? <TextInput size="sm" label={t('@yovoice.ai.name')} value={value.name} placeholder={presetName} onChange={name => patch({ name: name.slice(0, 60) })} /> : null}
@@ -103,16 +96,13 @@ function ProviderDetail({ provider, preset, current, run, saved, removed }: {
           <Button size="sm" variant="ghost" label={t('@yovoice.ai.clearKey')} isLoading={busy === 'key'} isDisabled={!!busy} onClick={() => void act('key')} />
         </HStack>
       </> : <TextInput size="sm" label={t('@yovoice.ai.key')} type="password" autoComplete="off" value={value.key} placeholder={preset.endpoint === 'local' ? t('@yovoice.ai.keyOptional') : provider?.keyMask ? '••••••••' : t('@yovoice.ai.keyNotSet')} onChange={key => patch({ key })} />}
-      <HStack gap={3} vAlign="center" wrap="wrap">
-        {preset.keyURL ? <Button className="ai-link" size="sm" variant="ghost" label={t('@yovoice.ai.getKeyFrom', { name: preset.name })} endContent={<ArrowUpRight size={14} />} onClick={() => window.open(preset.keyURL, '_blank', 'noopener')} /> : null}
-        <small>{t('@yovoice.ai.keyStored')}</small>
-      </HStack>
+      {preset.keyURL ? <HStack gap={0}><Button className="ai-link" size="sm" variant="ghost" label={t('@yovoice.ai.getKeyFrom', { name: preset.name })} endContent={<ArrowUpRight size={14} />} onClick={() => window.open(preset.keyURL, '_blank', 'noopener')} /></HStack> : null}
     </VStack>
 
     <VStack className="ai-field" gap={2}>
       {preset.endpoint === 'fixed' ? <>
         <p className="ai-field-title">{t('@yovoice.ai.baseURL')}</p>
-        <HStack className="ai-value" gap={3} vAlign="center"><Token size="sm" label={t(`@yovoice.ai.formatName.${value.format}`)} /><code>{value.baseURL}</code></HStack>
+        <code className="ai-value">{value.baseURL}</code>
       </> : <>
         {preset.endpoint === 'custom' ? <Selector label={t('@yovoice.ai.format')} value={value.format} options={formats.map(f => ({ value: f, label: t(`@yovoice.ai.formatName.${f}`) }))} onChange={format => patch({ format })} /> : null}
         <TextInput size="sm" label={t('@yovoice.ai.baseURL')} value={value.baseURL} placeholder="https://example.com/v1" onChange={baseURL => patch({ baseURL })} />
@@ -171,14 +161,14 @@ export function AISettings({ state, run }: { state: State; run: (task: () => Pro
     <HStack className="ai-split" gap={0}>
       <VStack className="ai-nav" gap={4}>
         {providers.length ? <List header={<small className="ai-nav-head">{t('@yovoice.ai.added')}</small>} density="compact">
-          {providers.map(p => <ListItem key={p.id} label={p.name} description={presetOf(p)?.plan === 'coding' ? t('@yovoice.ai.codingPlan') : undefined} isSelected={p.id === selection.value} startContent={<ProviderIcon preset={presetOf(p)} name={p.name} active />}
+          {providers.map(p => <ListItem key={p.id} label={p.name} isSelected={p.id === selection.value} startContent={<ProviderIcon preset={presetOf(p)} name={p.name} active />}
             endContent={p.id === state.aiProviderID ? <StatusDot variant="success" label={t('@yovoice.ai.inUse')} tooltip={t('@yovoice.ai.inUse')} /> : null} onClick={() => select(p.id)} />)}
         </List> : null}
         {groups.map(group => <List key={group.key} header={<small className="ai-nav-head">{t(`@yovoice.ai.group.${group.key}`)}</small>} density="compact">
           {group.items.map(p => <ListItem key={p.key} label={presetName(p)} isSelected={selection.value === `preset:${p.key}`} startContent={<ProviderIcon preset={p} name={presetName(p)} />} onClick={() => select(`preset:${p.key}`)} />)}
         </List>)}
       </VStack>
-      <ProviderDetail key={selection.nonce} provider={provider} preset={preset} current={!!provider && provider.id === state.aiProviderID} run={run}
+      <ProviderDetail key={selection.nonce} provider={provider} preset={preset} run={run}
         saved={id => setSelection(s => ({ ...s, value: id }))} removed={() => select(providers.find(p => p.id !== provider?.id)?.id ?? `preset:${preset.key}`)} />
     </HStack>
   </VStack>;

@@ -18,7 +18,7 @@ test('AI 服务：未配置时引导到设置，左侧选服务、右侧直接�
   await panel.getByLabel('API 密钥').fill('sk-preview-key');
   await panel.getByRole('textbox', { name: '当前模型' }).fill('deepseek-chat');
   await panel.getByRole('button', { name: '添加服务', exact: true }).click();
-  await expect(panel.locator('.ai-detail').getByText('使用中', { exact: true })).toBeVisible();
+  await expect(panel.locator('.ai-nav').getByLabel('使用中')).toHaveCount(1);
   await expect(panel.getByLabel('API 密钥')).toHaveText('••••••••');
   await expect(panel.getByRole('button', { name: '保存更改', exact: true })).toBeDisabled();
 
@@ -27,9 +27,9 @@ test('AI 服务：未配置时引导到设置，左侧选服务、右侧直接�
   await expect(panel.getByRole('textbox', { name: '服务地址' })).toHaveValue('http://127.0.0.1:11434/v1');
   await panel.getByRole('textbox', { name: '当前模型' }).fill('qwen3');
   await panel.getByRole('button', { name: '添加服务', exact: true }).click();
-  await expect(panel.getByRole('switch', { name: '用于 AI 功能' })).not.toBeChecked();
-  await panel.getByRole('switch', { name: '用于 AI 功能' }).click();
-  await expect(panel.getByRole('switch', { name: '用于 AI 功能' })).toBeChecked();
+  // 服务页不再显示开关和说明文字，当前服务只在左侧用状态点标出。
+  await expect(panel.getByRole('switch')).toHaveCount(0);
+  await expect(panel.locator('.ai-detail h2')).toHaveText('Ollama');
   await page.screenshot({ path: testInfo.outputPath('ai-settings.png') });
 
   // 更换密钥：输入框为空，不回填旧密钥。
@@ -45,7 +45,7 @@ test('AI 服务：未配置时引导到设置，左侧选服务、右侧直接�
   await expect(panel.getByRole('button', { name: 'Ollama', exact: true })).toBeVisible();
   await expect(panel.getByText('已添加')).toBeVisible();
   await panel.getByRole('button', { name: 'DeepSeek', exact: true }).click();
-  await expect(panel.locator('.ai-detail').getByText('使用中', { exact: true })).toBeVisible();
+  await expect(panel.locator('.ai-nav').getByLabel('使用中')).toHaveCount(1);
 });
 
 test('AI 写歌词：在后台运行，结束后在写作栏显示结果或失败原因', async ({ page }, testInfo) => {
@@ -55,12 +55,25 @@ test('AI 写歌词：在后台运行，结束后在写作栏显示结果或失�
   await page.getByRole('button', { name: 'Ollama', exact: true }).click();
   await page.getByRole('textbox', { name: '当前模型' }).fill('qwen3');
   await page.getByRole('button', { name: '添加服务', exact: true }).click();
-  await expect(page.locator('.ai-detail').getByText('使用中', { exact: true })).toBeVisible();
+  await expect(page.locator('.ai-nav').getByLabel('使用中')).toHaveCount(1);
+  await page.getByRole('button', { name: 'DeepSeek', exact: true }).click();
+  await page.getByLabel('API 密钥').fill('sk-preview-key');
+  await page.getByRole('textbox', { name: '当前模型' }).fill('deepseek-chat');
+  await page.getByRole('button', { name: '添加服务', exact: true }).click();
 
   await page.getByTestId('nav-new').click();
   await page.getByRole('menuitem', { name: '音乐生成', exact: true }).click();
   const composer = page.locator('.ai-composer');
-  await expect(composer).toContainText('使用 Ollama · qwen3');
+  await expect(composer).toContainText('Ollama · qwen3');
+  // 写作栏按服务分组列出已配置的模型，切换后写入当前服务和模型。
+  const model = composer.getByRole('combobox', { name: '模型' });
+  await model.click();
+  await page.getByRole('option', { name: 'deepseek-chat' }).click();
+  await expect(composer).toContainText('DeepSeek · deepseek-chat');
+  await composer.screenshot({ path: testInfo.outputPath('ai-model.png') });
+  await model.click();
+  await page.getByRole('option', { name: 'qwen3' }).click();
+  await expect(composer).toContainText('Ollama · qwen3');
   await expect(composer.getByRole('button', { name: '写歌', exact: true })).toBeDisabled();
   await composer.getByRole('textbox', { name: '描述想要的歌' }).fill('夏夜海边兜风');
   await composer.getByRole('button', { name: '写歌', exact: true }).click();

@@ -1,12 +1,12 @@
 import { useRef, useState } from 'react';
 import { Button } from '@astryxdesign/core/Button';
 import { DropdownMenu } from '@astryxdesign/core/DropdownMenu';
-import { Grid } from '@astryxdesign/core/Grid';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
 import { TextArea } from '@astryxdesign/core/TextArea';
+import { Token } from '@astryxdesign/core/Token';
 import { useTranslator } from '@astryxdesign/core/i18n';
-import { AudioLines, Check, ChevronDown, ChevronUp, Play, Sparkles } from 'lucide-react';
+import { AudioLines, Check, ChevronDown, ChevronUp, Play, RotateCcw, Sparkles } from 'lucide-react';
 import { call } from '../../shared/lib/client';
 import { AIComposer } from '../../shared/ui/ai-composer';
 import { formatTime, isYuE, type Draft, type Generation, type State, type UiLocale } from '../../shared/workbench';
@@ -97,18 +97,28 @@ export function MusicEditor({ draft, state, change, locale, takes, current, sele
     </VStack>
     <VStack className="music-block" gap={3}>
       <HStack hAlign="between" vAlign="center"><h2>{t('@yovoice.music.takes')}</h2>{takes.length ? <small>{t('@yovoice.music.takeCount', { count: takes.length })}</small> : null}</HStack>
-      {takes.length ? <Grid columns={{ minWidth: 160 }} gap={4}>
-        {takes.map((take, index) => <Button key={take.id} variant="ghost" className="music-take" aria-current={take.id === current ? 'true' : undefined} label={t('@yovoice.music.take', { n: takes.length - index })} onClick={() => select(take)}>
-          <VStack gap={2} width="100%">
-            <SongCover seed={take.id} animated={take.id === current} />
-            <HStack hAlign="between" vAlign="center" gap={2}>
-              <HStack gap={1} vAlign="center">{take.id === current ? <AudioLines size={14} aria-hidden /> : <Play size={14} aria-hidden />}<b>{t('@yovoice.music.take', { n: takes.length - index })}</b></HStack>
-              <small className="music-take-duration">{formatTime(take.duration)}</small>
-            </HStack>
-            <small className="music-take-style">{take.settings.instrumental ? `${t('@yovoice.music.instrumental')} · ` : ''}{take.settings.text}</small>
-          </VStack>
-        </Button>)}
-      </Grid> : <p className="music-empty">{t('@yovoice.music.noTakes')}</p>}
+      {takes.length ? <VStack className="music-takes" gap={0} role="list">
+        {takes.map((take, index) => {
+          const tags = splitTags(take.settings.text), playing = take.id === current;
+          return <HStack key={take.id} className="music-take-row" role="listitem" data-current={playing} gap={2} vAlign="center">
+            <Button variant="ghost" className="music-take grow" aria-current={playing ? 'true' : undefined} label={t('@yovoice.music.take', { n: takes.length - index })} onClick={() => select(take)}>
+              <HStack gap={3} vAlign="center" width="100%">
+                <HStack className="music-take-cover" gap={0} hAlign="center" vAlign="center"><SongCover seed={take.id} animated={playing} size={112} />{playing ? <AudioLines className="music-take-state" size={16} aria-hidden /> : <Play className="music-take-state" size={16} fill="currentColor" aria-hidden />}</HStack>
+                <VStack className="grow music-take-text" gap={1}>
+                  <HStack gap={2} vAlign="center"><b>{t('@yovoice.music.take', { n: takes.length - index })}</b><small className="music-take-date">{new Date(take.createdAt).toLocaleString(locale, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</small></HStack>
+                  <HStack className="music-take-tags" gap={1} vAlign="center">
+                    {take.settings.instrumental ? <Token size="sm" label={t('@yovoice.music.instrumental')} /> : null}
+                    {tags.slice(0, 4).map(tag => <Token key={tag} size="sm" label={tag} />)}
+                    {tags.length > 4 ? <small>+{tags.length - 4}</small> : null}
+                  </HStack>
+                </VStack>
+                <small className="music-take-duration">{formatTime(take.duration)}</small>
+              </HStack>
+            </Button>
+            <Button variant="ghost" size="sm" isIconOnly icon={<RotateCcw />} label={t('@yovoice.music.reuseTake')} tooltip={t('@yovoice.music.reuseTake')} onClick={() => change({ text: take.settings.text, lyrics: take.settings.lyrics, instrumental: take.settings.instrumental, synthesisLanguage: take.settings.synthesisLanguage, modelOptions: take.settings.modelOptions, seed: take.settings.seed })} />
+          </HStack>;
+        })}
+      </VStack> : <p className="music-empty">{t('@yovoice.music.noTakes')}</p>}
     </VStack>
   </VStack>;
 }

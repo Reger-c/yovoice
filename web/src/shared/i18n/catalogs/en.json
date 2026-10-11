@@ -2357,9 +2357,6 @@
   "@yovoice.ai.keyOptional": {
     "defaultMessage": "Usually not needed for local services"
   },
-  "@yovoice.ai.keyStored": {
-    "defaultMessage": "Stored only on this computer, separate from projects and state."
-  },
   "@yovoice.ai.getKey": {
     "defaultMessage": "Get a key"
   },
@@ -2395,9 +2392,6 @@
   },
   "@yovoice.ai.notConfigured": {
     "defaultMessage": "This feature needs a language model. Add a service and choose a model in Settings › AI services first."
-  },
-  "@yovoice.ai.via": {
-    "defaultMessage": "Uses {name} · {model}"
   },
   "@yovoice.ai.scorePlaceholder": {
     "defaultMessage": "Describe the music in a sentence and AI writes the whole arrangement, e.g. a warm, slow piano piece for a travel vlog intro, with soft strings joining later"
@@ -2476,12 +2470,6 @@
   },
   "@yovoice.ai.added": {
     "defaultMessage": "Added"
-  },
-  "@yovoice.ai.notAdded": {
-    "defaultMessage": "Not added"
-  },
-  "@yovoice.ai.enable": {
-    "defaultMessage": "Use for AI features"
   },
   "@yovoice.ai.replaceKey": {
     "defaultMessage": "Replace key"
@@ -2654,12 +2642,6 @@
   "@yovoice.ai.group.local": {
     "defaultMessage": "Local & custom"
   },
-  "@yovoice.ai.codingPlan": {
-    "defaultMessage": "Coding plan"
-  },
-  "@yovoice.ai.codingPlanHint": {
-    "defaultMessage": "Uses the plan's own key and quota, separate from the pay-as-you-go API"
-  },
   "@yovoice.error.musicLyricsRequired": {
     "defaultMessage": "YuE2 needs lyrics; instrumental tracks are not supported."
   },
@@ -2674,5 +2656,8 @@
   },
   "@yovoice.music.yueAdvancedHint": {
     "defaultMessage": "A fixed seed reproduces the same take."
+  },
+  "@yovoice.music.reuseTake": {
+    "defaultMessage": "Reuse this take's style and lyrics"
   }
 }

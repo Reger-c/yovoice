@@ -174,14 +174,21 @@ func (w *Workbench) DeleteAIProvider(id string) error {
 	}, true)
 }
 
-// UseAIProvider 设定 AI 功能使用的服务，空串表示停用 AI 功能。
-func (w *Workbench) UseAIProvider(id string) error {
+// UseAIProvider 设定 AI 功能使用的服务与模型：写作栏可在已配置的服务和模型间切换；
+// model 为空时沿用该服务原来的模型，id 为空表示停用 AI 功能。
+func (w *Workbench) UseAIProvider(id, model string) error {
 	w.edit.Lock()
 	defer w.edit.Unlock()
-	if id != "" && !slices.ContainsFunc(w.Store.Read().AIProviders, func(x schema.AIProvider) bool { return x.ID == id }) {
+	model = strings.TrimSpace(model)
+	if id != "" && !slices.ContainsFunc(w.Store.Read().AIProviders, func(x schema.AIProvider) bool { return x.ID == id }) || len(model) > 200 {
 		return msg.Err(msg.ErrAIProviderInvalid, nil)
 	}
-	return w.Store.Update(func(s *schema.State) { s.AIProviderID = id }, true)
+	return w.Store.Update(func(s *schema.State) {
+		s.AIProviderID = id
+		if i := slices.IndexFunc(s.AIProviders, func(x schema.AIProvider) bool { return x.ID == id }); i >= 0 && model != "" {
+			s.AIProviders[i].Model = model
+		}
+	}, true)
 }
 
 // aiConfig 读取服务配置与密钥；id 为空时使用当前服务。

@@ -134,7 +134,12 @@ export async function previewCall<T>(method: string, data: unknown): Promise<T> 
     if (method === 'ai.provider.delete') {
       state.aiProviders = (state.aiProviders ?? []).filter(p => p.id !== id);
       if (state.aiProviderID === id) state.aiProviderID = state.aiProviders[0]?.id ?? '';
-    } else state.aiProviderID = id;
+    } else {
+      // 写作栏切换模型时同时改服务的当前模型。
+      const model = (data as { model?: string }).model?.trim();
+      state.aiProviderID = id;
+      if (model) state.aiProviders = (state.aiProviders ?? []).map(p => p.id === id ? { ...p, model } : p);
+    }
     publish(); return true as T;
   }
   // 预览模拟 AI 后台任务的生命周期：开始后短暂运行，再以“仅桌面可用”结束，便于检查界面闭环。

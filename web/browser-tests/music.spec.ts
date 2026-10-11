@@ -57,7 +57,7 @@ test('新建音乐作品：示例、风格标签、段落标记、纯音乐与�
   await expect(page.getByRole('option', { name: /ACE-Step/ })).toHaveCount(0);
 });
 
-test('音乐版本以封面并排展示，点选版本即试听', async ({ page }, testInfo) => {
+test('音乐版本一行一个，点选即试听，可复用参数', async ({ page }, testInfo) => {
   const draft = { ...createMusicDraft('zh-CN'), id: 'a'.repeat(32) };
   const state = emptyState();
   state.drafts = [draft];
@@ -80,6 +80,11 @@ test('音乐版本以封面并排展示，点选版本即试听', async ({ page 
   await takes.nth(2).click();
   await expect(takes.nth(2)).toHaveAttribute('aria-current', 'true');
   await expect(page.locator('.notice')).toHaveCount(0);
+  // 复用某一版的风格与歌词，写回当前作品。
+  await page.getByLabel('风格', { exact: true }).fill('lofi');
+  await page.getByRole('button', { name: '复用这一版的风格和歌词' }).nth(1).click();
+  await expect(page.getByLabel('风格', { exact: true })).not.toHaveValue('lofi');
+  await expect(page.getByRole('radio', { name: '纯音乐' })).toBeChecked();
   await page.screenshot({ path: testInfo.outputPath('music-takes.png') });
 });
 

@@ -34,6 +34,7 @@ func Call(ctx context.Context, w *workbench.Workbench, method string, data json.
 		Path          string `json:"path"`
 		Base64        string `json:"base64"`
 		ReferenceText string `json:"referenceText"`
+		Model         string `json:"model"`
 	}
 	if len(data) == 0 || string(data) == "null" {
 		return nil, msg.Err(msg.ErrRequestInvalid, nil)
@@ -139,7 +140,7 @@ func Call(ctx context.Context, w *workbench.Workbench, method string, data json.
 	case "ai.provider.delete":
 		return true, w.DeleteAIProvider(p.ID)
 	case "ai.provider.use":
-		return true, w.UseAIProvider(p.ID)
+		return true, w.UseAIProvider(p.ID, p.Model)
 	case "ai.models":
 		return w.AIModels(ctx, p.ID)
 	case "ai.test":
