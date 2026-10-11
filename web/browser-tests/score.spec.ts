@@ -62,7 +62,7 @@ test('新建编曲作品：示例乐谱、音块总览、声部调整与持久�
   const headHeight = await rows.first().locator('.score-track-head').evaluate(el => el.clientHeight);
   expect(headWidth).toBeLessThanOrEqual(200);
   // 轨头各列对齐：每行的音色、电平与发声按钮左边缘一致。
-  const columns = await rows.evaluateAll(list => list.map(row => [...row.querySelectorAll('.score-track-head > :not(.score-track-name)')].map(el => Math.round(el.getBoundingClientRect().left)).slice(-2).join()));
+  const columns = await rows.evaluateAll(list => list.map(row => [...row.querySelectorAll('.score-track-head > .astryx-field, .score-drum-kit, .number-field, .score-mute')].map(el => Math.round(el.getBoundingClientRect().left)).join()));
   expect(new Set(columns).size).toBe(1);
   expect(headHeight).toBeLessThanOrEqual(42);
   await expect.poll(() => scroll.evaluate(el => el.scrollWidth > el.clientWidth)).toBe(true);
