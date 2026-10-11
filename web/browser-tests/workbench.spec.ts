@@ -435,7 +435,7 @@ test('版本切换仅试听，不改正文参数且不再显示版本操作菜�
   await expect(page.getByRole('button', { name: '播放', exact: true })).toBeDisabled();
 });
 
-test('侧栏拖拽调宽、收起和恢复会记住状态', async ({ page }) => {
+test('侧栏拖拽调宽、收起和恢复会记住状态，顶栏支持切换右侧面板', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 }); await page.goto('/');
   const sidebar = page.getByRole('navigation', { name: '主导航' });
   const handle = page.getByRole('separator', { name: '调整侧栏宽度' });
@@ -459,6 +459,16 @@ test('侧栏拖拽调宽、收起和恢复会记住状态', async ({ page }) => 
   await expect(sidebar).toHaveCount(0);
   await page.evaluate(() => window.dispatchEvent(new Event('workbench-toggle-sidebar')));
   await expect(sidebar).toBeVisible();
+  const inspector = page.locator('.inspector');
+  await expect(inspector).toBeVisible();
+  await page.getByRole('button', { name: '收起右侧面板' }).click();
+  await expect(inspector).toBeHidden();
+  await page.getByRole('button', { name: '展开右侧面板' }).click();
+  await expect(inspector).toBeVisible();
+  await page.evaluate(() => window.dispatchEvent(new Event('workbench-toggle-inspector')));
+  await expect(inspector).toBeHidden();
+  await page.evaluate(() => window.dispatchEvent(new Event('workbench-toggle-inspector')));
+  await expect(inspector).toBeVisible();
   for (const width of [840, 1440]) {
     await page.setViewportSize({ width, height: 800 });
     await expect.poll(() => panel.evaluate(el => el.scrollWidth - el.clientWidth)).toBe(0);

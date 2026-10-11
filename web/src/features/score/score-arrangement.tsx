@@ -68,11 +68,15 @@ export function ScoreArrangement({ score, selected, select, label, updateTrack, 
 }) {
   const t = useTranslator();
   const total = Math.max(1, scoreDuration(score));
+  const bars = scoreBars(score);
   const roleLabel = (role: ScoreRole) => t(`@yovoice.score.role.${role}`);
   const sections = score.sections?.length ? score.sections : [{ name: '', start: 1, end: scoreBars(score) }];
   const [zoom, setZoom] = useState(1);
   const scroller = useRef<HTMLElement>(null);
-  const at = (fraction: number) => `calc(var(--score-head) + (100% - var(--score-head)) * ${fraction})`;
+  // 自然小节宽度：默认视图下保证每个小节具有舒展的横向尺度（每小节约 54px，或每秒约 20px），超出视口时自然可水平滚动浏览；曲目较短时保底填满可视区域。
+  const naturalLaneWidth = Math.round(Math.max(bars * 54, total * 20));
+  const laneWidth = Math.round(naturalLaneWidth * zoom);
+  const laneExpr = `max(calc(100% - var(--score-head)), ${laneWidth}px)`;
   const progress = playhead ? Math.min(1, playhead.time / total) : 0;
   // 播放时指针离开可见区域就翻页，让指针回到轨道区左侧。
   useEffect(() => {
@@ -81,13 +85,34 @@ export function ScoreArrangement({ score, selected, select, label, updateTrack, 
     const lane = element.scrollWidth - head.offsetWidth, x = progress * lane;
     if (x < element.scrollLeft || x > element.scrollLeft + element.clientWidth - head.offsetWidth) element.scrollLeft = x;
   }, [progress, playhead?.playing]);
+  // 鼠标滚轮直接横向滚动时间轴；Ctrl/Cmd + 滚轮调节时间轴缩放。
+  useEffect(() => {
+    const element = scroller.current;
+    if (!element) return;
+    const wheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        setZoom(current => {
+          const factor = e.deltaY < 0 ? 1.25 : 0.8;
+          return Number(Math.min(8, Math.max(1, current * factor)).toFixed(2));
+        });
+        return;
+      }
+      if (element.scrollWidth > element.clientWidth && Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        e.preventDefault();
+        element.scrollLeft += e.deltaY;
+      }
+    };
+    element.addEventListener('wheel', wheel, { passive: false });
+    return () => element.removeEventListener('wheel', wheel);
+  }, []);
   const seekAt = (event: ReactPointerEvent<HTMLElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
     seek(Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)) * total);
   };
   return <VStack className="score-arrangement" gap={0} role="group" aria-label={label}>
     <VStack className="score-scroll" ref={scroller} gap={0}>
-      <VStack className="score-content" gap={0} style={{ width: at(zoom) }}>
+      <VStack className="score-content" gap={0} style={{ '--score-lane': laneExpr, width: `calc(var(--score-head) + ${laneExpr})` } as CSSProperties}>
         <HStack className="score-ruler-row" gap={0}>
           <HStack className="score-track-head score-ruler-head" gap={2} vAlign="center"><small className="score-ruler-total" title={t('@yovoice.score.tracks')}>{formatTime(total)}</small><TrackZoom value={zoom} change={setZoom} disabled={false} /></HStack>
           <HStack className="score-ruler grow" gap={0} onPointerDown={playhead ? seekAt : undefined} data-seekable={!!playhead}>
@@ -101,20 +126,18 @@ export function ScoreArrangement({ score, selected, select, label, updateTrack, 
         </HStack>
         {score.tracks.map((track, index) => <HStack key={track.id} className="score-track" data-role={track.role ?? 'other'} data-muted={!!track.mute} aria-current={track.id === selected ? 'true' : undefined} gap={0}
           style={{ '--track-index': Math.min(index, 12) } as CSSProperties} onPointerDown={() => select(track.id)}>
-          <VStack className="score-track-head" gap={0}>
-            <HStack gap={1} vAlign="center">
-              <DropdownMenu hasChevron={false} button={{ size: 'sm', variant: 'ghost', isIconOnly: true, className: 'score-role-button', icon: <Circle className="score-role-dot" />, label: t('@yovoice.score.roleOf', { name: track.name }) }}
-                items={scoreRoles.map(role => ({ label: roleLabel(role), icon: <Circle className="score-role-dot" data-role={role} />, endContent: role === (track.role ?? 'other') ? <Check size={14} aria-hidden /> : undefined, onClick: () => updateTrack(track.id, { role, level: undefined }) }))} />
-              <b className="score-track-name grow" title={`${track.name} · ${roleLabel(track.role ?? 'other')}`}>{track.name}</b>
-              <label className="number-field compact"><input type="number" aria-label={t('@yovoice.score.levelOf', { name: track.name })} min={-60} max={0} step={1} value={targetLevel(track)} onChange={event => { const level = Number(event.target.value); if (level >= -60 && level < 0) updateTrack(track.id, { level }); }} />dB</label>
-              <Switch label={t('@yovoice.score.playTrack', { name: track.name })} isLabelHidden size="sm" value={!track.mute} onChange={on => updateTrack(track.id, { mute: !on || undefined })} />
-            </HStack>
-            {track.drums ? <small className="score-track-sub score-drum-kit">{t('@yovoice.score.drumKit')}</small>
-              : <HStack className="score-track-sub score-instrument-slot" gap={0}><Selector label={t('@yovoice.score.instrumentOf', { name: track.name })} isLabelHidden size="sm" variant="ghost" width="100%" className="score-instrument" value={String(track.program)} options={gmPrograms.map((name, program) => ({ value: String(program), label: name }))} onChange={value => updateTrack(track.id, { program: Number(value) })} /></HStack>}
-          </VStack>
+          <HStack className="score-track-head" gap={1} vAlign="center">
+            <DropdownMenu hasChevron={false} button={{ size: 'sm', variant: 'ghost', isIconOnly: true, className: 'score-role-button', icon: <Circle className="score-role-dot" />, label: t('@yovoice.score.roleOf', { name: track.name }) }}
+              items={scoreRoles.map(role => ({ label: roleLabel(role), icon: <Circle className="score-role-dot" data-role={role} />, endContent: role === (track.role ?? 'other') ? <Check size={14} aria-hidden /> : undefined, onClick: () => updateTrack(track.id, { role, level: undefined }) }))} />
+            <b className="score-track-name" title={`${track.name} · ${roleLabel(track.role ?? 'other')}`}>{track.name}</b>
+            {track.drums ? <small className="score-drum-kit grow">{t('@yovoice.score.drumKit')}</small>
+              : <Selector label={t('@yovoice.score.instrumentOf', { name: track.name })} isLabelHidden size="sm" variant="ghost" className="score-instrument grow" value={String(track.program)} options={gmPrograms.map((name, program) => ({ value: String(program), label: name }))} onChange={value => updateTrack(track.id, { program: Number(value) })} />}
+            <label className="number-field compact"><input type="number" aria-label={t('@yovoice.score.levelOf', { name: track.name })} min={-60} max={0} step={1} value={targetLevel(track)} onChange={event => { const level = Number(event.target.value); if (level >= -60 && level < 0) updateTrack(track.id, { level }); }} />dB</label>
+            <Switch label={t('@yovoice.score.playTrack', { name: track.name })} isLabelHidden size="sm" value={!track.mute} onChange={on => updateTrack(track.id, { mute: !on || undefined })} />
+          </HStack>
           <ScoreLane score={score} track={track} zoom={zoom} />
         </HStack>)}
-        {playhead ? <i className="score-playhead" style={{ left: at(progress) }} aria-hidden="true" /> : null}
+        {playhead ? <i className="score-playhead" style={{ left: `calc(var(--score-head) + var(--score-lane) * ${progress})` }} aria-hidden="true" /> : null}
       </VStack>
     </VStack>
   </VStack>;

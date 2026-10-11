@@ -5,7 +5,7 @@ import { TabList, Tab } from '@astryxdesign/core/TabList';
 import { Button } from '@astryxdesign/core/Button';
 import { HStack, VStack, Layout } from '@astryxdesign/core/Layout';
 import { useLocale, useTranslator } from '@astryxdesign/core/i18n';
-import { PanelLeft, Check, Plus, LoaderCircle } from 'lucide-react';
+import { PanelLeft, PanelRight, Check, Plus, LoaderCircle } from 'lucide-react';
 import { NewProject, Projects } from '../features/library/projects';
 import { VoiceTarget } from '../features/library/voice-target';
 import { MediaLibrary } from '../features/library/media-library';
@@ -61,7 +61,24 @@ export function WorkbenchChrome({ state, catalog, engine, ready, session, error,
   const [showInspector, setShowInspector] = useState(false);
   // 宽屏下右侧检查器的收起状态，跨作品、跨启动保留。
   const [inspectorCollapsed, setInspectorCollapsed] = useState(() => { try { return localStorage.getItem('workbench-inspector-collapsed') === '1'; } catch { return false; } });
-  const toggleInspector = () => setInspectorCollapsed(current => { try { localStorage.setItem('workbench-inspector-collapsed', current ? '0' : '1'); } catch { /* 存储不可用时只在本次生效 */ } return !current; });
+  const toggleInspector = useCallback(() => setInspectorCollapsed(current => {
+    const next = !current;
+    try { localStorage.setItem('workbench-inspector-collapsed', next ? '1' : '0'); } catch { /* 存储不可用时只在本次生效 */ }
+    return next;
+  }), []);
+  useEffect(() => {
+    const handleToggle = () => {
+      if (page !== 'create') {
+        setPage('create');
+        setInspectorCollapsed(false);
+        try { localStorage.setItem('workbench-inspector-collapsed', '0'); } catch { /* 存储不可用时只在本次生效 */ }
+      } else {
+        toggleInspector();
+      }
+    };
+    window.addEventListener('workbench-toggle-inspector', handleToggle);
+    return () => window.removeEventListener('workbench-toggle-inspector', handleToggle);
+  }, [page, toggleInspector]);
   const editor = useRef<HTMLTextAreaElement>(null); const previousHistory = useRef<string | undefined>(undefined);
   const onError = useCallback((message: string) => setError(message), [setError]);
   useEffect(() => {
@@ -226,7 +243,7 @@ export function WorkbenchChrome({ state, catalog, engine, ready, session, error,
   const collapsedAction = busy ? <Button size="sm" icon={<LoaderCircle className="generation-spinner" />} label={t('@yovoice.create.cancelGenerate')} onClick={() => run(() => call('operation.cancel'))} />
     : <Button size="sm" variant="primary" label={generateLabel} aria-keyshortcuts="Control+Enter" isDisabled={!generateReady} onClick={generate} />;
   return <VStack className={`workbench ${isDesktop ? 'desktop' : 'preview'}`} style={{ '--app-nav': `${navigation.size}px` } as CSSProperties} gap={0}>
-    {!isDesktop ? <HStack as="header" className="browser-titlebar" gap={2} vAlign="center"><Button label={navigation.isCollapsed ? t('@yovoice.app.expandSidebar') : t('@yovoice.app.collapseSidebar')} isIconOnly variant="ghost" size="sm" icon={<PanelLeft size={17} />} aria-expanded={!navigation.isCollapsed} onClick={toggleSidebar} /><b>yovoice</b><small>{t('@yovoice.app.browserPreview')}</small></HStack> : null}
+    {!isDesktop ? <HStack as="header" className="browser-titlebar" gap={2} vAlign="center"><Button label={navigation.isCollapsed ? t('@yovoice.app.expandSidebar') : t('@yovoice.app.collapseSidebar')} isIconOnly variant="ghost" size="sm" icon={<PanelLeft size={17} />} aria-expanded={!navigation.isCollapsed} onClick={toggleSidebar} /><b>yovoice</b><small>{t('@yovoice.app.browserPreview')}</small><Button label={inspectorCollapsed ? t('@yovoice.app.expandInspector') : t('@yovoice.app.collapseInspector')} isIconOnly variant="ghost" size="sm" icon={<PanelRight size={17} />} aria-expanded={!inspectorCollapsed} onClick={() => { if (page !== 'create') { setPage('create'); setInspectorCollapsed(false); } else { toggleInspector(); } }} /></HStack> : null}
     <AppShell variant="elevated" sideNav={navigation.isCollapsed ? undefined : sidebar} mobileNav={{ breakpoint: 'none' }} height="fill"><VStack className="app-sheet" gap={0}>
       {characterEditor ? <VStack style={{ display: page === 'characters' ? 'flex' : 'none', height: '100%', minHeight: 0 }} gap={0}><CharacterEditor active={page === 'characters'} initial={characterEditor} state={state} catalog={catalog} settings={openSettings} apply={characterOrigin.current ? async saved => { const origin = characterOrigin.current!; await applyToTarget(saved, origin.draftId, origin.speakerId); setCharacterEditor(null); } : undefined} close={() => { setCharacterEditor(null); setPage(characterReturnPage.current); }} /></VStack> : null}
       <VStack className="page-panel" style={{ display: characterActive ? 'none' : 'flex' }} gap={0}><Layout height="fill" footer={<VStack gap={0} style={{ display: page === 'create' ? 'flex' : 'none' }}>{draft.timeline || projectKind(draft) === 'story' ? <TimelineEditor exportProject={async () => { await persistDraft(draft); await call('project.export', { id: draft.id, name: draft.title }); }} key={draft.id} selectedCue={selectedCue} cueSelectionRevision={cueSelection?.revision ?? 0} playbackCue={setPlayingCue} selectCue={selectCue} draft={draft} busy={busy} regenerate={async (cueId, clipId) => { await persistDraft(draft); await call('generation.cue', { draft, cueId, clipId }); }} value={draft.timeline ?? { tracks: [] }} history={state.history} change={timeline => change({ timeline })} suspended={page !== 'create' || voicePicker !== null || characterActive || !!voiceEditor || !!voiceTarget} onError={onError} /> : <Player onProgress={scoring ? (time, playing) => setPlayback({ time, playing }) : undefined} seekRequest={scoring ? seekRequest : undefined} laneActions={instrumental ? undefined : <Button size="sm" variant="secondary" icon={<Plus />} label={t('@yovoice.timeline.add')} onClick={() => { const source = state.history.find(g => g.id === track?.id); change({ timeline: { tracks: [{ id: crypto.randomUUID(), name: t('@yovoice.timeline.track', { n: 1 }), muted: false, clips: source ? [{ id: crypto.randomUUID(), generationId: source.id, start: 0, offset: 0, duration: source.duration }] : [] }, ...(source ? [{ id: crypto.randomUUID(), name: t('@yovoice.timeline.track', { n: 2 }), muted: false, clips: [] }] : [])] } }); }} />} actions={instrumental ? undefined : <Button label={t('@yovoice.character.saveAs')} size="sm" onClick={() => openCharacter()} />} suspended={page !== 'create' || voicePicker !== null || characterActive || !!voiceEditor || !!voiceTarget} track={track} onError={onError} historyControl={projectKind(draft) !== 'story' && generations.length ? <HStack gap={1} vAlign="center">
@@ -235,9 +252,9 @@ export function WorkbenchChrome({ state, catalog, engine, ready, session, error,
         {!ready ? <p className="loading" role="status">{t('@yovoice.app.loading')}</p> : <>
 
           <VStack className="page-panel" gap={0} style={{ display: page === 'create' ? 'flex' : 'none' }}>
-            <Studio showInspector={showInspector} onShowInspector={() => setShowInspector(!showInspector)} inspector={inspector} inspectorCollapsed={inspectorCollapsed} onToggleInspector={toggleInspector} collapsedAction={collapsedAction}
+            <Studio showInspector={showInspector} onShowInspector={() => setShowInspector(!showInspector)} inspector={inspector} inspectorCollapsed={inspectorCollapsed} collapsedAction={collapsedAction}
           title={<input className="document-title" aria-label={t('@yovoice.app.titleLabel')} maxLength={120} value={draft.title} onChange={e => change({ title: e.target.value })} />}
-          writingClassName={`${draft.subtitles ? 'writing-subtitles' : ''} ${draft.timeline ? 'writing-timeline' : ''}`}>
+          writingClassName={`${draft.subtitles ? 'writing-subtitles' : ''} ${draft.timeline ? 'writing-timeline' : ''} ${scoring ? 'writing-score' : ''}`.trim()}>
           {scoring ? <><ScoreEditor key={draft.id} playhead={track ? playback : undefined} seek={time => setSeekRequest({ time, nonce: performance.now() })} draft={draft} state={state} configureAI={() => openSettings(draft.modelId, 'ai')} change={change} locale={state.preferences.uiLocale} onError={onError} />{editorFooter()}</> : music ? <><MusicEditor key={draft.id} draft={draft} state={state} configureAI={() => openSettings(draft.modelId, 'ai')} change={change} locale={state.preferences.uiLocale} takes={generations} current={track?.kind === 'outputs' ? track.id : undefined} select={item => setTrack({ id: item.id, name: item.title, fileName: item.fileName, kind: 'outputs', subtitle: t('@yovoice.app.subtitleOutput'), playRequest: performance.now() })} />{editorFooter()}</> : draft.subtitles ? <SubtitleEditor key={draft.id} history={state.history} playingCue={playingCue} failedCue={activity?.projectId === draft.id && activity.status === 'failed' ? activity.cueId : undefined} draft={draft} characters={state.characters ?? []} change={change} selectedCue={selectedCue} selectCue={selectCue} renderFooter={editorFooter} /> : <><textarea ref={editor} className="script-editor" aria-label={t('@yovoice.app.scriptLabel')} placeholder={t('@yovoice.app.scriptPlaceholder')} maxLength={12000} value={draft.text} spellCheck={false} dir={draft.language === 'ar' ? 'rtl' : 'auto'} onChange={e => change({ text: e.target.value })} />{editorFooter()}</>}
         </Studio>
           </VStack>

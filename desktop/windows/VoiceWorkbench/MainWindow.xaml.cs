@@ -177,6 +177,12 @@ public partial class MainWindow : Window
         try { await web.CoreWebView2.ExecuteScriptAsync("window.dispatchEvent(new Event('workbench-toggle-sidebar'))"); }
         catch (InvalidOperationException) { }
     }
+    private async void ToggleInspector_Click(object sender, RoutedEventArgs e)
+    {
+        if (web?.CoreWebView2 is null || recovering || shuttingDown) return;
+        try { await web.CoreWebView2.ExecuteScriptAsync("window.dispatchEvent(new Event('workbench-toggle-inspector'))"); }
+        catch (InvalidOperationException) { }
+    }
     private async Task InitializeWebAsync()
     {
         if (recovering || closed) return;

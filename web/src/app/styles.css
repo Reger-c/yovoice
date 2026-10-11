@@ -638,9 +638,16 @@
   .music-tag.astryx-button { transition: background var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard); }
   .music-block .astryx-segmented-control { flex: none; width: max-content; }
 
-  /* 编曲轨道视图：左侧轨头固定宽度，右侧音块与段落标尺共用同一时间轴。 */
-  .score-arrangement { flex-shrink: 0; --score-head: calc(var(--spacing-10) * 5.5); border: var(--border-width) solid var(--app-line); border-radius: var(--radius-container); background: var(--app-white); overflow: hidden; }
-  .score-scroll { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; }
+  /* 编曲轨道视图：单行轨头固定宽度，轨道向右延伸贴紧检查器，右侧音块与段落标尺共用时间轴。 */
+  .writing.writing-score { padding-inline-end: 0; }
+  .writing.writing-score .document-heading,
+  .writing.writing-score .score-editor > :not(.score-arrangement) { padding-inline-end: var(--spacing-4); }
+  .score-arrangement { width: 100%; min-width: 0; flex-shrink: 0; --score-head: calc(var(--spacing-10) * 5.75); border: var(--border-width) solid var(--app-line); border-radius: var(--radius-container); background: var(--app-white); overflow: hidden; }
+  .writing-score .score-arrangement { border-top-right-radius: 0; border-bottom-right-radius: 0; border-right: none; }
+  .score-scroll { width: 100%; min-width: 0; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: thin; scrollbar-color: var(--app-line) transparent; }
+  .score-scroll::-webkit-scrollbar { height: var(--spacing-2); }
+  .score-scroll::-webkit-scrollbar-track { background: transparent; }
+  .score-scroll::-webkit-scrollbar-thumb { background: var(--app-line); border-radius: var(--radius-full); }
   .score-content { position: relative; min-width: 100%; }
   .score-playhead { position: absolute; top: 0; bottom: 0; width: var(--border-width); margin-left: calc(var(--border-width) / -2); background: var(--app-ink); pointer-events: none; z-index: 1; transition: left var(--duration-fast) linear; }
   .score-playhead::before { content: ""; position: absolute; top: 0; left: calc(-1 * var(--spacing-1)); width: var(--spacing-2); height: var(--spacing-2); background: var(--app-ink); clip-path: polygon(0 0, 100% 0, 100% 50%, 50% 100%, 0 50%); }
@@ -648,12 +655,11 @@
   .score-track-head { position: sticky; left: 0; z-index: 2; background: var(--app-white); }
   .score-ruler-row .score-track-head { background: var(--app-surface); }
   .score-track[aria-current="true"] .score-track-head { background: var(--app-surface); }
-  .score-track-sub { padding-inline-start: var(--spacing-7); min-width: 0; }
   .score-ruler-row { border-bottom: var(--border-width) solid var(--app-line); background: var(--app-surface); }
-  .score-track-head { flex: none; width: var(--score-head); min-width: 0; padding: var(--spacing-2) var(--spacing-3); border-right: var(--border-width) solid var(--app-line); }
-  .score-ruler-head { justify-content: space-between; color: var(--app-muted); padding-inline-end: var(--spacing-1); }
+  .score-track-head { flex: none; width: var(--score-head); min-width: 0; padding: var(--spacing-1) var(--spacing-2); border-right: var(--border-width) solid var(--app-line); }
+  .score-ruler-head { justify-content: space-between; color: var(--app-muted); padding-inline-end: var(--spacing-1); min-height: var(--spacing-9); }
   .score-ruler-head .track-zoom { border-left: none; padding-left: 0; }
-  .score-ruler-head .track-zoom button:nth-child(2) { min-width: var(--spacing-10); }
+  .score-ruler-head .track-zoom button:nth-child(2) { min-width: var(--spacing-9); }
   .score-ruler-total { font-family: var(--app-mono); font-variant-numeric: tabular-nums; }
   .score-ruler { min-width: 0; }
   .score-ruler-section { flex-basis: 0; min-width: 0; padding: var(--spacing-1) var(--spacing-2); border-left: var(--border-width) solid var(--app-line); overflow: hidden; white-space: nowrap; }
@@ -666,10 +672,9 @@
   .score-track:hover { background: color-mix(in srgb, var(--app-surface) 60%, transparent); }
   .score-track[aria-current="true"] { background: var(--app-surface); }
   .score-track[aria-current="true"] .score-track-head { box-shadow: inset calc(var(--border-width) * 3) 0 0 var(--role); }
-  .score-track .score-track-head { color: var(--app-ink); }
-  .score-track .score-track-head { padding-block: var(--spacing-1); padding-inline: var(--spacing-1) var(--spacing-2); }
-  .score-track-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: var(--font-weight-medium); }
-  .score-drum-kit { color: var(--app-muted); min-height: var(--spacing-8); display: flex; align-items: center; }
+  .score-track .score-track-head { color: var(--app-ink); min-height: var(--spacing-9); }
+  .score-track-name { flex: 0 0 auto; max-width: calc(var(--spacing-10) * 1.5); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: var(--font-weight-medium); }
+  .score-drum-kit { flex: 1 1 0; min-width: 0; color: var(--app-muted); font-size: var(--app-small-font); padding-inline-start: var(--spacing-1); display: flex; align-items: center; }
   .score-track .astryx-switch { flex: none; }
   .score-role-button { flex: none; color: var(--role); }
   .score-role-dot { fill: var(--role); stroke: var(--role); width: var(--spacing-3); height: var(--spacing-3); }
@@ -685,17 +690,13 @@
   .score-arrangement [data-role="pad"] { --role: var(--color-icon-green); }
   .score-arrangement [data-role="arp"] { --role: var(--color-icon-yellow); }
   .score-arrangement [data-role="other"] { --role: var(--color-icon-gray); }
-  .score-track .number-field.compact { gap: var(--spacing-1); color: var(--app-muted); }
-  .score-track .number-field.compact { flex: none; }
-  .score-track .number-field.compact input { width: var(--spacing-8); min-height: var(--spacing-7); padding: var(--spacing-1); background: transparent; border-color: transparent; appearance: textfield; transition: background var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard); }
+  .score-track .number-field.compact { gap: var(--spacing-0-5); color: var(--app-muted); flex: none; font-size: var(--app-small-font); }
+  .score-track .number-field.compact input { width: calc(var(--spacing-8) - var(--spacing-1)); min-height: var(--spacing-7); padding: 0 var(--spacing-0-5); background: transparent; border-color: transparent; appearance: textfield; transition: background var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard); }
   .score-track .number-field.compact input::-webkit-inner-spin-button { display: none; }
   .score-track .number-field.compact input:hover, .score-track .number-field.compact input:focus { background: var(--app-white); border-color: var(--app-line); }
-  .score-instrument-slot { min-width: 0; }
-  .score-instrument-slot > *, .score-instrument { flex: 1 1 0; min-width: 0; }
-  .score-instrument > button { min-width: 0; overflow: hidden; }
+  .score-instrument { flex: 1 1 0; min-width: 0; }
+  .score-instrument > button { min-width: 0; min-height: var(--spacing-7); padding-inline: var(--spacing-1); color: var(--app-muted); font-size: var(--app-small-font); overflow: hidden; }
   .score-instrument > button > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .score-track-sub .score-instrument > button { min-height: var(--spacing-6); padding-inline: var(--spacing-1); color: var(--app-muted); font-size: var(--app-small-font); }
-  .score-track-sub.score-drum-kit { padding-inline-start: calc(var(--spacing-7) + var(--spacing-1)); min-height: var(--spacing-6); }
   @keyframes score-track-in { from { opacity: 0; filter: blur(var(--spacing-0-5)); } }
   @media (prefers-reduced-motion: reduce) {
     .ai-composer, .ai-composer-body, .score-track { animation: none; }

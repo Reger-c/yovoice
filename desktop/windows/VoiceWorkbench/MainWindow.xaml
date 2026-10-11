@@ -131,6 +131,7 @@
                     </MenuItem>
                     <MenuItem Header="视图">
                         <MenuItem Header="切换侧栏" Click="ToggleSidebar_Click" />
+                        <MenuItem Header="切换右侧面板" Click="ToggleInspector_Click" />
                     </MenuItem>
                     <MenuItem Header="帮助">
                         <MenuItem x:Name="CheckUpdatesMenu" Header="检查更新…" />
@@ -138,6 +139,10 @@
                 </Menu>
             </StackPanel>
             <StackPanel Grid.Column="2" Orientation="Horizontal">
+                <Button x:Name="ToggleInspectorButton" Style="{StaticResource CaptionButton}" Width="36" Click="ToggleInspector_Click" ToolTip="切换右侧面板" AutomationProperties.Name="切换右侧面板">
+                    <Path Data="M 2,1 L 14,1 Q 16,1 16,3 L 16,13 Q 16,15 14,15 L 2,15 Q 0,15 0,13 L 0,3 Q 0,1 2,1 M 11,1 L 11,15"
+                          Stroke="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" StrokeThickness="1" Width="16" Height="16" />
+                </Button>
                 <Button Style="{StaticResource CaptionButton}" Click="Minimize_Click" ToolTip="最小化" AutomationProperties.Name="最小化">
                     <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE921;" />
                 </Button>

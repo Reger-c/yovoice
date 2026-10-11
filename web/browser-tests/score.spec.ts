@@ -43,8 +43,18 @@ test('新建编曲作品：示例乐谱、音块总览、声部调整与持久�
   await page.getByRole('spinbutton', { name: '速度（BPM）' }).fill('120');
   await expect(page.locator('.score-summary')).toContainText('120 BPM');
   await page.screenshot({ path: testInfo.outputPath('score.png') });
-  // 轨道区放大后横向滚动，轨头固定在左侧。
+  // 轨头收成单行且固定在左侧，轨道延伸至最右侧贴合检查器，22 小节乐谱默认即可横向滚动。
+  const arrangementRight = await page.locator('.score-arrangement').evaluate(el => Math.round(el.getBoundingClientRect().right));
+  const inspectorLeft = await page.locator('.inspector').evaluate(el => Math.round(el.getBoundingClientRect().left));
+  expect(Math.abs(arrangementRight - inspectorLeft)).toBeLessThanOrEqual(1);
   const scroll = page.locator('.score-scroll');
+  const headWidth = await rows.first().locator('.score-track-head').evaluate(el => el.clientWidth);
+  const headHeight = await rows.first().locator('.score-track-head').evaluate(el => el.clientHeight);
+  expect(headWidth).toBeLessThanOrEqual(240);
+  expect(headHeight).toBeLessThanOrEqual(42);
+  await expect.poll(() => scroll.evaluate(el => el.scrollWidth > el.clientWidth)).toBe(true);
+  await scroll.evaluate(el => { el.dispatchEvent(new WheelEvent('wheel', { deltaY: 120, bubbles: true, cancelable: true })); });
+  await expect.poll(() => scroll.evaluate(el => el.scrollLeft)).toBeGreaterThan(0);
   await page.getByRole('group', { name: '缩放' }).first().getByRole('button', { name: '放大' }).click();
   await expect.poll(() => scroll.evaluate(el => el.scrollWidth > el.clientWidth * 1.5)).toBe(true);
   await scroll.evaluate(el => { el.scrollLeft = 200; });

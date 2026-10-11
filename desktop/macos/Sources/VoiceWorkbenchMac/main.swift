@@ -37,6 +37,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
         sidebarButton.frame = NSRect(x: 0, y: 0, width: 32, height: 28)
         accessory.view = sidebarButton
         window.addTitlebarAccessoryViewController(accessory)
+        let rightAccessory = NSTitlebarAccessoryViewController()
+        rightAccessory.layoutAttribute = .right
+        let inspectorButton = NSButton(image: NSImage(systemSymbolName: "sidebar.right", accessibilityDescription: HostL10n.t("inspector.toggle"))!, target: self, action: #selector(toggleInspector))
+        inspectorButton.isBordered = false
+        inspectorButton.toolTip = HostL10n.t("inspector.tooltip")
+        inspectorButton.frame = NSRect(x: 0, y: 0, width: 32, height: 28)
+        rightAccessory.view = inspectorButton
+        window.addTitlebarAccessoryViewController(rightAccessory)
         window.minSize = NSSize(width: 390, height: 600)
         window.isReleasedWhenClosed = false
         window.delegate = self
@@ -53,6 +61,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
     @objc private func toggleSidebar() {
         // 侧栏状态由前端统一管理，标题栏仅发送切换事件。
         web?.evaluateJavaScript("window.dispatchEvent(new Event('workbench-toggle-sidebar'))", completionHandler: nil)
+    }
+
+    @objc private func toggleInspector() {
+        // 检查器状态由前端统一管理，标题栏仅发送切换事件。
+        web?.evaluateJavaScript("window.dispatchEvent(new Event('workbench-toggle-inspector'))", completionHandler: nil)
     }
 
     @objc private func showAbout() {
