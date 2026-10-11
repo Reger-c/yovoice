@@ -16,6 +16,7 @@ import { createScoreDraft, scoreDuration } from '../score/score-draft';
 import { RecordCover } from './record-cover';
 import { LibraryEmpty, LibraryPage, Ticket } from './library-layout';
 import { TapeCover } from './tape-cover';
+import { overflowTitle } from '../../shared/ui/overflow-title';
 
 export function NewProject({ locale, modelId, create, onError, button, kind }: {
   kind?: 'text' | 'story' | 'music' | 'score'; locale: UiLocale; modelId?: string; create: (draft: Draft) => Promise<void>; onError: (error: string) => void;
@@ -89,7 +90,7 @@ export function Projects({ drafts, kind, open, create, copy, save, remove, histo
           {newMonth ? <small className="ticket-month eyebrow">{month}</small> : null}
           <Ticket className={`project-library-row ticket-${kind}`} coverClassName="project-avatars" index={index} cover={cover}
             eyebrow={projectMeta(draft)} excerpt={excerpt(draft)}
-            title={<Button variant="ghost" className="project-title" label={draft.title} tooltip={draft.title} onClick={() => open(draft)} />}
+            title={<Button variant="ghost" className="project-title" label={draft.title} onPointerEnter={overflowTitle} onClick={() => open(draft)} />}
             stub={stamp ? <time className="project-created" dateTime={stamp} title={t('@yovoice.project.created', { date: new Date(draft.createdAt ?? date).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) })}>
               <b className="ticket-day">{date.getDate()}</b>
               <small className="eyebrow">{date.getFullYear()}.{String(date.getMonth() + 1).padStart(2, '0')}</small>

@@ -14,6 +14,7 @@ import { CallError } from '../../shared/lib/call-error';
 import { AISettings } from './ai-settings';
 import { ModelGroups } from './model-list';
 import { SettingsGroup, SettingsRow } from './settings-group';
+import { overflowTitle } from '../../shared/ui/overflow-title';
 
 // AI 请求超时的可选值（秒）。
 const aiTimeouts = [60, 120, 300, 600, 1200, 1800];
@@ -83,7 +84,7 @@ export function Settings({ state, catalog, engine, draft, run, focus }: { focus?
         <SettingsRow label={t('@yovoice.settings.downloadSource')}>
           <Selector size="sm" label={t('@yovoice.settings.downloadSource')} isLabelHidden value={preferences.downloadSource} options={[{ value: 'modelscope', label: t('@yovoice.settings.source.modelscope') }, { value: 'huggingface', label: t('@yovoice.settings.source.huggingface') }, { value: 'mirror', label: t('@yovoice.settings.source.mirror') }]} onChange={downloadSource => run(() => call('preferences.save', { ...preferences, downloadSource }))} width="calc(var(--spacing-10) * 5)" className="download-source" />
         </SettingsRow>
-        <SettingsRow className="settings-directory" label={t('@yovoice.settings.modelDirectory')} hint={<span className="model-path" title={preferences.modelDirectory ?? t('@yovoice.settings.defaultDirectory')}>{preferences.modelDirectory ?? t('@yovoice.settings.defaultDirectory')}</span>}>
+        <SettingsRow className="settings-directory" label={t('@yovoice.settings.modelDirectory')} hint={<span className="model-path" onPointerEnter={overflowTitle}>{preferences.modelDirectory ?? t('@yovoice.settings.defaultDirectory')}</span>}>
           <Button size="sm" label={t('@yovoice.settings.changeLocation')} icon={<FolderCog size={16} />} isDisabled={busy} onClick={() => run(() => call('model.directory'))} />
           <Button size="sm" label={t('@yovoice.settings.openFolder')} icon={<FolderOpen size={16} />} onClick={() => run(() => call('model.directory.open'))} />
         </SettingsRow>

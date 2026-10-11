@@ -479,6 +479,12 @@ test('侧栏拖拽调宽、收起和恢复会记住状态，顶栏支持切换�
     await expect.poll(() => panel.evaluate(el => el.scrollWidth - el.clientWidth)).toBe(0);
     await expect(page.getByTestId('nav-settings')).toBeInViewport();
   }
+  // 右侧面板只属于工作区：列表页不显示开关，标题栏事件也不会跳回上次的作品。
+  await page.getByTestId('nav-story').click();
+  await expect(page.getByRole('button', { name: /右侧面板/ })).toHaveCount(0);
+  await page.evaluate(() => window.dispatchEvent(new Event('workbench-toggle-inspector')));
+  await expect(page.getByTestId('nav-story')).toHaveAttribute('aria-current', 'page');
+  await expect(inspector).toBeHidden();
 });
 
 
