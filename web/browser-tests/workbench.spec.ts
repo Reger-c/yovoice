@@ -133,6 +133,8 @@ test('真实 WAV 导入、播放、裁剪和空状态', async ({ page }) => {
   const picker = page.getByRole('dialog');
   await picker.getByRole('button', { name: '试听测试音色', exact: true }).click({ trial: true });
   const list = picker.locator('.voice-list');
+  // 弹窗打开时有缩放动画，等动画结束再记录尺寸，否则 macOS CI 上会量到动画中途的大小。
+  await picker.evaluate(el => Promise.all(el.getAnimations({ subtree: true }).map(animation => animation.finished)));
   const listBox = await list.boundingBox();
   const dialogBox = await picker.boundingBox();
   const firstRow = picker.locator('.voice-row').filter({ has: page.getByRole('button', { name: '测试音色', exact: true }) });
