@@ -248,8 +248,11 @@ test('单选与设置标签支持方向键，弹窗错误就地显示', async ({
   await expect(dialog.getByRole('textbox', { name: '录音名称' })).toHaveCount(0);
   await page.locator('input[type=file][accept^="audio/"]').setInputFiles({ name: '损坏.wav', mimeType: 'audio/wav', buffer: Buffer.from('invalid') });
   await expect(dialog.getByRole('alert')).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(dialog).toHaveCount(0);
+  // 系统文件选择返回后焦点可能还未回到弹窗，macOS 上首个 Esc 偶尔落空；重按直到弹窗关闭。
+  await expect(async () => {
+    await page.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0, { timeout: 1000 });
+  }).toPass();
 });
 
 for (const trigger of ['鼠标', '键盘']) test(`选中文字显示发音浮层，${trigger}应用后只修改选区`, async ({ page }) => {
