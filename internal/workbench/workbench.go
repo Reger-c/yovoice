@@ -195,6 +195,7 @@ func (w *Workbench) Close() {
 		if done != nil {
 			<-done
 		}
+		w.stopAI()
 		w.engine.Stop()
 		w.client.CloseIdleConnections()
 	})

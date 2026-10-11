@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { Button } from '@astryxdesign/core/Button';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { StatusDot } from '@astryxdesign/core/StatusDot';
+import { TextInput } from '@astryxdesign/core/TextInput';
 import { useTranslator } from '@astryxdesign/core/i18n';
-import { Download, FilePlus, Pause, Trash2 } from 'lucide-react';
+import { Download, FilePlus, Pause, Search, Trash2 } from 'lucide-react';
 import { call } from '../../shared/lib/client';
 import { formatSize, type Draft, type ModelPackage, type State } from '../../shared/workbench';
 import { SettingsGroup } from './settings-group';
@@ -29,6 +31,10 @@ export function ModelGroups({ models, state, draft, run }: { models: ModelPackag
   const busy = state.activity?.status === 'running';
   const installed = models.filter(model => state.models.some(m => m.id === model.id));
   const available = models.filter(model => !installed.includes(model));
+  // 可下载的模型较多时按名称、精度和用途搜索。
+  const [query, setQuery] = useState('');
+  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const matches = available.filter(model => { const text = `${model.name} ${model.precision} ${model.family} ${modelDescription(t, model)}`.toLowerCase(); return terms.every(term => text.includes(term)); });
   const row = (model: ModelPackage) => {
     const ready = installed.includes(model);
     const activity = state.activity;
@@ -61,6 +67,9 @@ export function ModelGroups({ models, state, draft, run }: { models: ModelPackag
   };
   return <>
     {installed.length ? <SettingsGroup title={`${t('@yovoice.settings.downloaded')} · ${installed.length}`} className="model-list">{installed.map(row)}</SettingsGroup> : null}
-    {available.length ? <SettingsGroup title={t('@yovoice.settings.available')} className="model-list available">{available.map(row)}</SettingsGroup> : null}
+    {available.length ? <SettingsGroup title={t('@yovoice.settings.available')} className="model-list available"
+      actions={available.length > 5 ? <TextInput size="sm" className="model-search" label={t('@yovoice.settings.searchModels')} isLabelHidden startIcon={<Search />} placeholder={t('@yovoice.settings.searchModels')} value={query} onChange={setQuery} width="calc(var(--spacing-10) * 6)" /> : undefined}>
+      {matches.length ? matches.map(row) : <p className="settings-row model-search-empty">{t('@yovoice.settings.noModelMatch')}</p>}
+    </SettingsGroup> : null}
   </>;
 }

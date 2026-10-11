@@ -9,11 +9,14 @@ import { Switch } from '@astryxdesign/core/Switch';
 import { useTranslator } from '@astryxdesign/core/i18n';
 import { FolderOpen, FolderCog, FilePlus, ArrowUpRight } from 'lucide-react';
 import { call, isMac } from '../../shared/lib/client';
-import { runtimeStatus, type EngineInfo, type ModelPackage, type State, type Draft, type UiLocale } from '../../shared/workbench';
+import { aiTimeoutDefault, runtimeStatus, type EngineInfo, type ModelPackage, type State, type Draft, type UiLocale } from '../../shared/workbench';
 import { CallError } from '../../shared/lib/call-error';
 import { AISettings } from './ai-settings';
 import { ModelGroups } from './model-list';
 import { SettingsGroup, SettingsRow } from './settings-group';
+
+// AI 请求超时的可选值（秒）。
+const aiTimeouts = [60, 120, 300, 600, 1200, 1800];
 
 export function Settings({ state, catalog, engine, draft, run, focus }: { focus?: { tab: string; modelId: string; request: number }; state: State; catalog: ModelPackage[]; engine: EngineInfo; draft: Draft; run: (task: () => Promise<unknown>) => void }) {
   const t = useTranslator();
@@ -63,6 +66,18 @@ export function Settings({ state, catalog, engine, draft, run, focus }: { focus?
           <Switch label={t('@yovoice.settings.proxyEnabled')} isLabelHidden value={proxyEnabled} isLoading={savingProxy} isDisabled={savingProxy || (!proxyEnabled && !proxyURL.trim())} onChange={enabled => saveProxy(enabled)} />
         </SettingsRow>
       </SettingsGroup>
+      <SettingsGroup title={t('@yovoice.settings.aiGroup')}>
+        <SettingsRow label={t('@yovoice.settings.aiTimeout')} hint={t('@yovoice.settings.aiTimeoutHint')}>
+          <Selector size="sm" label={t('@yovoice.settings.aiTimeout')} isLabelHidden value={String(preferences.aiTimeout || aiTimeoutDefault)} width="calc(var(--spacing-10) * 5)"
+            options={aiTimeouts.map(seconds => ({ value: String(seconds), label: t(seconds === aiTimeoutDefault ? '@yovoice.settings.minutesDefault' : '@yovoice.settings.minutes', { n: seconds / 60 }) }))}
+            onChange={value => run(() => call('preferences.save', { ...preferences, aiTimeout: Number(value) === aiTimeoutDefault ? undefined : Number(value) }))} />
+        </SettingsRow>
+      </SettingsGroup>
+      <SettingsGroup title={t('@yovoice.settings.diagnosticsGroup')}>
+        <SettingsRow label={t('@yovoice.settings.diagnostics')} hint={t('@yovoice.settings.diagnosticsHint')}>
+          <Button size="sm" label={t('@yovoice.settings.openLogs')} icon={<ArrowUpRight size={15} />} onClick={() => run(() => call('logs.open'))} />
+        </SettingsRow>
+      </SettingsGroup>
     </VStack> : tab === 'models' ? <VStack className="settings-panel" gap={6} id="models-panel" role="tabpanel" aria-label={t('@yovoice.settings.tabModels')}>
       <SettingsGroup title={t('@yovoice.settings.downloads')}>
         <SettingsRow label={t('@yovoice.settings.downloadSource')}>
@@ -88,9 +103,6 @@ export function Settings({ state, catalog, engine, draft, run, focus }: { focus?
         </SettingsRow>
         <SettingsRow className="engine-setting-row" label={t('@yovoice.settings.runtime')} hint={runtime === 'ready' ? t('@yovoice.settings.runtimeReady') : runtime === 'upgradable' ? t('@yovoice.settings.runtimeUpgradable', { version: engine.version }) : runtime === 'outdated' ? t('@yovoice.settings.runtimeOutdated', { version: engine.minimum }) : t('@yovoice.settings.runtimeMissing')}>
           <Button size="sm" label={runtime === 'ready' ? t('@yovoice.settings.reinstallRuntime') : runtime === 'missing' ? t('@yovoice.settings.installRuntime') : t('@yovoice.settings.updateRuntime', { version: engine.version })} isDisabled={busy} onClick={() => run(() => call('runtime.install'))} />
-        </SettingsRow>
-        <SettingsRow className="engine-setting-row" label={t('@yovoice.settings.diagnostics')}>
-          <Button size="sm" label={t('@yovoice.settings.openLogs')} icon={<ArrowUpRight size={15} />} onClick={() => run(() => call('logs.open'))} />
         </SettingsRow>
       </SettingsGroup>
     </VStack>}

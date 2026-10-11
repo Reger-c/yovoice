@@ -253,7 +253,8 @@ export function WorkbenchChrome({ state, catalog, engine, ready, session, error,
 
       </VStack>} /></VStack>
     </VStack></AppShell>
-    <Notifications error={error} clearError={() => setError('')} activity={activity} draftId={draft.id} page={page} cancel={() => run(() => call('operation.cancel'))} />
+    <Notifications error={error} clearError={() => setError('')} activity={activity} draftId={draft.id} page={page} cancel={() => run(() => call('operation.cancel'))}
+      aiTask={state.aiTask} aiTitle={state.drafts.find(item => item.id === state.aiTask?.projectId)?.title} openAITask={() => { const target = state.drafts.find(item => item.id === state.aiTask?.projectId); if (target) selectDraft(target); }} />
     {ready && !draft.subtitles && !instrumental && !isKokoroModel(draft.modelId) && !isVoxModel(draft.modelId) && !isReferenceModel(draft.modelId) && page === 'create' && !voicePicker && !pronunciation && !deleteTarget ? <SelectionAction key={draft.id} editor={editor} onEdit={annotate} /> : null}
 
     {voiceTarget ? <VoiceTarget voice={voiceTarget} drafts={projectList} apply={applyToTarget} close={() => setVoiceTarget(null)} /> : null}

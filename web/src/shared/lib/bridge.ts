@@ -23,9 +23,17 @@ export function subscribeDesktop(listener: (state: State) => void) { listeners.a
 export function desktopCall<T>(method: string, data: unknown): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const id = crypto.randomUUID();
-    const timer = setTimeout(() => { pending.delete(id); reject(new CallError('@yovoice.error.unknown', { detail: 'desktop timeout' })); }, 120000);
+    const timer = setTimeout(() => {
+      pending.delete(id); reportDesktop('timeout', method, 'no reply within 120s');
+      reject(new CallError('@yovoice.error.unknown', { detail: 'desktop timeout' }));
+    }, 120000);
     pending.set(id, { resolve: value => resolve(value as T), reject, timer }); native!.postMessage({ id, method, data });
   });
+}
+
+// 界面侧异常写入服务日志；只上报不等回复，上报失败也不影响界面。
+export function reportDesktop(event: string, method: string, detail: string) {
+  try { native?.postMessage({ id: crypto.randomUUID(), method: 'diag.client', data: { event, method, detail: detail.slice(0, 2000) } }); } catch { /* 宿主不可用时放弃上报。 */ }
 }
 
 export function desktopMediaUrl(kind: 'voices' | 'outputs', file: string): string {

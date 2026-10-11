@@ -7,4 +7,9 @@ import { App } from './app/app';
 import { yovoicePaperTheme } from './app/yovoice-paper';
 import './app/yovoice-paper.css';
 import './app/styles.css';
+import { reportDesktop } from './shared/lib/bridge';
+
+// 未捕获的界面错误写入服务日志，排查问题时与服务端事件放在一起看。
+window.addEventListener('error', event => reportDesktop('error', '', `${event.message} @ ${event.filename}:${event.lineno}`));
+window.addEventListener('unhandledrejection', event => reportDesktop('rejection', '', String((event.reason as Error)?.stack ?? event.reason)));
 createRoot(document.getElementById('root')!).render(<React.StrictMode><Theme theme={yovoicePaperTheme} mode="light"><App /></Theme></React.StrictMode>);

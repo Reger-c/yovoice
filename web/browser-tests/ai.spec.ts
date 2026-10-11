@@ -4,9 +4,8 @@ test('AI 服务：未配置时引导到设置，左侧选服务、右侧直接�
   await page.goto('/');
   await page.getByTestId('nav-new').click();
   await page.getByRole('menuitem', { name: '编曲', exact: true }).click();
-  await page.getByRole('button', { name: 'AI 写谱', exact: true }).click();
-  const notConfigured = page.getByRole('dialog');
-  await expect(notConfigured).toContainText('请先在“设置 › AI 服务”中添加服务并选择模型');
+  const notConfigured = page.locator('.ai-composer');
+  await expect(notConfigured).toContainText('接入大模型后，可以用一句话让 AI 写出完整编曲');
   await notConfigured.getByRole('button', { name: '设置 AI', exact: true }).click();
   await expect(page.getByRole('tab', { name: 'AI 服务', selected: true })).toBeVisible();
   const panel = page.getByRole('tabpanel', { name: 'AI 服务' });
@@ -49,7 +48,7 @@ test('AI 服务：未配置时引导到设置，左侧选服务、右侧直接�
   await expect(panel.locator('.ai-detail').getByText('使用中', { exact: true })).toBeVisible();
 });
 
-test('AI 写歌词：已配置服务时打开需求对话框，预览中调用模型提示仅桌面可用', async ({ page }) => {
+test('AI 写歌词：在后台运行，结束后在写作栏显示结果或失败原因', async ({ page }, testInfo) => {
   await page.goto('/');
   await page.getByTestId('nav-settings').click();
   await page.getByRole('tab', { name: 'AI 服务' }).click();
@@ -60,11 +59,18 @@ test('AI 写歌词：已配置服务时打开需求对话框，预览中调用�
 
   await page.getByTestId('nav-new').click();
   await page.getByRole('menuitem', { name: '音乐生成', exact: true }).click();
-  await page.getByRole('button', { name: 'AI 写歌词', exact: true }).click();
-  const dialog = page.getByRole('dialog');
-  await expect(dialog).toContainText('使用 Ollama · qwen3');
-  await expect(dialog.getByRole('button', { name: '开始写', exact: true })).toBeDisabled();
-  await dialog.getByRole('textbox', { name: '你想要什么' }).fill('夏夜海边兜风');
-  await dialog.getByRole('button', { name: '开始写', exact: true }).click();
-  await expect(dialog.getByRole('alert').or(dialog.locator('.dialog-error'))).toBeVisible();
+  const composer = page.locator('.ai-composer');
+  await expect(composer).toContainText('使用 Ollama · qwen3');
+  await expect(composer.getByRole('button', { name: '写歌', exact: true })).toBeDisabled();
+  await composer.getByRole('textbox', { name: '描述想要的歌' }).fill('夏夜海边兜风');
+  await composer.getByRole('button', { name: '写歌', exact: true }).click();
+  // 运行中显示模型、用时与后台提示；预览后端随后以“仅桌面可用”结束。
+  await expect(composer.locator('.ai-composer-body')).toContainText('qwen3 正在写');
+  await expect(composer).toContainText('夏夜海边兜风');
+  await page.screenshot({ path: testInfo.outputPath('ai-running.png') });
+  await expect(composer.getByRole('alert')).toContainText('AI 写歌词没有成功');
+  await page.screenshot({ path: testInfo.outputPath('ai-failed.png') });
+  await expect(composer.getByRole('button', { name: '重试', exact: true })).toBeVisible();
+  await composer.getByRole('button', { name: '关闭提示', exact: true }).click();
+  await expect(composer.getByRole('textbox', { name: '描述想要的歌' })).toHaveValue('夏夜海边兜风');
 });

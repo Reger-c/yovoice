@@ -69,10 +69,10 @@ function ProviderDetail({ provider, preset, current, run, saved, removed }: {
     finally { setBusy(''); }
   }
   const testMessage = test ? test.ok ? t('@yovoice.ai.testOk') : t('@yovoice.ai.testFailed', { reason: formatCallError(t, new CallError(test.code as never, test.params as never)) }) : '';
-  return <VStack className="ai-detail grow" gap={6} aria-label={title}>
+  return <VStack className="ai-detail grow" gap={5} aria-label={title}>
     <HStack className="ai-detail-head" hAlign="between" vAlign="center" gap={3} wrap="wrap">
       <HStack gap={3} vAlign="center">
-        <ProviderMark name={title} size="md" />
+        <ProviderMark name={title} size="sm" />
         <h2>{title}</h2>
         {provider ? current ? <Token size="sm" color="green" label={t('@yovoice.ai.inUse')} /> : null : <Token size="sm" label={t('@yovoice.ai.notAdded')} />}
       </HStack>
@@ -82,7 +82,7 @@ function ProviderDetail({ provider, preset, current, run, saved, removed }: {
       </HStack> : null}
     </HStack>
 
-    {preset.endpoint === 'custom' ? <TextInput label={t('@yovoice.ai.name')} value={value.name} placeholder={presetName} onChange={name => patch({ name: name.slice(0, 60) })} /> : null}
+    {preset.endpoint === 'custom' ? <TextInput size="sm" label={t('@yovoice.ai.name')} value={value.name} placeholder={presetName} onChange={name => patch({ name: name.slice(0, 60) })} /> : null}
 
     <VStack className="ai-field" gap={2}>
       {provider?.keyMask && !replacingKey ? <>
@@ -92,7 +92,7 @@ function ProviderDetail({ provider, preset, current, run, saved, removed }: {
           <Button size="sm" label={t('@yovoice.ai.replaceKey')} onClick={() => setReplacingKey(true)} />
           <Button size="sm" variant="ghost" label={t('@yovoice.ai.clearKey')} isLoading={busy === 'key'} isDisabled={!!busy} onClick={() => void act('key')} />
         </HStack>
-      </> : <TextInput label={t('@yovoice.ai.key')} type="password" autoComplete="off" value={value.key} placeholder={preset.endpoint === 'local' ? t('@yovoice.ai.keyOptional') : provider?.keyMask ? '••••••••' : t('@yovoice.ai.keyNotSet')} onChange={key => patch({ key })} />}
+      </> : <TextInput size="sm" label={t('@yovoice.ai.key')} type="password" autoComplete="off" value={value.key} placeholder={preset.endpoint === 'local' ? t('@yovoice.ai.keyOptional') : provider?.keyMask ? '••••••••' : t('@yovoice.ai.keyNotSet')} onChange={key => patch({ key })} />}
       <HStack gap={3} vAlign="center" wrap="wrap">
         {preset.keyURL ? <Button className="ai-link" size="sm" variant="ghost" label={t('@yovoice.ai.getKeyFrom', { name: preset.name })} endContent={<ArrowUpRight size={14} />} onClick={() => window.open(preset.keyURL, '_blank', 'noopener')} /> : null}
         <small>{t('@yovoice.ai.keyStored')}</small>
@@ -105,8 +105,8 @@ function ProviderDetail({ provider, preset, current, run, saved, removed }: {
         <HStack className="ai-value" gap={3} vAlign="center"><Token size="sm" label={t(`@yovoice.ai.formatName.${value.format}`)} /><code>{value.baseURL}</code></HStack>
       </> : <>
         {preset.endpoint === 'custom' ? <Selector label={t('@yovoice.ai.format')} value={value.format} options={formats.map(f => ({ value: f, label: t(`@yovoice.ai.formatName.${f}`) }))} onChange={format => patch({ format })} /> : null}
-        <TextInput label={t('@yovoice.ai.baseURL')} value={value.baseURL} placeholder="https://example.com/v1" onChange={baseURL => patch({ baseURL })} />
-        {preset.endpoint === 'custom' ? <TextInput label={t('@yovoice.ai.modelsPath')} value={value.modelsPath} placeholder="/models" onChange={modelsPath => patch({ modelsPath })} /> : null}
+        <TextInput size="sm" label={t('@yovoice.ai.baseURL')} value={value.baseURL} placeholder="https://example.com/v1" onChange={baseURL => patch({ baseURL })} />
+        {preset.endpoint === 'custom' ? <TextInput size="sm" label={t('@yovoice.ai.modelsPath')} value={value.modelsPath} placeholder="/models" onChange={modelsPath => patch({ modelsPath })} /> : null}
       </>}
     </VStack>
 
@@ -115,7 +115,7 @@ function ProviderDetail({ provider, preset, current, run, saved, removed }: {
         <HStack gap={2} vAlign="center"><p className="ai-field-title">{t('@yovoice.ai.model')}</p>{models.length ? <Badge label={models.length} /> : null}</HStack>
         <Button size="sm" label={t('@yovoice.ai.syncModels')} icon={<RefreshCw />} isLoading={busy === 'models'} isDisabled={!!busy || !value.modelsPath} onClick={() => void act('models')} />
       </HStack>
-      <TextInput label={t('@yovoice.ai.currentModel')} isLabelHidden value={value.model} placeholder={t('@yovoice.ai.modelPlaceholder')} onChange={model => patch({ model: model.slice(0, 200) })} />
+      <TextInput size="sm" label={t('@yovoice.ai.currentModel')} isLabelHidden value={value.model} placeholder={t('@yovoice.ai.modelPlaceholder')} onChange={model => patch({ model: model.slice(0, 200) })} />
       {models.length ? <>
         {models.length > 8 ? <TextInput size="sm" label={t('@yovoice.ai.searchModels')} isLabelHidden startIcon={<Search />} placeholder={t('@yovoice.ai.searchModels')} value={filter} onChange={setFilter} /> : null}
         <List className="ai-models" density="compact" hasDividers>{shown.map(m => <ListItem key={m} label={m} isSelected={m === value.model} endContent={m === value.model ? <Check size={16} aria-hidden /> : null} onClick={() => patch({ model: m })} />)}</List>
@@ -129,7 +129,7 @@ function ProviderDetail({ provider, preset, current, run, saved, removed }: {
       {provider ? <Button size="sm" variant="ghost" icon={<Trash2 />} label={t('@yovoice.ai.removeProvider')} isDisabled={!!busy} onClick={() => setRemoving(true)} /> : <small />}
       <HStack gap={3} vAlign="center">
         {provider && dirty ? <small>{t('@yovoice.ai.unsaved')}</small> : null}
-        <Button variant="primary" label={provider ? t('@yovoice.ai.saveChanges') : t('@yovoice.ai.saveProvider')} isLoading={busy === 'save'} isDisabled={!!busy || !dirty} onClick={() => void act('save')} />
+        <Button size="sm" variant="primary" label={provider ? t('@yovoice.ai.saveChanges') : t('@yovoice.ai.saveProvider')} isLoading={busy === 'save'} isDisabled={!!busy || !dirty} onClick={() => void act('save')} />
       </HStack>
     </HStack>
     {removing && provider ? <ConfirmDelete title={t('@yovoice.ai.deleteTitle')} description={t('@yovoice.ai.deleteBody', { name: provider.name })} confirmLabel={t('@yovoice.action.delete')} busy={false} onClose={() => setRemoving(false)} onConfirm={() => { setRemoving(false); removed(); run(() => call('ai.provider.delete', { id: provider.id })); }} /> : null}

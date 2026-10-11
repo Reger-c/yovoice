@@ -19,8 +19,12 @@ import (
 func Call(ctx context.Context, w *workbench.Workbench, method string, data json.RawMessage) (result any, callErr error) {
 	started := time.Now()
 	defer func() {
+		elapsed := time.Since(started)
 		if callErr != nil {
-			diag.Log(w.Store.Root, "rpc.failed", "method", method, "elapsed_ms", time.Since(started).Milliseconds(), "error", diag.Error(callErr))
+			diag.Log(w.Store.Root, "rpc.failed", "method", method, "elapsed_ms", elapsed.Milliseconds(), "error", diag.Error(callErr))
+		} else if elapsed > 10*time.Second {
+			// 界面桥接 120 秒超时，慢调用提前记下，便于发现接近上限的请求。
+			diag.Log(w.Store.Root, "rpc.slow", "method", method, "elapsed_ms", elapsed.Milliseconds())
 		}
 	}()
 	var p struct {
@@ -145,19 +149,41 @@ func Call(ctx context.Context, w *workbench.Workbench, method string, data json.
 		if e := json.Unmarshal(data, &input); e != nil {
 			return nil, e
 		}
-		return w.ComposeScore(ctx, input)
+		return w.StartScore(input)
 	case "ai.lyrics":
 		var input workbench.LyricsBrief
 		if e := json.Unmarshal(data, &input); e != nil {
 			return nil, e
 		}
-		return w.WriteLyrics(ctx, input)
+		return w.StartLyrics(input)
 	case "ai.cancel":
 		w.CancelAI()
 		return true, nil
+	case "diag.client":
+		// 界面侧的异常（桥接超时、未捕获错误）写入同一份服务日志，便于对照排查。
+		var input struct {
+			Event  string `json:"event"`
+			Method string `json:"method"`
+			Detail string `json:"detail"`
+		}
+		if e := json.Unmarshal(data, &input); e != nil {
+			return nil, e
+		}
+		diag.Log(w.Store.Root, "client."+clip(input.Event, 40), "method", clip(input.Method, 80), "detail", clip(input.Detail, 2000))
+		return true, nil
+	case "ai.dismiss":
+		return true, w.DismissAI(p.ID)
 	case "operation.cancel":
 		w.Cancel()
 		return true, nil
 	}
 	return nil, msg.Err(msg.ErrMethodUnsupported, nil)
+}
+
+// clip 截断界面上报的文本，避免异常信息撑大日志。
+func clip(s string, n int) string {
+	if r := []rune(s); len(r) > n {
+		return string(r[:n]) + "…"
+	}
+	return s
 }
