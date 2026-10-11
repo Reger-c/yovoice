@@ -5,8 +5,8 @@ import { Switch } from '@astryxdesign/core/Switch';
 import { DropdownMenu } from '@astryxdesign/core/DropdownMenu';
 import { Check, Circle } from 'lucide-react';
 import { useTranslator } from '@astryxdesign/core/i18n';
-import { formatTime, type Score, type ScoreRole, type ScoreTrack } from '../../shared/workbench';
-import { beatsPerBar, scoreBars, scoreDuration, scoreRoles, scoreSeconds, targetLevel } from './score-draft';
+import { formatTime, type Draft, type Score, type ScoreRole, type ScoreTrack } from '../../shared/workbench';
+import { beatsPerBar, noteCount, scoreBars, scoreDuration, scoreRoles, scoreSeconds, targetLevel } from './score-draft';
 import { gmPrograms } from './score-instruments';
 import { TrackZoom } from '../media/playback-toolbar';
 
@@ -143,4 +143,17 @@ export function ScoreArrangement({ score, selected, select, label, updateTrack, 
       </VStack>
     </VStack>
   </VStack>;
+}
+
+// 底部轨道区：和下方音轨一样横向贯穿整个工作区（含检查器下方），播放器紧随其下。
+export function ScoreDock({ draft, change, playhead, seek }: {
+  draft: Draft; change: (patch: Partial<Draft>) => void; playhead?: { time: number; playing: boolean }; seek: (time: number) => void;
+}) {
+  const t = useTranslator();
+  const [selected, setSelected] = useState<string>();
+  const score = draft.score;
+  const notes = score ? noteCount(score) : 0;
+  if (!score || !notes) return null;
+  const updateTrack = (id: string, patch: Partial<ScoreTrack>) => change({ score: { ...score, tracks: score.tracks.map(track => track.id === id ? { ...track, ...patch } : track) } });
+  return <ScoreArrangement score={score} selected={selected} select={setSelected} updateTrack={updateTrack} playhead={playhead} seek={seek} label={t('@yovoice.score.rollLabel', { tracks: score.tracks.length, notes })} />;
 }

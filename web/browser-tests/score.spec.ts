@@ -43,10 +43,13 @@ test('新建编曲作品：示例乐谱、音块总览、声部调整与持久�
   await page.getByRole('spinbutton', { name: '速度（BPM）' }).fill('120');
   await expect(page.locator('.score-summary')).toContainText('120 BPM');
   await page.screenshot({ path: testInfo.outputPath('score.png') });
-  // 轨头收成单行且固定在左侧，轨道延伸至最右侧贴合检查器，22 小节乐谱默认即可横向滚动。
-  const arrangementRight = await page.locator('.score-arrangement').evaluate(el => Math.round(el.getBoundingClientRect().right));
-  const inspectorLeft = await page.locator('.inspector').evaluate(el => Math.round(el.getBoundingClientRect().left));
-  expect(Math.abs(arrangementRight - inspectorLeft)).toBeLessThanOrEqual(1);
+  // 轨道区在底部全宽面板里，与播放器同宽、贯穿检查器下方；轨头单行固定在左侧，22 小节乐谱默认即可横向滚动。
+  const box = (selector: string) => page.locator(selector).first().evaluate(el => { const r = el.getBoundingClientRect(); return { left: Math.round(r.left), right: Math.round(r.right), top: Math.round(r.top) }; });
+  const [arrangement, player, inspector] = [await box('.score-arrangement'), await box('.player'), await box('.inspector')];
+  expect(Math.abs(arrangement.right - player.right)).toBeLessThanOrEqual(1);
+  expect(Math.abs(arrangement.left - player.left)).toBeLessThanOrEqual(1);
+  expect(arrangement.right).toBeGreaterThan(inspector.left + 100);
+  expect(arrangement.top).toBeLessThan(player.top);
   const scroll = page.locator('.score-scroll');
   const headWidth = await rows.first().locator('.score-track-head').evaluate(el => el.clientWidth);
   const headHeight = await rows.first().locator('.score-track-head').evaluate(el => el.clientHeight);

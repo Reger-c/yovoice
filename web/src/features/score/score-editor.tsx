@@ -7,10 +7,9 @@ import { Download, FileMusic, Sparkles, Upload } from 'lucide-react';
 import { Selector } from '../../shared/selector';
 import { AIComposer } from '../../shared/ui/ai-composer';
 import { call, isDesktop } from '../../shared/lib/client';
-import { formatTime, type Draft, type Score, type ScoreTrack, type State, type UiLocale } from '../../shared/workbench';
+import { formatTime, type Draft, type Score, type State, type UiLocale } from '../../shared/workbench';
 import { exampleScore, noteCount, scoreBars, scoreDuration } from './score-draft';
 import { midiToScore, scoreToMidi } from './score-midi';
-import { ScoreArrangement } from './score-arrangement';
 
 const lengths = [30, 60, 90, 120, 180, 300];
 
@@ -28,15 +27,13 @@ function download(data: BlobPart, type: string, name: string) {
 }
 
 // 编曲区：曲子概要与导入导出、一句话交给 AI 写谱，以及 DAW 式的轨道视图（轨头调音色与电平，右侧音块对齐段落）。
-export function ScoreEditor({ draft, state, change, locale, onError, configureAI, playhead, seek }: { playhead?: { time: number; playing: boolean }; seek: (time: number) => void; draft: Draft; state: State; change: (patch: Partial<Draft>) => void; locale: UiLocale; onError: (error: string) => void; configureAI: () => void }) {
+export function ScoreEditor({ draft, state, change, locale, onError, configureAI }: { draft: Draft; state: State; change: (patch: Partial<Draft>) => void; locale: UiLocale; onError: (error: string) => void; configureAI: () => void }) {
   const t = useTranslator();
   const score = draft.score!;
   const input = useRef<HTMLInputElement>(null);
-  const [selected, setSelected] = useState<string>();
   const [seconds, setSeconds] = useState(60);
   const notes = noteCount(score);
-  const replace = (next: Score) => { setSelected(undefined); change({ score: next }); };
-  const updateTrack = (id: string, patch: Partial<ScoreTrack>) => change({ score: { ...score, tracks: score.tracks.map(track => track.id === id ? { ...track, ...patch } : track) } });
+  const replace = (next: Score) => change({ score: next });
   const fileName = (draft.title.replace(/[\\/:*?"<>|]/g, '_').slice(0, 100) || 'score');
   async function importScore() {
     if (!isDesktop) { input.current?.click(); return; }
@@ -76,7 +73,7 @@ export function ScoreEditor({ draft, state, change, locale, onError, configureAI
       }} />
     </HStack>
     {composer}
-    {notes ? <ScoreArrangement playhead={playhead} seek={seek} score={score} selected={selected} select={setSelected} updateTrack={updateTrack} label={t('@yovoice.score.rollLabel', { tracks: score.tracks.length, notes })} />
+    {notes ? null
       : <VStack className="score-empty" gap={3} hAlign="center">
         <p>{t('@yovoice.score.empty')}</p>
         <HStack gap={2} wrap="wrap" hAlign="center">
