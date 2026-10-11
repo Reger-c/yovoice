@@ -121,6 +121,7 @@ const (
 	ErrAIResponse        Code = "@yovoice.error.aiResponse"
 	ErrAIModelsPath      Code = "@yovoice.error.aiModelsPath"
 	ErrAIResultInvalid   Code = "@yovoice.error.aiResultInvalid"
+	ErrAITimeout         Code = "@yovoice.error.aiTimeout"
 	ErrUnknown           Code = "@yovoice.error.unknown"
 )
 
@@ -184,7 +185,7 @@ func All() []Code {
 		ErrRequestInvalid, ErrMethodUnsupported,
 		ErrVoxModeInvalid, ErrVoxTextLimits, ErrVoxReferenceRequired, ErrVoxParams,
 		ErrMusicStyle, ErrMusicLyrics, ErrMusicParams, ErrEngineUpgradeRequired, ErrScoreInvalid, ErrMidiInvalid,
-		ErrAIProviderInvalid, ErrAINotConfigured, ErrAIAuth, ErrAIRateLimit, ErrAINetwork, ErrAIResponse, ErrAIModelsPath, ErrAIResultInvalid,
+		ErrAIProviderInvalid, ErrAINotConfigured, ErrAIAuth, ErrAIRateLimit, ErrAINetwork, ErrAIResponse, ErrAIModelsPath, ErrAIResultInvalid, ErrAITimeout,
 		ErrLegacyRestore, ErrUnknown,
 	}
 }

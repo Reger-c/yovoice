@@ -373,8 +373,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("\(cookieName)=\(token)", forHTTPHeaderField: "Cookie")
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        // AI 写谱等请求要等模型整段返回，期间没有数据，放宽到略长于服务端的 4 分钟上限。
-        request.timeoutInterval = (body["method"] as? String)?.hasPrefix("ai.") == true ? 270 : 120
+        // AI 写作在服务端后台运行，调用立即返回，所有请求统一 120 秒上限。
+        request.timeoutInterval = 120
         let (data, response) = try await URLSession.shared.data(for: request)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw failure(HostL10n.t("err.serviceRequest")) }
         if data.isEmpty { return [:] }

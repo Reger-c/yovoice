@@ -14,9 +14,10 @@ import (
 
 // ScoreBrief 是“AI 写谱”的输入：一句话描述、目标时长（秒，0 表示由模型决定）和界面语言。
 type ScoreBrief struct {
-	Brief   string          `json:"brief"`
-	Seconds int             `json:"seconds"`
-	Locale  schema.UiLocale `json:"locale"`
+	ProjectID string          `json:"projectId"`
+	Brief     string          `json:"brief"`
+	Seconds   int             `json:"seconds"`
+	Locale    schema.UiLocale `json:"locale"`
 }
 
 const scorePrompt = `You are a film and video composer who writes arrangements as JSON for yovoice. yovoice renders every track with a General MIDI sound font and mixes tracks by role.
@@ -88,12 +89,25 @@ func decodeScore(text string) (schema.Score, error) {
 	return s, nil
 }
 
+func (in ScoreBrief) valid() bool {
+	brief := strings.TrimSpace(in.Brief)
+	return brief != "" && schema.TextLen(brief) <= 2000 && in.Seconds >= 0 && in.Seconds <= int(schema.ScoreMaxSeconds)
+}
+
+// StartScore 在后台写谱，立即返回任务。
+func (w *Workbench) StartScore(in ScoreBrief) (schema.AITask, error) {
+	if !in.valid() {
+		return schema.AITask{}, msg.Err(msg.ErrRequestInvalid, nil)
+	}
+	return w.startAI("score", in.ProjectID, strings.TrimSpace(in.Brief), func(ctx context.Context) (any, error) { return w.ComposeScore(ctx, in) })
+}
+
 // ComposeScore 让模型写出乐谱并校验；不合规时把问题发回让模型修正一次。
 func (w *Workbench) ComposeScore(ctx context.Context, in ScoreBrief) (schema.Score, error) {
-	brief := strings.TrimSpace(in.Brief)
-	if brief == "" || schema.TextLen(brief) > 2000 || in.Seconds < 0 || in.Seconds > int(schema.ScoreMaxSeconds) {
+	if !in.valid() {
 		return schema.Score{}, msg.Err(msg.ErrRequestInvalid, nil)
 	}
+	brief := strings.TrimSpace(in.Brief)
 	ask := "Brief: " + brief
 	if in.Seconds > 0 {
 		ask += fmt.Sprintf("\nTarget length: about %d seconds.", in.Seconds)
@@ -115,6 +129,10 @@ func (w *Workbench) ComposeScore(ctx context.Context, in ScoreBrief) (schema.Sco
 			return s, nil
 		}
 		issue = e.Error()
+		w.logAIOutput("score", issue, result.Text)
+		if attempt == 0 {
+			w.setAIStage("repairing")
+		}
 		fix := "Your score is invalid: " + issue + ". Return the complete corrected JSON only."
 		if result.Truncated {
 			fix = "Your output was cut off. Write a shorter score with fewer notes (use longer notes and fewer bars) and return complete JSON only."
@@ -126,6 +144,7 @@ func (w *Workbench) ComposeScore(ctx context.Context, in ScoreBrief) (schema.Sco
 
 // LyricsBrief 是“AI 写歌词”的输入。
 type LyricsBrief struct {
+	ProjectID    string          `json:"projectId"`
 	Brief        string          `json:"brief"`
 	Instrumental bool            `json:"instrumental"`
 	Language     string          `json:"language"`
@@ -148,12 +167,25 @@ const lyricsPrompt = `You write songs for ACE-Step, a music generation model. Re
 - language: the ISO code of the sung language, one of zh, en, yue, ja, ko, es, fr, de, pt, ru, it.
 - title in the sung language.`
 
+func (in LyricsBrief) valid() bool {
+	brief := strings.TrimSpace(in.Brief)
+	return brief != "" && schema.TextLen(brief) <= 2000
+}
+
+// StartLyrics 在后台写歌词，立即返回任务。
+func (w *Workbench) StartLyrics(in LyricsBrief) (schema.AITask, error) {
+	if !in.valid() {
+		return schema.AITask{}, msg.Err(msg.ErrRequestInvalid, nil)
+	}
+	return w.startAI("lyrics", in.ProjectID, strings.TrimSpace(in.Brief), func(ctx context.Context) (any, error) { return w.WriteLyrics(ctx, in) })
+}
+
 // WriteLyrics 让模型写出风格描述与歌词；纯音乐只写风格与段落结构。
 func (w *Workbench) WriteLyrics(ctx context.Context, in LyricsBrief) (Lyrics, error) {
-	brief := strings.TrimSpace(in.Brief)
-	if brief == "" || schema.TextLen(brief) > 2000 {
+	if !in.valid() {
 		return Lyrics{}, msg.Err(msg.ErrRequestInvalid, nil)
 	}
+	brief := strings.TrimSpace(in.Brief)
 	extra := ""
 	if in.Instrumental {
 		extra = "\n- This is an instrumental: leave lyrics empty except section markers describing the arrangement, e.g. [intro]\\n[verse]\\n[chorus]."
@@ -168,6 +200,7 @@ func (w *Workbench) WriteLyrics(ctx context.Context, in LyricsBrief) (Lyrics, er
 	}
 	var l Lyrics
 	if e = json.Unmarshal([]byte(llm.ExtractJSON(result.Text)), &l); e != nil || strings.TrimSpace(l.Style) == "" {
+		w.logAIOutput("lyrics", "missing style", result.Text)
 		return Lyrics{}, msg.Err(msg.ErrAIResultInvalid, msg.Params{"detail": "missing style"})
 	}
 	l.Title = truncateRunes(strings.TrimSpace(l.Title), 120)

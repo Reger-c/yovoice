@@ -83,6 +83,8 @@ func New(root string) (store *Store, err error) {
 	if s.state.Preferences.UiLocale == "" && fromFile {
 		s.state.Preferences.UiLocale = schema.UiLocaleZhCN
 	}
+	// AI 任务只属于本次会话。
+	s.state.AITask = nil
 	// 未保存的试听不跨会话保留，角色已保存的试听使用独立文件。
 	s.state.Previews = []schema.CharacterPreview{}
 	files, _ := filepath.Glob(filepath.Join(root, "outputs", "audition-*.wav"))

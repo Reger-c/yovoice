@@ -233,6 +233,8 @@ type Preferences struct {
 	Backend        string   `json:"backend"`
 	ModelDirectory *string  `json:"modelDirectory"`
 	UiLocale       UiLocale `json:"uiLocale"`
+	// AITimeout 是单次 AI 请求的超时秒数，0 表示默认值。
+	AITimeout int `json:"aiTimeout,omitempty"`
 }
 type State struct {
 	Characters     []Character        `json:"characters"`
@@ -251,6 +253,7 @@ type State struct {
 	// AIProviders 为可选的大模型服务，AIProviderID 指向当前使用的服务。
 	AIProviders  []AIProvider `json:"aiProviders,omitempty"`
 	AIProviderID string       `json:"aiProviderID,omitempty"`
+	AITask       *AITask      `json:"aiTask,omitempty"`
 }
 
 type InstalledRuntime struct {

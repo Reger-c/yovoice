@@ -12,13 +12,13 @@ test('新建编曲作品：示例乐谱、音块总览、声部调整与持久�
   await page.getByRole('button', { name: '填入示例', exact: true }).click();
 
   await expect(page.locator('.score-summary')).toHaveText('D 小调 · 100 BPM · 4/4 · 22 小节 · 00:54');
-  await expect(page.getByRole('img', { name: /7 个声部/ })).toBeVisible();
+  await expect(page.getByRole('group', { name: /7 个声部/ })).toBeVisible();
   const sections = page.getByRole('list', { name: '段落' });
   await expect(sections.getByRole('listitem')).toHaveCount(3);
   await expect(sections.getByRole('listitem').last()).toContainText('88 BPM');
 
-  // 声部表：鼓组不显示音色，角色决定默认电平，关闭发声后写入 mute。
-  const rows = page.locator('.score-tracks tbody tr');
+  // 轨道视图：鼓组不显示音色，角色决定默认电平，关闭发声后写入 mute。
+  const rows = page.locator('.score-track');
   await expect(rows).toHaveCount(7);
   await expect(rows.last()).toContainText('鼓组');
   await expect(page.getByLabel('铺底 的目标电平')).toHaveValue('-29');
@@ -54,8 +54,8 @@ test('编曲导入 MIDI 后替换乐谱，导出 MIDI 可还原音符', async ({
   await page.goto('/');
   const source = exampleScore('en');
   await page.locator('input[type=file][accept=".mid,.midi,.json"]').setInputFiles({ name: 'demo.mid', mimeType: 'audio/midi', buffer: Buffer.from(scoreToMidi(source)) });
-  await expect(page.locator('.score-tracks tbody tr')).toHaveCount(7);
-  await expect(page.locator('.score-tracks tbody tr').first()).toContainText('Pad');
+  await expect(page.locator('.score-track')).toHaveCount(7);
+  await expect(page.locator('.score-track').first()).toContainText('Pad');
 
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: '导出', exact: true }).click();
@@ -70,7 +70,7 @@ test('编曲导入 MIDI 后替换乐谱，导出 MIDI 可还原音符', async ({
   // 损坏的文件给出可读的错误，不替换当前乐谱。
   await page.locator('input[type=file][accept=".mid,.midi,.json"]').setInputFiles({ name: 'broken.mid', mimeType: 'audio/midi', buffer: Buffer.from('MThd broken') });
   await expect(page.getByText('无法读取这个 MIDI 文件')).toBeVisible();
-  await expect(page.locator('.score-tracks tbody tr')).toHaveCount(7);
+  await expect(page.locator('.score-track')).toHaveCount(7);
 });
 
 test('乐谱时长按段落变速累加', () => {

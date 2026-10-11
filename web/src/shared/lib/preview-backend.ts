@@ -1,6 +1,6 @@
 import catalog from './catalog.json';
 import aiPresets from './ai-presets.json';
-import { performanceSettings, emptyState, type AudioAsset, type Draft, type State, type Voice, type Preferences, type Character, type SynthesisSettings, type AIProvider } from '../workbench';
+import { performanceSettings, emptyState, type AudioAsset, type Draft, type State, type Voice, type Preferences, type Character, type SynthesisSettings, type AIProvider, type AITask, aiTimeoutDefault } from '../workbench';
 import { encodeWav } from './sound';
 import { CallError } from './call-error';
 
@@ -22,7 +22,7 @@ function load(): State {
       state = value; break;
     } catch { /* 主副本损坏时继续读取恢复备份。 */ }
   }
-  state.characters ??= []; state.previews = [];
+  state.characters ??= []; state.previews = []; delete state.aiTask;
   if (!['zh-CN', 'en'].includes(state.preferences?.uiLocale)) {
     state = { ...state, preferences: { ...state.preferences, uiLocale: 'zh-CN' } };
   }
@@ -137,7 +137,28 @@ export async function previewCall<T>(method: string, data: unknown): Promise<T> 
     } else state.aiProviderID = id;
     publish(); return true as T;
   }
-  if (method === 'ai.cancel') return true as T;
+  // 预览模拟 AI 后台任务的生命周期：开始后短暂运行，再以“仅桌面可用”结束，便于检查界面闭环。
+  if (method === 'ai.score' || method === 'ai.lyrics') {
+    const input = data as { projectId: string; brief: string };
+    const provider = state.aiProviders?.find(p => p.id === state.aiProviderID);
+    if (!provider?.model) throw new CallError('@yovoice.error.aiNotConfigured');
+    if (state.aiTask?.status === 'running') throw new CallError('@yovoice.error.busy');
+    const task: AITask = { id: crypto.randomUUID().replaceAll('-', ''), kind: method === 'ai.score' ? 'score' : 'lyrics', projectId: input.projectId, brief: input.brief, status: 'running', stage: 'writing', provider: provider.name, model: provider.model, timeout: state.preferences.aiTimeout || aiTimeoutDefault, startedAt: new Date().toISOString() };
+    state.aiTask = task; publish();
+    setTimeout(() => {
+      if (state.aiTask?.id !== task.id || state.aiTask.status !== 'running') return;
+      state.aiTask = { ...state.aiTask, status: 'failed', finishedAt: new Date().toISOString(), errorCode: '@yovoice.error.previewDesktopOnly' }; publish();
+    }, 1500);
+    return task as T;
+  }
+  if (method === 'ai.cancel') {
+    if (state.aiTask?.status === 'running') { state.aiTask = { ...state.aiTask, status: 'cancelled', finishedAt: new Date().toISOString() }; publish(); }
+    return true as T;
+  }
+  if (method === 'ai.dismiss') {
+    if (state.aiTask?.id === (data as { id: string }).id && state.aiTask.status !== 'running') { delete state.aiTask; publish(); }
+    return true as T;
+  }
   throw new CallError('@yovoice.error.previewDesktopOnly');
 }
 

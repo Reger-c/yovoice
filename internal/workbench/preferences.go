@@ -31,6 +31,9 @@ func (w *Workbench) savePreferences(p schema.Preferences) error {
 	if _, e := catalog.Models[0].URL(p.DownloadSource); e != nil {
 		return e
 	}
+	if p.AITimeout != 0 && (p.AITimeout < schema.AITimeoutMin || p.AITimeout > schema.AITimeoutMax) {
+		return msg.Err(msg.ErrRequestInvalid, nil)
+	}
 	if p.ModelDirectory != nil && !filepath.IsAbs(*p.ModelDirectory) {
 		return msg.Err(msg.ErrModelDirAbsolute, nil)
 	}

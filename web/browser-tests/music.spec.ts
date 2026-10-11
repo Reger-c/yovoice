@@ -33,7 +33,7 @@ test('新建音乐作品：示例、风格标签、段落标记、纯音乐与�
   await page.getByRole('radio', { name: '02:00' }).click();
   await page.getByRole('combobox', { name: '演唱语言' }).click();
   await page.getByRole('option', { name: '粤语' }).click();
-  await page.getByLabel('纯音乐').check();
+  await page.getByRole('radio', { name: '纯音乐' }).click();
   await expect(lyrics).toHaveCount(0);
   await expect(page.getByText('纯音乐不演唱歌词')).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('music.png') });
@@ -43,7 +43,7 @@ test('新建音乐作品：示例、风格标签、段落标记、纯音乐与�
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('voice-workbench-v1')!).drafts.find((d: { kind?: string }) => d.kind === 'music'));
   expect(saved).toMatchObject({ kind: 'music', modelId: 'ace-step-1.5-turbo-bf16', instrumental: true, synthesisLanguage: 'yue', modelOptions: { ace_step: { duration_seconds: 120 } } });
   expect(saved.lyrics).toContain('[bridge]');
-  await expect(page.getByLabel('纯音乐')).toBeChecked();
+  await expect(page.getByRole('radio', { name: '纯音乐' })).toBeChecked();
 
   // 未安装模型时生成会打开模型设置；配音作品的模型列表不包含音乐模型。
   await page.getByRole('button', { name: '生成歌曲', exact: true }).click();

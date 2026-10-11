@@ -2237,17 +2237,11 @@
   "@yovoice.score.import": {
     "defaultMessage": "Import MIDI or score"
   },
-  "@yovoice.score.instrument": {
-    "defaultMessage": "Instrument"
-  },
   "@yovoice.score.key": {
     "defaultMessage": "Key"
   },
   "@yovoice.score.keyPlaceholder": {
     "defaultMessage": "e.g. D minor"
-  },
-  "@yovoice.score.level": {
-    "defaultMessage": "Level"
   },
   "@yovoice.score.levelOf": {
     "defaultMessage": "Target level of {name}"
@@ -2261,9 +2255,6 @@
   "@yovoice.score.noteCount": {
     "defaultMessage": "{count} notes"
   },
-  "@yovoice.score.play": {
-    "defaultMessage": "Play"
-  },
   "@yovoice.score.playTrack": {
     "defaultMessage": "Play {name}"
   },
@@ -2275,9 +2266,6 @@
   },
   "@yovoice.score.rhythm": {
     "defaultMessage": "Tempo and meter"
-  },
-  "@yovoice.score.roleColumn": {
-    "defaultMessage": "Role"
   },
   "@yovoice.score.rollLabel": {
     "defaultMessage": "Overview of {tracks} tracks and {notes} notes"
@@ -2293,12 +2281,6 @@
   },
   "@yovoice.score.tempo": {
     "defaultMessage": "Tempo (BPM)"
-  },
-  "@yovoice.score.trackColumn": {
-    "defaultMessage": "Track"
-  },
-  "@yovoice.score.trackHint": {
-    "defaultMessage": "Lead parts sit forward; pads and arpeggios sit back."
   },
   "@yovoice.score.trackName": {
     "defaultMessage": "Track {n}"
@@ -2414,47 +2396,20 @@
   "@yovoice.ai.notConfigured": {
     "defaultMessage": "This feature needs a language model. Add a service and choose a model in Settings › AI services first."
   },
-  "@yovoice.ai.working": {
-    "defaultMessage": "{model} is writing… {time}"
-  },
-  "@yovoice.ai.brief": {
-    "defaultMessage": "What do you want?"
-  },
   "@yovoice.ai.via": {
     "defaultMessage": "Uses {name} · {model}"
   },
-  "@yovoice.ai.scoreAction": {
-    "defaultMessage": "AI compose"
-  },
-  "@yovoice.ai.scoreTitle": {
-    "defaultMessage": "Compose with AI"
-  },
-  "@yovoice.ai.scoreHint": {
-    "defaultMessage": "Describe the mood, instruments and structure. The result replaces the current arrangement."
-  },
   "@yovoice.ai.scorePlaceholder": {
-    "defaultMessage": "e.g. A warm, slow piano piece for a travel vlog intro, with soft strings joining in the second half"
+    "defaultMessage": "Describe the music in a sentence and AI writes the whole arrangement, e.g. a warm, slow piano piece for a travel vlog intro, with soft strings joining later"
   },
   "@yovoice.ai.scoreSeconds": {
-    "defaultMessage": "Length (seconds)"
+    "defaultMessage": "Length"
   },
   "@yovoice.ai.scoreSubmit": {
     "defaultMessage": "Compose"
   },
-  "@yovoice.ai.lyricsAction": {
-    "defaultMessage": "AI lyrics"
-  },
-  "@yovoice.ai.lyricsTitle": {
-    "defaultMessage": "Write lyrics with AI"
-  },
-  "@yovoice.ai.lyricsHint": {
-    "defaultMessage": "Describe the theme and feeling. AI fills in the style, lyrics and title."
-  },
-  "@yovoice.ai.lyricsHintInstrumental": {
-    "defaultMessage": "Describe the theme and feeling. AI fills in the style and title."
-  },
   "@yovoice.ai.lyricsPlaceholder": {
-    "defaultMessage": "e.g. A city pop song about a summer night drive by the sea"
+    "defaultMessage": "Describe the song in a sentence and AI writes the style, lyrics and title, e.g. a city pop song about a summer night drive by the sea"
   },
   "@yovoice.ai.lyricsSubmit": {
     "defaultMessage": "Write"
@@ -2572,5 +2527,119 @@
   },
   "@yovoice.library.duration": {
     "defaultMessage": "length"
+  },
+  "@yovoice.ai.apply": {
+    "defaultMessage": "Apply"
+  },
+  "@yovoice.ai.discard": {
+    "defaultMessage": "Discard"
+  },
+  "@yovoice.ai.retry": {
+    "defaultMessage": "Try again"
+  },
+  "@yovoice.ai.openLogs": {
+    "defaultMessage": "View logs"
+  },
+  "@yovoice.ai.openProject": {
+    "defaultMessage": "Open project"
+  },
+  "@yovoice.ai.backgroundHint": {
+    "defaultMessage": "Writing in the background. Keep editing or move on; you'll be told when it's done."
+  },
+  "@yovoice.ai.busyElsewhere": {
+    "defaultMessage": "Another AI task is running. Start this one after it finishes."
+  },
+  "@yovoice.ai.failedMeta": {
+    "defaultMessage": "After {time} · {model}"
+  },
+  "@yovoice.ai.lyricsPlaceholderInstrumental": {
+    "defaultMessage": "Describe the instrumental in a sentence and AI writes the style and sections, e.g. lo-fi for a slow late-night drive through the city"
+  },
+  "@yovoice.ai.scoreLength": {
+    "defaultMessage": "About {time}"
+  },
+  "@yovoice.ai.brief.score": {
+    "defaultMessage": "Describe the music you want"
+  },
+  "@yovoice.ai.brief.lyrics": {
+    "defaultMessage": "Describe the song you want"
+  },
+  "@yovoice.ai.setup.score": {
+    "defaultMessage": "Connect a language model to let AI write a whole arrangement from one sentence."
+  },
+  "@yovoice.ai.setup.lyrics": {
+    "defaultMessage": "Connect a language model to let AI write the style and lyrics from one sentence."
+  },
+  "@yovoice.ai.stage.writing": {
+    "defaultMessage": "{model} is writing"
+  },
+  "@yovoice.ai.stage.repairing": {
+    "defaultMessage": "{model} is fixing the format"
+  },
+  "@yovoice.ai.task.running.score": {
+    "defaultMessage": "AI is composing"
+  },
+  "@yovoice.ai.task.running.lyrics": {
+    "defaultMessage": "AI is writing lyrics"
+  },
+  "@yovoice.ai.task.done.score": {
+    "defaultMessage": "AI finished a new arrangement"
+  },
+  "@yovoice.ai.task.done.lyrics": {
+    "defaultMessage": "AI finished the style and lyrics"
+  },
+  "@yovoice.ai.task.failed.score": {
+    "defaultMessage": "AI couldn't compose this"
+  },
+  "@yovoice.ai.task.failed.lyrics": {
+    "defaultMessage": "AI couldn't write the lyrics"
+  },
+  "@yovoice.ai.task.replace.score": {
+    "defaultMessage": "Applying replaces the current arrangement."
+  },
+  "@yovoice.ai.task.replace.lyrics": {
+    "defaultMessage": "Applying replaces the current style and lyrics."
+  },
+  "@yovoice.error.aiTimeout": {
+    "defaultMessage": "The AI service didn't finish within {seconds} seconds. Increase the AI request timeout in Settings › General, or pick a faster model."
+  },
+  "@yovoice.music.lyricsMode": {
+    "defaultMessage": "Lyrics mode"
+  },
+  "@yovoice.music.vocal": {
+    "defaultMessage": "With lyrics"
+  },
+  "@yovoice.score.instrumentOf": {
+    "defaultMessage": "Instrument for {name}"
+  },
+  "@yovoice.score.roleOf": {
+    "defaultMessage": "Role for {name}"
+  },
+  "@yovoice.settings.aiGroup": {
+    "defaultMessage": "AI writing"
+  },
+  "@yovoice.settings.aiTimeout": {
+    "defaultMessage": "Request timeout"
+  },
+  "@yovoice.settings.aiTimeoutHint": {
+    "defaultMessage": "A full arrangement can take several minutes. A request still running after this counts as failed and is logged."
+  },
+  "@yovoice.settings.minutes": {
+    "defaultMessage": "{n} min"
+  },
+  "@yovoice.settings.minutesDefault": {
+    "defaultMessage": "{n} min (default)"
+  },
+  "@yovoice.settings.diagnosticsGroup": {
+    "defaultMessage": "Diagnostics"
+  },
+  "@yovoice.settings.diagnosticsHint": {
+    "defaultMessage": "Logs for the service, inference engine and AI requests. Attach them when reporting a problem."
+  },
+  "@yovoice.settings.searchModels": {
+    "defaultMessage": "Search name, precision or use"
+  },
+  "@yovoice.settings.noModelMatch": {
+    "defaultMessage": "No matching models."
   }
 }

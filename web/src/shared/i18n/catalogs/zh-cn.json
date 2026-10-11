@@ -2237,17 +2237,11 @@
   "@yovoice.score.import": {
     "defaultMessage": "导入 MIDI 或乐谱"
   },
-  "@yovoice.score.instrument": {
-    "defaultMessage": "音色"
-  },
   "@yovoice.score.key": {
     "defaultMessage": "调性"
   },
   "@yovoice.score.keyPlaceholder": {
     "defaultMessage": "例如 D 小调"
-  },
-  "@yovoice.score.level": {
-    "defaultMessage": "电平"
   },
   "@yovoice.score.levelOf": {
     "defaultMessage": "{name} 的目标电平"
@@ -2261,9 +2255,6 @@
   "@yovoice.score.noteCount": {
     "defaultMessage": "{count} 个音符"
   },
-  "@yovoice.score.play": {
-    "defaultMessage": "发声"
-  },
   "@yovoice.score.playTrack": {
     "defaultMessage": "{name} 发声"
   },
@@ -2275,9 +2266,6 @@
   },
   "@yovoice.score.rhythm": {
     "defaultMessage": "速度与拍号"
-  },
-  "@yovoice.score.roleColumn": {
-    "defaultMessage": "角色"
   },
   "@yovoice.score.rollLabel": {
     "defaultMessage": "{tracks} 个声部、{notes} 个音符的总览"
@@ -2293,12 +2281,6 @@
   },
   "@yovoice.score.tempo": {
     "defaultMessage": "速度（BPM）"
-  },
-  "@yovoice.score.trackColumn": {
-    "defaultMessage": "声部"
-  },
-  "@yovoice.score.trackHint": {
-    "defaultMessage": "主奏在前，铺底和琶音退后。"
   },
   "@yovoice.score.trackName": {
     "defaultMessage": "声部 {n}"
@@ -2414,50 +2396,23 @@
   "@yovoice.ai.notConfigured": {
     "defaultMessage": "这个功能需要大模型。请先在“设置 › AI 服务”中添加服务并选择模型。"
   },
-  "@yovoice.ai.working": {
-    "defaultMessage": "{model} 正在写… {time}"
-  },
-  "@yovoice.ai.brief": {
-    "defaultMessage": "你想要什么"
-  },
   "@yovoice.ai.via": {
     "defaultMessage": "使用 {name} · {model}"
   },
-  "@yovoice.ai.scoreAction": {
-    "defaultMessage": "AI 写谱"
-  },
-  "@yovoice.ai.scoreTitle": {
-    "defaultMessage": "AI 写谱"
-  },
-  "@yovoice.ai.scoreHint": {
-    "defaultMessage": "描述情绪、乐器和结构。结果会替换当前编曲。"
-  },
   "@yovoice.ai.scorePlaceholder": {
-    "defaultMessage": "例如：旅行 vlog 片头，温暖舒缓的钢琴，后半段加入柔和的弦乐"
+    "defaultMessage": "用一句话描述配乐，AI 写出完整编曲，例如：旅行 vlog 片头，温暖舒缓的钢琴，后半段加入柔和的弦乐"
   },
   "@yovoice.ai.scoreSeconds": {
-    "defaultMessage": "时长（秒）"
+    "defaultMessage": "配乐时长"
   },
   "@yovoice.ai.scoreSubmit": {
-    "defaultMessage": "开始写谱"
-  },
-  "@yovoice.ai.lyricsAction": {
-    "defaultMessage": "AI 写歌词"
-  },
-  "@yovoice.ai.lyricsTitle": {
-    "defaultMessage": "AI 写歌词"
-  },
-  "@yovoice.ai.lyricsHint": {
-    "defaultMessage": "描述主题和感觉，AI 会填写风格、歌词和标题。"
-  },
-  "@yovoice.ai.lyricsHintInstrumental": {
-    "defaultMessage": "描述主题和感觉，AI 会填写风格和标题。"
+    "defaultMessage": "写谱"
   },
   "@yovoice.ai.lyricsPlaceholder": {
-    "defaultMessage": "例如：一首关于夏夜海边兜风的城市流行"
+    "defaultMessage": "用一句话描述这首歌，AI 写出风格、歌词和标题，例如：一首关于夏夜海边兜风的城市流行"
   },
   "@yovoice.ai.lyricsSubmit": {
-    "defaultMessage": "开始写"
+    "defaultMessage": "写歌"
   },
   "@yovoice.error.aiProviderInvalid": {
     "defaultMessage": "AI 服务配置无效，请检查地址、名称和模型。"
@@ -2572,5 +2527,119 @@
   },
   "@yovoice.library.duration": {
     "defaultMessage": "时长"
+  },
+  "@yovoice.ai.apply": {
+    "defaultMessage": "应用"
+  },
+  "@yovoice.ai.discard": {
+    "defaultMessage": "放弃"
+  },
+  "@yovoice.ai.retry": {
+    "defaultMessage": "重试"
+  },
+  "@yovoice.ai.openLogs": {
+    "defaultMessage": "查看日志"
+  },
+  "@yovoice.ai.openProject": {
+    "defaultMessage": "打开作品"
+  },
+  "@yovoice.ai.backgroundHint": {
+    "defaultMessage": "在后台写作，可以继续编辑或去别的页面，写好后会提示你。"
+  },
+  "@yovoice.ai.busyElsewhere": {
+    "defaultMessage": "另一个 AI 任务正在进行，结束后才能开始。"
+  },
+  "@yovoice.ai.failedMeta": {
+    "defaultMessage": "用时 {time} · {model}"
+  },
+  "@yovoice.ai.lyricsPlaceholderInstrumental": {
+    "defaultMessage": "用一句话描述这段纯音乐，AI 写出风格和段落，例如：深夜城市里慢慢开车的 lo-fi"
+  },
+  "@yovoice.ai.scoreLength": {
+    "defaultMessage": "约 {time}"
+  },
+  "@yovoice.ai.brief.score": {
+    "defaultMessage": "描述想要的配乐"
+  },
+  "@yovoice.ai.brief.lyrics": {
+    "defaultMessage": "描述想要的歌"
+  },
+  "@yovoice.ai.setup.score": {
+    "defaultMessage": "接入大模型后，可以用一句话让 AI 写出完整编曲。"
+  },
+  "@yovoice.ai.setup.lyrics": {
+    "defaultMessage": "接入大模型后，可以用一句话让 AI 写出风格和歌词。"
+  },
+  "@yovoice.ai.stage.writing": {
+    "defaultMessage": "{model} 正在写"
+  },
+  "@yovoice.ai.stage.repairing": {
+    "defaultMessage": "{model} 正在修正格式"
+  },
+  "@yovoice.ai.task.running.score": {
+    "defaultMessage": "AI 正在写谱"
+  },
+  "@yovoice.ai.task.running.lyrics": {
+    "defaultMessage": "AI 正在写歌词"
+  },
+  "@yovoice.ai.task.done.score": {
+    "defaultMessage": "AI 写好了新的编曲"
+  },
+  "@yovoice.ai.task.done.lyrics": {
+    "defaultMessage": "AI 写好了风格和歌词"
+  },
+  "@yovoice.ai.task.failed.score": {
+    "defaultMessage": "AI 写谱没有成功"
+  },
+  "@yovoice.ai.task.failed.lyrics": {
+    "defaultMessage": "AI 写歌词没有成功"
+  },
+  "@yovoice.ai.task.replace.score": {
+    "defaultMessage": "应用后会替换当前编曲。"
+  },
+  "@yovoice.ai.task.replace.lyrics": {
+    "defaultMessage": "应用后会替换当前的风格和歌词。"
+  },
+  "@yovoice.error.aiTimeout": {
+    "defaultMessage": "AI 服务在 {seconds} 秒内没有写完。可以在“设置 › 常规”里延长 AI 请求超时，或换一个更快的模型。"
+  },
+  "@yovoice.music.lyricsMode": {
+    "defaultMessage": "歌词模式"
+  },
+  "@yovoice.music.vocal": {
+    "defaultMessage": "填写歌词"
+  },
+  "@yovoice.score.instrumentOf": {
+    "defaultMessage": "{name} 的音色"
+  },
+  "@yovoice.score.roleOf": {
+    "defaultMessage": "{name} 的角色"
+  },
+  "@yovoice.settings.aiGroup": {
+    "defaultMessage": "AI 写作"
+  },
+  "@yovoice.settings.aiTimeout": {
+    "defaultMessage": "请求超时"
+  },
+  "@yovoice.settings.aiTimeoutHint": {
+    "defaultMessage": "写一首完整的编曲可能要几分钟；超过这个时间仍没写完就算失败，并记入日志。"
+  },
+  "@yovoice.settings.minutes": {
+    "defaultMessage": "{n} 分钟"
+  },
+  "@yovoice.settings.minutesDefault": {
+    "defaultMessage": "{n} 分钟（默认）"
+  },
+  "@yovoice.settings.diagnosticsGroup": {
+    "defaultMessage": "诊断"
+  },
+  "@yovoice.settings.diagnosticsHint": {
+    "defaultMessage": "服务、推理引擎和 AI 请求的日志都在这里，反馈问题时可以附上。"
+  },
+  "@yovoice.settings.searchModels": {
+    "defaultMessage": "搜索名称、精度或用途"
+  },
+  "@yovoice.settings.noModelMatch": {
+    "defaultMessage": "没有匹配的模型。"
   }
 }
