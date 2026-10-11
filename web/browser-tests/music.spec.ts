@@ -57,7 +57,7 @@ test('新建音乐作品：示例、风格标签、段落标记、纯音乐与�
   await expect(page.getByRole('option', { name: /ACE-Step/ })).toHaveCount(0);
 });
 
-test('音乐版本以封面并排展示，点选版本即试听', async ({ page }, testInfo) => {
+test('音乐版本一行一个，点选即试听，可复用参数', async ({ page }, testInfo) => {
   const draft = { ...createMusicDraft('zh-CN'), id: 'a'.repeat(32) };
   const state = emptyState();
   state.drafts = [draft];
@@ -80,6 +80,11 @@ test('音乐版本以封面并排展示，点选版本即试听', async ({ page 
   await takes.nth(2).click();
   await expect(takes.nth(2)).toHaveAttribute('aria-current', 'true');
   await expect(page.locator('.notice')).toHaveCount(0);
+  // 复用某一版的风格与歌词，写回当前作品。
+  await page.getByLabel('风格', { exact: true }).fill('lofi');
+  await page.getByRole('button', { name: '复用这一版的风格和歌词' }).nth(1).click();
+  await expect(page.getByLabel('风格', { exact: true })).not.toHaveValue('lofi');
+  await expect(page.getByRole('radio', { name: '纯音乐' })).toBeChecked();
   await page.screenshot({ path: testInfo.outputPath('music-takes.png') });
 });
 
@@ -94,4 +99,27 @@ test('音乐模型与语音一致：已下载后只列已下载的模型', async
   await expect(page.getByRole('option', { name: /ACE-Step 1\.5 Turbo · Q8/ })).toBeVisible();
   await expect(page.getByRole('option', { name: /BF16|XL Turbo/ })).toHaveCount(0);
   await expect(page.getByRole('option', { name: '管理模型…' })).toBeVisible();
+});
+
+test('选中 YuE2：隐藏时长与纯音乐，长度由歌词决定', async ({ page }, testInfo) => {
+  const draft = { ...createMusicDraft('zh-CN'), id: 'd'.repeat(32), modelId: 'ace-step-1.5-turbo-q8', instrumental: true };
+  const state = emptyState();
+  state.drafts = [draft];
+  state.models = [
+    { id: 'ace-step-1.5-turbo-q8', path: 'ace-step-1.5-turbo-q8_0.gguf', managed: true },
+    { id: 'yue2-3b-q8', path: 'Yue2-3B-GGUF', managed: true },
+  ];
+  await page.addInitScript(value => { if (!localStorage.getItem('voice-workbench-v1')) localStorage.setItem('voice-workbench-v1', value); }, JSON.stringify(state));
+  await page.goto('/');
+  await expect(page.getByRole('radio', { name: '纯音乐' })).toBeChecked();
+  await page.getByRole('combobox', { name: '模型' }).click();
+  await page.getByRole('option', { name: /YuE2 3B · Q8/ }).click();
+  // 切到 YuE2 自动回到演唱模式，并去掉 ACE-Step 专属参数。
+  await expect(page.getByRole('radio', { name: '纯音乐' })).toHaveCount(0);
+  await expect(page.getByLabel('歌词', { exact: true })).toBeVisible();
+  await expect(page.getByText('YuE2 只生成带人声的歌曲')).toBeVisible();
+  await expect(page.getByText('歌曲长度由歌词决定')).toBeVisible();
+  await expect(page.getByRole('radio', { name: '02:00' })).toHaveCount(0);
+  await expect(page.getByRole('combobox', { name: '演唱语言' })).toHaveCount(0);
+  await page.screenshot({ path: testInfo.outputPath('music-yue2.png') });
 });

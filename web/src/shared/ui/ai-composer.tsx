@@ -6,6 +6,7 @@ import { useTranslator } from '@astryxdesign/core/i18n';
 import { ArrowUpRight, Check, CircleAlert, LoaderCircle, Settings2, WandSparkles } from 'lucide-react';
 import { call, isDesktop } from '../lib/client';
 import { formatCallError } from '../i18n/format';
+import { Selector } from '../selector';
 import { formatTime, type AITask, type AITaskKind, type State } from '../workbench';
 
 // 任务已用时间：运行中每秒刷新，结束后停在完成时刻。
@@ -40,6 +41,11 @@ export function AIComposer({ kind, projectId, state, placeholder, submitLabel, e
   const [error, setError] = useState('');
   const elapsed = useElapsed(task);
   const provider = state.aiProviders?.find(p => p.id === state.aiProviderID);
+  // 与常见 AI 应用一致：写作栏直接在已配置的服务和模型之间切换，按服务分组；选项值为“服务 ID + 模型”。
+  const ready = (state.aiProviders ?? []).filter(p => p.model || p.models?.length);
+  const choice = (id: string, model: string) => `${id}\n${model}`;
+  const modelOptions = ready.map(p => ({ type: 'section' as const, title: p.name, options: [...new Set([p.model, ...(p.models ?? [])].filter(Boolean))].map(model => ({ value: choice(p.id, model), label: model })) }));
+  const pick = (value: string) => { const [id, model] = value.split('\n'); void call('ai.provider.use', { id, model }).catch(e => setError(formatCallError(t, e))); };
   // 结束后的收尾：取消直接清掉；内容为空时写好直接应用。
   const settle = useEffectEvent(() => {
     if (task?.status === 'cancelled') void dismiss(task);
@@ -93,8 +99,9 @@ export function AIComposer({ kind, projectId, state, placeholder, submitLabel, e
         <Button size="sm" variant="ghost" label={t('@yovoice.action.closeNotice')} onClick={() => void dismiss(task)} />
         <Button size="sm" variant="primary" label={t('@yovoice.ai.retry')} isLoading={starting} onClick={() => void run()} />
       </> : <>
-        <WandSparkles className="ai-composer-mark" size={14} aria-hidden />
-        <small className="grow ai-composer-via">{elsewhere ? t('@yovoice.ai.busyElsewhere') : t('@yovoice.ai.via', { name: provider?.name ?? '', model: provider?.model ?? '' })}</small>
+        {elsewhere ? <small className="grow ai-composer-via">{t('@yovoice.ai.busyElsewhere')}</small>
+          : <HStack className="grow ai-composer-via" gap={0}><Selector label={t('@yovoice.ai.model')} isLabelHidden size="sm" variant="ghost" className="ai-composer-model" value={provider?.model ? choice(provider.id, provider.model) : undefined} options={modelOptions} hasSearch={modelOptions.reduce((n, s) => n + s.options.length, 0) > 12} searchPlaceholder={t('@yovoice.ai.searchModels')}
+            renderValue={option => <HStack gap={2} vAlign="center"><WandSparkles size={14} aria-hidden />{provider?.name} · {option.label}</HStack>} onChange={pick} /></HStack>}
         {extra}
         <Button size="sm" variant="primary" label={submitLabel} isLoading={starting} isDisabled={!brief.trim() || elsewhere} onClick={() => void run()} />
       </>}

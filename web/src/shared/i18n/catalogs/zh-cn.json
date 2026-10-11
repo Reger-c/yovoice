@@ -2357,9 +2357,6 @@
   "@yovoice.ai.keyOptional": {
     "defaultMessage": "本地服务通常无需填写"
   },
-  "@yovoice.ai.keyStored": {
-    "defaultMessage": "只保存在本机，与项目和状态文件分开。"
-  },
   "@yovoice.ai.getKey": {
     "defaultMessage": "获取密钥"
   },
@@ -2395,9 +2392,6 @@
   },
   "@yovoice.ai.notConfigured": {
     "defaultMessage": "这个功能需要大模型。请先在“设置 › AI 服务”中添加服务并选择模型。"
-  },
-  "@yovoice.ai.via": {
-    "defaultMessage": "使用 {name} · {model}"
   },
   "@yovoice.ai.scorePlaceholder": {
     "defaultMessage": "用一句话描述配乐，AI 写出完整编曲，例如：旅行 vlog 片头，温暖舒缓的钢琴，后半段加入柔和的弦乐"
@@ -2476,12 +2470,6 @@
   },
   "@yovoice.ai.added": {
     "defaultMessage": "已添加"
-  },
-  "@yovoice.ai.notAdded": {
-    "defaultMessage": "未添加"
-  },
-  "@yovoice.ai.enable": {
-    "defaultMessage": "用于 AI 功能"
   },
   "@yovoice.ai.replaceKey": {
     "defaultMessage": "更换密钥"
@@ -2654,10 +2642,22 @@
   "@yovoice.ai.group.local": {
     "defaultMessage": "本地与自定义"
   },
-  "@yovoice.ai.codingPlan": {
-    "defaultMessage": "编程套餐"
+  "@yovoice.error.musicLyricsRequired": {
+    "defaultMessage": "YuE2 需要填写歌词，暂不支持纯音乐。"
   },
-  "@yovoice.ai.codingPlanHint": {
-    "defaultMessage": "使用编程套餐的专属密钥和额度，与按量 API 不通用"
+  "@yovoice.settings.modelDesc.yue2": {
+    "defaultMessage": "根据歌词和风格生成整首带人声的歌曲，长度由歌词决定。模型许可为 CC BY-NC 4.0，仅限非商业用途。"
+  },
+  "@yovoice.music.yueLength": {
+    "defaultMessage": "YuE2 按歌词段落生成，歌曲长度由歌词决定。"
+  },
+  "@yovoice.music.yueVocalOnly": {
+    "defaultMessage": "YuE2 只生成带人声的歌曲"
+  },
+  "@yovoice.music.yueAdvancedHint": {
+    "defaultMessage": "固定种子可以复现同一版本。"
+  },
+  "@yovoice.music.reuseTake": {
+    "defaultMessage": "复用这一版的风格和歌词"
   }
 }

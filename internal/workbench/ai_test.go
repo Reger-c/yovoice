@@ -56,6 +56,15 @@ func TestAIProviderKeysStayOutOfState(t *testing.T) {
 	if local.BaseURL != "http://192.168.1.5:11434/v1" || local.Format != "chat_completions" {
 		t.Fatalf("本地服务只允许改地址：%+v", local)
 	}
+	// 写作栏切换服务与模型：同时改当前服务和它的模型，模型留空时保持原值。
+	must(t, w.UseAIProvider(local.ID, "qwen3:8b"))
+	must(t, w.UseAIProvider(p.ID, ""))
+	if s := w.Store.Read(); s.AIProviderID != p.ID || s.AIProviders[0].Model != "deepseek-reasoner" || s.AIProviders[1].Model != "qwen3:8b" {
+		t.Fatalf("切换服务与模型错误：%+v", s.AIProviders)
+	}
+	if w.UseAIProvider("missing", "") == nil {
+		t.Fatal("应拒绝不存在的服务")
+	}
 	must(t, w.DeleteAIProvider(p.ID))
 	keys, err := w.readSecrets()
 	must(t, err)

@@ -1,15 +1,15 @@
 import { useRef, useState } from 'react';
 import { Button } from '@astryxdesign/core/Button';
 import { DropdownMenu } from '@astryxdesign/core/DropdownMenu';
-import { Grid } from '@astryxdesign/core/Grid';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
 import { TextArea } from '@astryxdesign/core/TextArea';
+import { Token } from '@astryxdesign/core/Token';
 import { useTranslator } from '@astryxdesign/core/i18n';
-import { AudioLines, Check, ChevronDown, ChevronUp, Play, Sparkles } from 'lucide-react';
+import { AudioLines, Check, ChevronDown, ChevronUp, Play, RotateCcw, Sparkles } from 'lucide-react';
 import { call } from '../../shared/lib/client';
 import { AIComposer } from '../../shared/ui/ai-composer';
-import { formatTime, type Draft, type Generation, type State, type UiLocale } from '../../shared/workbench';
+import { formatTime, isYuE, type Draft, type Generation, type State, type UiLocale } from '../../shared/workbench';
 import { createMusicDraft, lyricSections, musicLanguages, styleTags } from './music-draft';
 
 import { SongCover } from './song-cover';
@@ -25,6 +25,8 @@ export function MusicEditor({ draft, state, change, locale, takes, current, sele
   takes: Generation[]; current?: string; select: (take: Generation) => void; configureAI: () => void;
 }) {
   const t = useTranslator();
+  // YuE2 只能生成带人声的歌曲，选中时隐藏纯音乐切换。
+  const yue = isYuE(draft.modelId);
   const [allTags, setAllTags] = useState(false);
   const lyrics = useRef<HTMLTextAreaElement>(null);
   const tags = splitTags(draft.text);
@@ -82,31 +84,41 @@ export function MusicEditor({ draft, state, change, locale, takes, current, sele
     <VStack className="music-block" gap={3}>
       <HStack vAlign="center" gap={2} wrap="wrap">
         <h2 className="grow">{t('@yovoice.music.lyrics')}</h2>
-        {!draft.instrumental ? <DropdownMenu hasChevron alignment="end" button={{ size: 'sm', variant: 'ghost', label: t('@yovoice.music.insertSection') }}
+        {!draft.instrumental || yue ? <DropdownMenu hasChevron alignment="end" button={{ size: 'sm', variant: 'ghost', label: t('@yovoice.music.insertSection') }}
           items={lyricSections.map(section => ({ label: `[${section}]`, onClick: () => insertSection(section) }))} /> : null}
-        <SegmentedControl label={t('@yovoice.music.lyricsMode')} size="sm" value={draft.instrumental ? 'instrumental' : 'vocal'} onChange={value => change({ instrumental: value === 'instrumental' })}>
+        {yue ? <small>{t('@yovoice.music.yueVocalOnly')}</small> : <SegmentedControl label={t('@yovoice.music.lyricsMode')} size="sm" value={draft.instrumental ? 'instrumental' : 'vocal'} onChange={value => change({ instrumental: value === 'instrumental' })}>
           <SegmentedControlItem value="vocal" label={t('@yovoice.music.vocal')} />
           <SegmentedControlItem value="instrumental" label={t('@yovoice.music.instrumental')} />
-        </SegmentedControl>
+        </SegmentedControl>}
       </HStack>
-      {draft.instrumental
+      {draft.instrumental && !yue
         ? <p className="music-instrumental">{t('@yovoice.music.instrumentalHint')}</p>
         : <TextArea ref={lyrics} className="music-lyrics" label={t('@yovoice.music.lyrics')} isLabelHidden value={draft.lyrics ?? ''} maxLength={4000} rows={14} hasSpellCheck={false} placeholder={t('@yovoice.music.lyricsPlaceholder')} onChange={value => change({ lyrics: value.slice(0, 4000) })} />}
     </VStack>
     <VStack className="music-block" gap={3}>
       <HStack hAlign="between" vAlign="center"><h2>{t('@yovoice.music.takes')}</h2>{takes.length ? <small>{t('@yovoice.music.takeCount', { count: takes.length })}</small> : null}</HStack>
-      {takes.length ? <Grid columns={{ minWidth: 160 }} gap={4}>
-        {takes.map((take, index) => <Button key={take.id} variant="ghost" className="music-take" aria-current={take.id === current ? 'true' : undefined} label={t('@yovoice.music.take', { n: takes.length - index })} onClick={() => select(take)}>
-          <VStack gap={2} width="100%">
-            <SongCover seed={take.id} animated={take.id === current} />
-            <HStack hAlign="between" vAlign="center" gap={2}>
-              <HStack gap={1} vAlign="center">{take.id === current ? <AudioLines size={14} aria-hidden /> : <Play size={14} aria-hidden />}<b>{t('@yovoice.music.take', { n: takes.length - index })}</b></HStack>
-              <small className="music-take-duration">{formatTime(take.duration)}</small>
-            </HStack>
-            <small className="music-take-style">{take.settings.instrumental ? `${t('@yovoice.music.instrumental')} · ` : ''}{take.settings.text}</small>
-          </VStack>
-        </Button>)}
-      </Grid> : <p className="music-empty">{t('@yovoice.music.noTakes')}</p>}
+      {takes.length ? <VStack className="music-takes" gap={0} role="list">
+        {takes.map((take, index) => {
+          const tags = splitTags(take.settings.text), playing = take.id === current;
+          return <HStack key={take.id} className="music-take-row" role="listitem" data-current={playing} gap={2} vAlign="center">
+            <Button variant="ghost" className="music-take grow" aria-current={playing ? 'true' : undefined} label={t('@yovoice.music.take', { n: takes.length - index })} onClick={() => select(take)}>
+              <HStack gap={3} vAlign="center" width="100%">
+                <HStack className="music-take-cover" gap={0} hAlign="center" vAlign="center"><SongCover seed={take.id} animated={playing} size={112} />{playing ? <AudioLines className="music-take-state" size={16} aria-hidden /> : <Play className="music-take-state" size={16} fill="currentColor" aria-hidden />}</HStack>
+                <VStack className="grow music-take-text" gap={1}>
+                  <HStack gap={2} vAlign="center"><b>{t('@yovoice.music.take', { n: takes.length - index })}</b><small className="music-take-date">{new Date(take.createdAt).toLocaleString(locale, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</small></HStack>
+                  <HStack className="music-take-tags" gap={1} vAlign="center">
+                    {take.settings.instrumental ? <Token size="sm" label={t('@yovoice.music.instrumental')} /> : null}
+                    {tags.slice(0, 4).map(tag => <Token key={tag} size="sm" label={tag} />)}
+                    {tags.length > 4 ? <small>+{tags.length - 4}</small> : null}
+                  </HStack>
+                </VStack>
+                <small className="music-take-duration">{formatTime(take.duration)}</small>
+              </HStack>
+            </Button>
+            <Button variant="ghost" size="sm" isIconOnly icon={<RotateCcw />} label={t('@yovoice.music.reuseTake')} tooltip={t('@yovoice.music.reuseTake')} onClick={() => change({ text: take.settings.text, lyrics: take.settings.lyrics, instrumental: take.settings.instrumental, synthesisLanguage: take.settings.synthesisLanguage, modelOptions: take.settings.modelOptions, seed: take.settings.seed })} />
+          </HStack>;
+        })}
+      </VStack> : <p className="music-empty">{t('@yovoice.music.noTakes')}</p>}
     </VStack>
   </VStack>;
 }

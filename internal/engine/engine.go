@@ -52,11 +52,12 @@ func (e *Engine) stop() {
 		e.key = ""
 	}
 }
-func (e *Engine) start(ctx context.Context, executable, model, family, task, backend string, loadOptions map[string]string, encoderSamples int, progress func(msg.Code, msg.Params)) error {
+func (e *Engine) start(ctx context.Context, executable, model string, definition catalog.ModelPackage, backend string, encoderSamples int, progress func(msg.Code, msg.Params)) error {
+	family, task := definition.Family, definition.Task
 	if task == "" {
 		task = "tts"
 	}
-	key := fmt.Sprintf("%s|%s|%s|%s|%s|%v|%d", executable, model, family, task, backend, loadOptions, encoderSamples)
+	key := fmt.Sprintf("%s|%s|%s|%s|%s|%v|%v|%d", executable, model, family, task, backend, definition.LoadOptions, definition.SessionOptions, encoderSamples)
 	if e.process != nil && e.key == key {
 		select {
 		case <-e.done:
@@ -80,11 +81,18 @@ func (e *Engine) start(ctx context.Context, executable, model, family, task, bac
 	port := l.Addr().(*net.TCPAddr).Port
 	l.Close()
 	entry := map[string]any{"id": "index", "family": family, "path": model, "task": task, "mode": "offline"}
-	if len(loadOptions) > 0 {
-		entry["load_options"] = loadOptions
+	if len(definition.LoadOptions) > 0 {
+		entry["load_options"] = definition.LoadOptions
+	}
+	session := map[string]any{}
+	for k, v := range definition.SessionOptions {
+		session[k] = v
 	}
 	if encoderSamples > 0 {
-		entry["session_options"] = map[string]any{"voxcpm2.audiovae_encoder_sample_capacity": encoderSamples}
+		session["voxcpm2.audiovae_encoder_sample_capacity"] = encoderSamples
+	}
+	if len(session) > 0 {
+		entry["session_options"] = session
 	}
 	config := map[string]any{"host": "127.0.0.1", "port": port, "backend": catalog.ServerBackend(backend), "device": 0, "threads": max(1, min(runtime.NumCPU()/2, 8)), "lazy_load": true, "max_loaded_models": 1, "idle_unload_ms": 300000, "log_request_body": false, "max_request_body_bytes": 1048576, "models": []any{entry}}
 	b, err := json.Marshal(config)
@@ -204,7 +212,7 @@ func (e *Engine) Generate(ctx context.Context, executable string, m schema.Insta
 			encoderSamples = max(encoderSamples, int(math.Ceil(duration*16000/2560))*2560)
 		}
 	}
-	if err = e.start(ctx, executable, m.Path, definition.Family, definition.Task, backend, definition.LoadOptions, encoderSamples, progress); err != nil {
+	if err = e.start(ctx, executable, m.Path, definition, backend, encoderSamples, progress); err != nil {
 		return err
 	}
 	progress(msg.ActivitySynthesizing, nil)

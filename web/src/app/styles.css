@@ -395,8 +395,22 @@
   .music-tag-group { min-width: var(--spacing-10); }
   .music-tag.astryx-button { border-radius: var(--radius-full); }
   .music-instrumental, .music-empty { padding: var(--spacing-4); border-radius: var(--radius-container); background: var(--app-surface); color: var(--app-muted); line-height: 1.8; }
-  .music-take.astryx-button { height: auto; padding: var(--spacing-2); align-items: stretch; text-align: left; white-space: normal; }
-  .music-take[aria-current="true"] .song-cover { box-shadow: 0 0 0 calc(var(--border-width) * 2) var(--app-ink); }
+  /* 版本列表参照 remiqora：一行一个版本，封面缩略图 + 标题与时间 + 风格标签 + 时长，右侧是复用参数。 */
+  .music-takes { border: var(--border-width) solid var(--app-line); border-radius: var(--radius-container); overflow: hidden; }
+  .music-take-row { padding-inline-end: var(--spacing-2); transition: background var(--duration-fast) var(--ease-standard); }
+  .music-take-row + .music-take-row { border-top: var(--border-width) solid var(--app-line); }
+  .music-take-row:hover { background: color-mix(in srgb, var(--app-surface) 60%, transparent); }
+  .music-take-row[data-current="true"] { background: var(--app-surface); }
+  .music-take.astryx-button { min-width: 0; height: auto; padding: var(--spacing-2); border-radius: 0; justify-content: flex-start; text-align: left; white-space: normal; background: transparent; }
+  .music-take.astryx-button > * > * { flex: 1 1 auto; min-width: 0; }
+  .music-take-cover { position: relative; flex: none; width: var(--spacing-12); height: var(--spacing-12); }
+  .music-take-cover .song-cover { position: absolute; inset: 0; width: 100%; border-radius: var(--radius-element); }
+  .music-take-state { position: relative; color: var(--app-white); opacity: 0; transition: opacity var(--duration-fast) var(--ease-standard); }
+  .music-take:hover .music-take-state, .music-take[aria-current="true"] .music-take-state { opacity: 1; }
+  .music-take-text { min-width: 0; }
+  .music-take-date { color: var(--app-muted); font-variant-numeric: tabular-nums; }
+  .music-take-tags { min-width: 0; overflow: hidden; flex-wrap: nowrap; color: var(--app-muted); }
+  .music-take-tags > * { flex: none; }
   .song-cover { display: block; width: 100%; max-width: 100%; height: auto; aspect-ratio: 1; border-radius: var(--radius-container); background: var(--app-ink); }
   .project-avatars .song-cover { width: var(--spacing-10); border-radius: var(--radius-element); }
   /* 编曲作品：音块总览用深底发光块呈现每个声部，声部表按角色色点区分。 */
@@ -408,8 +422,7 @@
   .score-section-row { padding: var(--spacing-2) var(--spacing-3); }
   .score-section-row + .score-section-row { border-top: var(--border-width) solid var(--app-line); }
   .score-section-time { color: var(--app-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .music-take-duration { font-variant-numeric: tabular-nums; }
-  .music-take-style { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .music-take-duration { flex: none; color: var(--app-muted); font-family: var(--app-mono); font-variant-numeric: tabular-nums; }
   /* 设置页：每组一张白卡片，行高、内边距和字号统一；标题与说明左对齐，控件右对齐。 */
   .settings-panel { width: 100%; padding-block: 0 var(--spacing-8); }
   .settings-intro { color: var(--app-muted); }
@@ -442,9 +455,8 @@
   .ai-icon[data-active="true"] { border-color: color-mix(in srgb, var(--color-success) 42%, var(--app-line)); }
   .ai-icon[data-custom="true"] { border-style: dashed; color: var(--app-muted); }
   .ai-icon-glyph { width: 62%; height: 62%; background: var(--app-ink); mask: var(--ai-icon, none) center / contain no-repeat; -webkit-mask: var(--ai-icon, none) center / contain no-repeat; }
-  .ai-plan-hint { color: var(--app-muted); }
-  .ai-detail { min-width: 0; padding: var(--spacing-6) var(--spacing-8); overflow-y: auto; }
-  .ai-detail-head h2 { font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); }
+  .ai-detail { flex: 1 1 0; min-width: 0; padding: var(--spacing-6) var(--spacing-8); overflow-y: auto; }
+  .ai-detail-head h2 { min-width: 0; font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ai-field-title { font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); color: var(--app-muted); }
   .ai-detail .astryx-text-input-label, .ai-detail label { font-size: var(--font-size-sm); }
   .ai-field small { color: var(--app-muted); }
@@ -598,6 +610,8 @@
   .ai-composer-footer { padding: var(--spacing-1) var(--spacing-2) var(--spacing-2) var(--spacing-4); color: var(--app-muted); }
   .ai-composer-footer small { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ai-composer-mark { flex-shrink: 0; color: var(--app-muted); }
+  .ai-composer-via { min-width: 0; margin-inline-start: calc(-1 * var(--spacing-2)); }
+  .ai-composer-model { min-width: 0; max-width: 100%; color: var(--app-muted); }
   .ai-composer-time { color: var(--app-muted); font-family: var(--app-mono); font-variant-numeric: tabular-nums; }
   .ai-composer-error { padding: 0 var(--spacing-4) var(--spacing-3); color: var(--color-text-red); }
   /* 进度：细线按超时预算推进，上面一道流光表示仍在等待模型。 */
@@ -625,10 +639,21 @@
   .music-block .astryx-segmented-control { flex: none; width: max-content; }
 
   /* 编曲轨道视图：左侧轨头固定宽度，右侧音块与段落标尺共用同一时间轴。 */
-  .score-arrangement { flex-shrink: 0; --score-head: calc(var(--spacing-10) * 9); border: var(--border-width) solid var(--app-line); border-radius: var(--radius-container); background: var(--app-white); overflow: hidden; }
+  .score-arrangement { flex-shrink: 0; --score-head: calc(var(--spacing-10) * 5.5); border: var(--border-width) solid var(--app-line); border-radius: var(--radius-container); background: var(--app-white); overflow: hidden; }
+  .score-scroll { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; }
+  .score-content { position: relative; min-width: 100%; }
+  .score-playhead { position: absolute; top: 0; bottom: 0; width: var(--border-width); margin-left: calc(var(--border-width) / -2); background: var(--app-ink); pointer-events: none; z-index: 1; transition: left var(--duration-fast) linear; }
+  .score-playhead::before { content: ""; position: absolute; top: 0; left: calc(-1 * var(--spacing-1)); width: var(--spacing-2); height: var(--spacing-2); background: var(--app-ink); clip-path: polygon(0 0, 100% 0, 100% 50%, 50% 100%, 0 50%); }
+  .score-ruler[data-seekable="true"] { cursor: pointer; }
+  .score-track-head { position: sticky; left: 0; z-index: 2; background: var(--app-white); }
+  .score-ruler-row .score-track-head { background: var(--app-surface); }
+  .score-track[aria-current="true"] .score-track-head { background: var(--app-surface); }
+  .score-track-sub { padding-inline-start: var(--spacing-7); min-width: 0; }
   .score-ruler-row { border-bottom: var(--border-width) solid var(--app-line); background: var(--app-surface); }
   .score-track-head { flex: none; width: var(--score-head); min-width: 0; padding: var(--spacing-2) var(--spacing-3); border-right: var(--border-width) solid var(--app-line); }
-  .score-ruler-head { justify-content: space-between; color: var(--app-muted); }
+  .score-ruler-head { justify-content: space-between; color: var(--app-muted); padding-inline-end: var(--spacing-1); }
+  .score-ruler-head .track-zoom { border-left: none; padding-left: 0; }
+  .score-ruler-head .track-zoom button:nth-child(2) { min-width: var(--spacing-10); }
   .score-ruler-total { font-family: var(--app-mono); font-variant-numeric: tabular-nums; }
   .score-ruler { min-width: 0; }
   .score-ruler-section { flex-basis: 0; min-width: 0; padding: var(--spacing-1) var(--spacing-2); border-left: var(--border-width) solid var(--app-line); overflow: hidden; white-space: nowrap; }
@@ -642,9 +667,9 @@
   .score-track[aria-current="true"] { background: var(--app-surface); }
   .score-track[aria-current="true"] .score-track-head { box-shadow: inset calc(var(--border-width) * 3) 0 0 var(--role); }
   .score-track .score-track-head { color: var(--app-ink); }
-  .score-track .score-track-head { padding-block: var(--spacing-1); }
-  .score-track-name { flex: none; width: calc(var(--spacing-10) * 1.5); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: var(--font-weight-medium); }
-  .score-drum-kit { color: var(--app-muted); padding-inline: var(--spacing-2); min-width: 0; }
+  .score-track .score-track-head { padding-block: var(--spacing-1); padding-inline: var(--spacing-1) var(--spacing-2); }
+  .score-track-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: var(--font-weight-medium); }
+  .score-drum-kit { color: var(--app-muted); min-height: var(--spacing-8); display: flex; align-items: center; }
   .score-track .astryx-switch { flex: none; }
   .score-role-button { flex: none; color: var(--role); }
   .score-role-dot { fill: var(--role); stroke: var(--role); width: var(--spacing-3); height: var(--spacing-3); }
@@ -662,15 +687,16 @@
   .score-arrangement [data-role="other"] { --role: var(--color-icon-gray); }
   .score-track .number-field.compact { gap: var(--spacing-1); color: var(--app-muted); }
   .score-track .number-field.compact { flex: none; }
-  .score-track .number-field.compact input { width: var(--spacing-10); min-height: var(--spacing-7); padding: var(--spacing-1); background: transparent; border-color: transparent; appearance: textfield; transition: background var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard); }
+  .score-track .number-field.compact input { width: var(--spacing-8); min-height: var(--spacing-7); padding: var(--spacing-1); background: transparent; border-color: transparent; appearance: textfield; transition: background var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard); }
   .score-track .number-field.compact input::-webkit-inner-spin-button { display: none; }
   .score-track .number-field.compact input:hover, .score-track .number-field.compact input:focus { background: var(--app-white); border-color: var(--app-line); }
   .score-instrument-slot { min-width: 0; }
   .score-instrument-slot > *, .score-instrument { flex: 1 1 0; min-width: 0; }
   .score-instrument > button { min-width: 0; overflow: hidden; }
   .score-instrument > button > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .score-track-sub .score-instrument > button { min-height: var(--spacing-6); padding-inline: var(--spacing-1); color: var(--app-muted); font-size: var(--app-small-font); }
+  .score-track-sub.score-drum-kit { padding-inline-start: calc(var(--spacing-7) + var(--spacing-1)); min-height: var(--spacing-6); }
   @keyframes score-track-in { from { opacity: 0; filter: blur(var(--spacing-0-5)); } }
-  @media (max-width: 1100px) { .score-arrangement { --score-head: calc(var(--spacing-10) * 7.5); } .score-track-name { width: calc(var(--spacing-10) * 1.25); } }
   @media (prefers-reduced-motion: reduce) {
     .ai-composer, .ai-composer-body, .score-track { animation: none; }
     .ai-composer[data-status="running"]::after { animation: none; opacity: .5; width: 100%; }

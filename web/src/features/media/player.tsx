@@ -14,7 +14,7 @@ import type { Track } from '../../shared/workbench';
 // 头像素材仅在展示库列表时加载，避免进入创作首屏主包。
 const SeededAvatar = lazy(() => import('../../shared/ui/seeded-avatar').then(module => ({ default: module.SeededAvatar })));
 
-export function Player({ track, onError, suspended, compact = false, historyControl, actions, laneActions, avatar, inline }: { inline?: { label: string; select: () => void }; avatar?: { seed: string; label: string; disabled?: boolean; select: () => void }; actions?: ReactNode; laneActions?: ReactNode; historyControl?: ReactNode; compact?: boolean; suspended: boolean; track: Track | null; onError: (message: string) => void }) {
+export function Player({ track, onError, suspended, compact = false, historyControl, actions, laneActions, avatar, inline, onProgress, seekRequest }: { onProgress?: (time: number, playing: boolean) => void; seekRequest?: { time: number; nonce: number }; inline?: { label: string; select: () => void }; avatar?: { seed: string; label: string; disabled?: boolean; select: () => void }; actions?: ReactNode; laneActions?: ReactNode; historyControl?: ReactNode; compact?: boolean; suspended: boolean; track: Track | null; onError: (message: string) => void }) {
   const t = useTranslator();
   const panel = useAudioPanel(!!track || !!historyControl, compact || avatar || inline ? undefined : 'audio-player-compact-height');
   const audio = useRef<HTMLAudioElement>(null);
@@ -75,6 +75,10 @@ export function Player({ track, onError, suspended, compact = false, historyCont
     const group = 8 / zoom;
     return Array.from({ length: Math.ceil(peaks.length / group) }, (_, i) => Math.max(...peaks.slice(i * group, (i + 1) * group)));
   }, [peaks, zoom]);
+  // 编曲视图跟随播放位置显示指针，也可以点标尺跳转。
+  const reportProgress = useEffectEvent(() => onProgress?.(time, playing));
+  useEffect(() => reportProgress(), [time, playing]);
+  useEffect(() => { if (seekRequest && audio.current) { audio.current.currentTime = seekRequest.time; setTime(seekRequest.time); } }, [seekRequest]);
   const toggle = async () => {
     if (!audio.current) return;
     if (playing) {

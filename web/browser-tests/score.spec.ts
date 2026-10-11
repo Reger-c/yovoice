@@ -43,6 +43,12 @@ test('新建编曲作品：示例乐谱、音块总览、声部调整与持久�
   await page.getByRole('spinbutton', { name: '速度（BPM）' }).fill('120');
   await expect(page.locator('.score-summary')).toContainText('120 BPM');
   await page.screenshot({ path: testInfo.outputPath('score.png') });
+  // 轨道区放大后横向滚动，轨头固定在左侧。
+  const scroll = page.locator('.score-scroll');
+  await page.getByRole('group', { name: '缩放' }).first().getByRole('button', { name: '放大' }).click();
+  await expect.poll(() => scroll.evaluate(el => el.scrollWidth > el.clientWidth * 1.5)).toBe(true);
+  await scroll.evaluate(el => { el.scrollLeft = 200; });
+  await expect.poll(() => rows.first().locator('.score-track-head').evaluate(el => Math.round(el.getBoundingClientRect().left - el.closest('.score-scroll')!.getBoundingClientRect().left))).toBe(0);
 
   await expect(page.locator('.saved')).toContainText('已保存');
   await page.reload();

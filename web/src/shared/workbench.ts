@@ -56,7 +56,8 @@ export function cueAudioStatus(draft: Draft, history: Generation[], cue: Subtitl
   return generation.settings.text === cue.text && generation.segment?.speakerId === cue.speakerId && stableJSON(comparableSettings(synthesisSettings(generation.settings))) === stableJSON(comparableSettings(cueSettings(draft, cue))) ? 'ready' : 'stale';
 }
 export interface Voice { referenceText?: string; source?: string; sourceGenerationId?: string; id: string; name: string; fileName: string; duration: number }
-export interface ModelPackage { voices?: string[]; variant?: string; loadOptions?: Record<string, string>; task?: string; engineMinimum?: string; family: string; id: string; name: string; version: string; precision: string; remotePath: string; size: number; sha256: string }
+export interface ModelFile { path: string; size: number; sha256: string }
+export interface ModelPackage { voices?: string[]; variant?: string; loadOptions?: Record<string, string>; sessionOptions?: Record<string, string>; files?: ModelFile[]; directory?: string; task?: string; engineMinimum?: string; family: string; id: string; name: string; version: string; precision: string; remotePath: string; size: number; sha256: string }
 export interface InstalledModel { id: string; path: string; managed: boolean }
 export interface GenerationSegment { cueId: string; speakerId: string; speakerName: string; batchId: string; index: number; targetClipId?: string; placement?: 'ripple' | 'preserve' }
 export interface Generation { segment?: GenerationSegment; id: string; title: string; fileName: string; createdAt: string; duration: number; settings: Draft }
@@ -139,7 +140,9 @@ export interface Track { id: string; name: string; fileName: string; kind: 'voic
 
 export const isKokoroModel = (id: string) => id.startsWith('kokoro-');
 // 音乐模型只用于音乐作品，不出现在配音和角色的模型列表里。
-export const isMusicModel = (id: string) => id.startsWith('ace-step-');
+export const isMusicModel = (id: string) => id.startsWith('ace-step-') || id.startsWith('yue2-');
+/** YuE2 由歌词决定长度，没有时长和纯音乐模式。 */
+export const isYuE = (id: string) => id.startsWith('yue2-');
 // 音色库只供编曲作品渲染使用。
 export const isSoundFont = (id: string) => id.endsWith('-sf2');
 export const isVoiceModel = (id: string) => !isMusicModel(id) && !isSoundFont(id);

@@ -17,6 +17,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"yovoice/internal/catalog"
 	"yovoice/internal/download"
 	"yovoice/internal/engine"
 	"yovoice/internal/msg"
@@ -322,5 +323,21 @@ func TestForgetModelDuringDownload(t *testing.T) {
 	must(t, w.begin("generate", msg.ActivityGenerate, nil, nil, func(ctx context.Context) error { <-ctx.Done(); return ctx.Err() }))
 	if err = w.ForgetModel("voxcpm2-q8"); err == nil {
 		t.Fatal("生成期间应保护模型")
+	}
+}
+
+// 多文件模型（如 YuE2）导入时只认完整的模型目录。
+func TestPackageRoot(t *testing.T) {
+	root := t.TempDir()
+	m := catalog.ModelPackage{RemotePath: "main.gguf", Files: []catalog.ModelFile{{Path: "main.gguf", Size: 4}, {Path: "sidecars/config.json", Size: 2}}}
+	main := filepath.Join(root, "main.gguf")
+	must(t, os.WriteFile(main, []byte("gguf"), 0600))
+	if packageRoot(m, main) != "" {
+		t.Fatal("缺少附属文件时不应登记")
+	}
+	must(t, os.MkdirAll(filepath.Join(root, "sidecars"), 0700))
+	must(t, os.WriteFile(filepath.Join(root, "sidecars", "config.json"), []byte("{}"), 0600))
+	if packageRoot(m, main) != root {
+		t.Fatal("文件齐全时应返回模型目录")
 	}
 }

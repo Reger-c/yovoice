@@ -31,6 +31,15 @@ func BuildRequest(d schema.Draft, voice, emotion string) (map[string]any, error)
 		}
 		return map[string]any{"model": "index", "request": r}, nil
 	}
+	if m.Family == "yue2" {
+		// YuE2 以歌词为正文、风格为请求参数；没有时长参数，长度由歌词决定。
+		lyrics := strings.TrimSpace(d.Lyrics)
+		o := map[string]any{"style": strings.TrimSpace(d.Text), "lyrics": lyrics}
+		if d.Seed != nil {
+			o["seed"] = *d.Seed
+		}
+		return map[string]any{"model": "index", "request": map[string]any{"text": lyrics, "options": o}}, nil
+	}
 	if m.Family == "kokoro_tts" {
 		o, _ := d.GenerationOptions(m.Family)
 		if _, ok := o["text_chunk_size"]; !ok {
