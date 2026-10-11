@@ -2070,7 +2070,7 @@
     "defaultMessage": "Lyrics"
   },
   "@yovoice.music.insertSection": {
-    "defaultMessage": "Insert section marker"
+    "defaultMessage": "Insert section"
   },
   "@yovoice.music.instrumental": {
     "defaultMessage": "Instrumental"
@@ -2641,5 +2641,11 @@
   },
   "@yovoice.settings.noModelMatch": {
     "defaultMessage": "No matching models."
+  },
+  "@yovoice.app.collapseInspector": {
+    "defaultMessage": "Collapse side panel"
+  },
+  "@yovoice.app.expandInspector": {
+    "defaultMessage": "Expand side panel"
   }
 }

@@ -2070,7 +2070,7 @@
     "defaultMessage": "歌词"
   },
   "@yovoice.music.insertSection": {
-    "defaultMessage": "插入段落标记"
+    "defaultMessage": "插入段落"
   },
   "@yovoice.music.instrumental": {
     "defaultMessage": "纯音乐"
@@ -2641,5 +2641,11 @@
   },
   "@yovoice.settings.noModelMatch": {
     "defaultMessage": "没有匹配的模型。"
+  },
+  "@yovoice.app.collapseInspector": {
+    "defaultMessage": "收起右侧面板"
+  },
+  "@yovoice.app.expandInspector": {
+    "defaultMessage": "展开右侧面板"
   }
 }

@@ -24,7 +24,8 @@ test('新建音乐作品：示例、风格标签、段落标记、纯音乐与�
 
   const lyrics = page.getByLabel('歌词', { exact: true });
   await lyrics.evaluate((el: HTMLTextAreaElement) => el.setSelectionRange(el.value.length, el.value.length));
-  await page.getByRole('button', { name: '[bridge]', exact: true }).click();
+  await page.getByRole('button', { name: '插入段落' }).click();
+  await page.getByRole('menuitem', { name: '[bridge]', exact: true }).click();
   await expect(lyrics).toHaveValue(/一直等\n\n\[bridge\]\n$/);
 
   // 音乐作品使用独立检查器：只列音乐模型，时长与语言写入作品。

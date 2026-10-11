@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { Button } from '@astryxdesign/core/Button';
+import { DropdownMenu } from '@astryxdesign/core/DropdownMenu';
 import { Grid } from '@astryxdesign/core/Grid';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
@@ -35,6 +36,9 @@ export function MusicEditor({ draft, state, change, locale, takes, current, sele
   const known: readonly string[] = Object.values(styleTags).flat();
   const quickTags = [...tags.filter(tag => known.includes(tag)), ...styleTags.genre.filter(tag => !tags.includes(tag))].slice(0, Math.max(8, tags.length));
   const tagButton = (tag: string) => <Button key={tag} className="music-tag" size="sm" variant="secondary" icon={tags.includes(tag) ? <Check /> : undefined} aria-pressed={tags.includes(tag)} label={tag} onClick={() => toggleTag(tag)} />;
+  // 展开/收起放在标签行末尾，不单独占一行。
+  const groups = Object.keys(styleTags) as (keyof typeof styleTags)[];
+  const moreTags = <Button size="sm" variant="ghost" icon={allTags ? <ChevronUp /> : <ChevronDown />} label={t(allTags ? '@yovoice.music.fewerTags' : '@yovoice.music.allTags')} onClick={() => setAllTags(!allTags)} />;
   // 在光标处插入段落标记；标记单独占一行，便于 ACE-Step 识别结构。
   const insertSection = (section: string) => {
     const element = lyrics.current; const value = draft.lyrics ?? '';
@@ -55,7 +59,7 @@ export function MusicEditor({ draft, state, change, locale, takes, current, sele
       ...(result.title && draft.title === createMusicDraft(locale, false).title ? { title: result.title } : {}),
     });
   }
-  return <VStack className="music-editor" gap={6}>
+  return <VStack className="music-editor" gap={5}>
     <AIComposer kind="lyrics" projectId={draft.id} state={state} overwrite={!empty} configure={configureAI} apply={applyLyrics}
       placeholder={t(draft.instrumental ? '@yovoice.ai.lyricsPlaceholderInstrumental' : '@yovoice.ai.lyricsPlaceholder')} submitLabel={t('@yovoice.ai.lyricsSubmit')}
       start={brief => call('ai.lyrics', { projectId: draft.id, brief, instrumental: !!draft.instrumental, language: draft.synthesisLanguage ?? '', locale })} />
@@ -68,25 +72,23 @@ export function MusicEditor({ draft, state, change, locale, takes, current, sele
       </HStack>
       <TextArea className="music-style" label={t('@yovoice.music.style')} isLabelHidden value={draft.text} maxLength={512} rows={2} hasSpellCheck={false} placeholder={t('@yovoice.music.stylePlaceholder')} onChange={text => change({ text: text.slice(0, 512) })} />
       <VStack gap={2} role="group" aria-label={t('@yovoice.music.tags')}>
-        {allTags ? (Object.keys(styleTags) as (keyof typeof styleTags)[]).map(group => <HStack key={group} gap={2} vAlign="center" wrap="wrap">
+        {allTags ? groups.map((group, index) => <HStack key={group} gap={2} vAlign="center" wrap="wrap">
           <small className="music-tag-group">{t(`@yovoice.music.tagGroup.${group}`)}</small>
           {styleTags[group].map(tag => tagButton(tag))}
-        </HStack>) : <HStack gap={2} vAlign="center" wrap="wrap">{quickTags.map(tag => tagButton(tag))}</HStack>}
-        <HStack><Button size="sm" variant="ghost" icon={allTags ? <ChevronUp /> : <ChevronDown />} label={t(allTags ? '@yovoice.music.fewerTags' : '@yovoice.music.allTags')} onClick={() => setAllTags(!allTags)} /></HStack>
+          {index === groups.length - 1 ? moreTags : null}
+        </HStack>) : <HStack gap={2} vAlign="center" wrap="wrap">{quickTags.map(tag => tagButton(tag))}{moreTags}</HStack>}
       </VStack>
     </VStack>
     <VStack className="music-block" gap={3}>
-      <HStack hAlign="between" vAlign="center" gap={2} wrap="wrap">
-        <h2>{t('@yovoice.music.lyrics')}</h2>
+      <HStack vAlign="center" gap={2} wrap="wrap">
+        <h2 className="grow">{t('@yovoice.music.lyrics')}</h2>
+        {!draft.instrumental ? <DropdownMenu hasChevron alignment="end" button={{ size: 'sm', variant: 'ghost', label: t('@yovoice.music.insertSection') }}
+          items={lyricSections.map(section => ({ label: `[${section}]`, onClick: () => insertSection(section) }))} /> : null}
         <SegmentedControl label={t('@yovoice.music.lyricsMode')} size="sm" value={draft.instrumental ? 'instrumental' : 'vocal'} onChange={value => change({ instrumental: value === 'instrumental' })}>
           <SegmentedControlItem value="vocal" label={t('@yovoice.music.vocal')} />
           <SegmentedControlItem value="instrumental" label={t('@yovoice.music.instrumental')} />
         </SegmentedControl>
       </HStack>
-      {!draft.instrumental ? <HStack className="music-sections" gap={1} vAlign="center" wrap="wrap" role="toolbar" aria-label={t('@yovoice.music.insertSection')}>
-        <small className="music-tag-group">{t('@yovoice.music.insertSection')}</small>
-        {lyricSections.map(section => <Button key={section} className="music-section" size="sm" variant="ghost" label={`[${section}]`} onClick={() => insertSection(section)} />)}
-      </HStack> : null}
       {draft.instrumental
         ? <p className="music-instrumental">{t('@yovoice.music.instrumentalHint')}</p>
         : <TextArea ref={lyrics} className="music-lyrics" label={t('@yovoice.music.lyrics')} isLabelHidden value={draft.lyrics ?? ''} maxLength={4000} rows={14} hasSpellCheck={false} placeholder={t('@yovoice.music.lyricsPlaceholder')} onChange={value => change({ lyrics: value.slice(0, 4000) })} />}
