@@ -64,7 +64,6 @@ test('新建编曲作品：示例乐谱、音块总览、声部调整与持久�
   // 轨头各列对齐：每行的音色、电平与发声按钮左边缘一致。
   const columns = await rows.evaluateAll(list => list.map(row => [...row.querySelectorAll('.score-track-head > :not(.score-track-name)')].map(el => Math.round(el.getBoundingClientRect().left)).slice(-2).join()));
   expect(new Set(columns).size).toBe(1);
-  await page.locator('.score-arrangement').screenshot({ path: '/mnt/project-files/yovoice-redesign/v7/score-v5.png' });
   expect(headHeight).toBeLessThanOrEqual(42);
   await expect.poll(() => scroll.evaluate(el => el.scrollWidth > el.clientWidth)).toBe(true);
   await scroll.evaluate(el => { el.dispatchEvent(new WheelEvent('wheel', { deltaY: 120, bubbles: true, cancelable: true })); });
