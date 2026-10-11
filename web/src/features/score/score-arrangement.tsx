@@ -78,6 +78,29 @@ export function ScoreArrangement({ score, selected, select, label, updateTrack, 
   const laneWidth = Math.round(naturalLaneWidth * zoom);
   const laneExpr = `max(calc(100% - var(--score-head)), ${laneWidth}px)`;
   const progress = playhead ? Math.min(1, playhead.time / total) : 0;
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const [scrollerMetrics, setScrollerMetrics] = useState({ scrollWidth: 0, clientWidth: 0, headWidth: 0 });
+  useEffect(() => {
+    const element = scroller.current;
+    if (!element) return;
+    const update = () => {
+      const head = element.querySelector<HTMLElement>('.score-track-head');
+      setScrollLeft(element.scrollLeft);
+      setScrollerMetrics({
+        scrollWidth: element.scrollWidth,
+        clientWidth: element.clientWidth,
+        headWidth: head?.offsetWidth ?? 0,
+      });
+    };
+    update();
+    element.addEventListener('scroll', update, { passive: true });
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    return () => {
+      element.removeEventListener('scroll', update);
+      observer.disconnect();
+    };
+  }, [laneWidth]);
   // 播放时指针离开可见区域就翻页，让指针回到轨道区左侧。
   useEffect(() => {
     const element = scroller.current, head = element?.querySelector<HTMLElement>('.score-track-head');
@@ -110,6 +133,15 @@ export function ScoreArrangement({ score, selected, select, label, updateTrack, 
     const rect = event.currentTarget.getBoundingClientRect();
     seek(Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)) * total);
   };
+  const laneActual = Math.max(0, scrollerMetrics.scrollWidth - scrollerMetrics.headWidth);
+  const playheadOffset = progress * laneActual;
+  // 往右滑时间轴时，若播放位置已滚入轨头左侧（移出可见音轨区），指针应当隐藏；右侧超出可视区也隐藏。
+  const isPlayheadVisible = !!playhead && (
+    scrollerMetrics.headWidth === 0 || (
+      playheadOffset >= scrollLeft - 1 &&
+      (scrollerMetrics.clientWidth === 0 || playheadOffset <= scrollLeft + scrollerMetrics.clientWidth - scrollerMetrics.headWidth + 1)
+    )
+  );
   return <VStack className="score-arrangement" gap={0} role="group" aria-label={label}>
     <VStack className="score-scroll" ref={scroller} gap={0}>
       <VStack className="score-content" gap={0} style={{ '--score-lane': laneExpr, width: `calc(var(--score-head) + ${laneExpr})` } as CSSProperties}>
@@ -143,7 +175,7 @@ export function ScoreArrangement({ score, selected, select, label, updateTrack, 
           </HStack>
           <ScoreLane score={score} track={track} zoom={zoom} />
         </HStack>)}
-        {playhead ? <i className="score-playhead" style={{ left: `calc(var(--score-head) + var(--score-lane) * ${progress})` }} aria-hidden="true" /> : null}
+        {isPlayheadVisible ? <i className="score-playhead" style={{ left: `calc(var(--score-head) + var(--score-lane) * ${progress})` }} aria-hidden="true" /> : null}
       </VStack>
     </VStack>
   </VStack>;

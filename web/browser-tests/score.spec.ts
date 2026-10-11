@@ -74,6 +74,12 @@ test('新建编曲作品：示例乐谱、音块总览、声部调整与持久�
   await expect.poll(() => scroll.evaluate(el => el.scrollWidth > el.clientWidth * 1.5)).toBe(true);
   await scroll.evaluate(el => { el.scrollLeft = 200; });
   await expect.poll(() => rows.first().locator('.score-track-head').evaluate(el => Math.round(el.getBoundingClientRect().left - el.closest('.score-scroll')!.getBoundingClientRect().left))).toBe(0);
+  // 轨头声部名称采用小字号（12px），与下方声音音轨一致。
+  const nameFontSize = await rows.first().locator('.score-track-name').evaluate(el => window.getComputedStyle(el).fontSize);
+  expect(nameFontSize).toBe('12px');
+  // 向右滑动时间轴超出播放进度时，位于左侧轨头背后的播放指针隐藏，不穿透轨头。
+  await scroll.evaluate(el => { el.scrollLeft = 600; });
+  await expect(page.locator('.score-playhead')).toBeHidden();
   // 轨道区有最大高度（视口的 45%），声部多时上下滚动，时间轴固定在顶部。
   await page.setViewportSize({ width: 1280, height: 600 });
   await expect.poll(() => page.locator('.score-arrangement').evaluate(el => el.getBoundingClientRect().height)).toBeLessThanOrEqual(600 * .45 + 1);
