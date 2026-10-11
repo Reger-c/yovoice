@@ -437,7 +437,12 @@
   .ai-nav-head { padding-inline: var(--spacing-2); color: var(--app-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); }
   .ai-nav .astryx-list-item { border-radius: var(--radius-element); }
   .ai-nav .astryx-list-item[aria-selected="true"] { background: var(--color-background-muted); }
-  .ai-mark { flex-shrink: 0; background: var(--color-background-muted); color: var(--app-ink); font-weight: var(--font-weight-semibold); }
+  .ai-icon { flex-shrink: 0; width: var(--spacing-7); height: var(--spacing-7); border: var(--border-width) solid var(--app-line); border-radius: var(--radius-element); background: var(--app-white); color: var(--app-ink); font-size: var(--font-size-xs); }
+  .ai-icon[data-size="md"] { width: var(--spacing-10); height: var(--spacing-10); font-size: var(--font-size-sm); }
+  .ai-icon[data-active="true"] { border-color: color-mix(in srgb, var(--color-success) 42%, var(--app-line)); }
+  .ai-icon[data-custom="true"] { border-style: dashed; color: var(--app-muted); }
+  .ai-icon-glyph { width: 62%; height: 62%; background: var(--app-ink); mask: var(--ai-icon, none) center / contain no-repeat; -webkit-mask: var(--ai-icon, none) center / contain no-repeat; }
+  .ai-plan-hint { color: var(--app-muted); }
   .ai-detail { min-width: 0; padding: var(--spacing-6) var(--spacing-8); overflow-y: auto; }
   .ai-detail-head h2 { font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); }
   .ai-field-title { font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); color: var(--app-muted); }

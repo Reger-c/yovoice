@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { Avatar } from '@astryxdesign/core/Avatar';
+import { useState, type CSSProperties } from 'react';
 import { Badge } from '@astryxdesign/core/Badge';
 import { Button } from '@astryxdesign/core/Button';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
@@ -9,7 +8,7 @@ import { Switch } from '@astryxdesign/core/Switch';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { Token } from '@astryxdesign/core/Token';
 import { useTranslator } from '@astryxdesign/core/i18n';
-import { ArrowUpRight, Check, Play, RefreshCw, Search, Trash2 } from 'lucide-react';
+import { ArrowUpRight, Check, Play, Plus, RefreshCw, Search, Trash2 } from 'lucide-react';
 import { ConfirmDelete } from '../../shared/ui/app-dialog';
 import { Selector } from '../../shared/selector';
 import { call, CallError } from '../../shared/lib/client';
@@ -17,16 +16,27 @@ import { formatCallError } from '../../shared/i18n/format';
 import aiPresets from '../../shared/lib/ai-presets.json';
 import type { AIProvider, AITest, State } from '../../shared/workbench';
 
-export interface AIPreset { key: string; name: string; format: string; baseURL: string; modelsPath: string; keyURL?: string; endpoint: string }
+export interface AIPreset { key: string; name: string; format: string; baseURL: string; modelsPath: string; keyURL?: string; endpoint: string; plan?: string; icon?: string }
 export const presets = aiPresets as AIPreset[];
 const formats = ['chat_completions', 'responses', 'anthropic_messages'];
 
 type Editing = AIProvider & { key: string };
 const fresh = (p: AIPreset): Editing => ({ id: '', preset: p.key, name: '', format: p.format, baseURL: p.baseURL, modelsPath: p.modelsPath, model: '', key: '' });
 
-// 服务标识：只取名称首字做单色方块，不用表情或彩色图标。
-function ProviderMark({ name, size = 'sm' }: { name: string; size?: 'sm' | 'md' }) {
-  return <Avatar className="ai-mark" name={[...name.trim()][0]?.toUpperCase() ?? ''} size={size} shape="rounded" tooltip={false} />;
+// 服务商图标来自 Lobe Icons，统一按文字色单色显示；没有图标的服务显示名称首字，自定义服务显示加号。
+const icons = import.meta.glob('../../shared/assets/provider-icons/*.svg', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
+const iconURL = (name?: string) => name ? icons[`../../shared/assets/provider-icons/${name}.svg`] : undefined;
+function initials(name: string) {
+  const words = name.trim().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+  if (words.length >= 2 && /^[A-Za-z]/.test(words[0])) return (words[0][0] + words[1][0]).toUpperCase();
+  return [...(words[0] ?? 'AI')].slice(0, /^[A-Za-z]/.test(words[0] ?? 'A') ? 2 : 1).join('').toUpperCase();
+}
+function ProviderIcon({ preset, name, size = 'sm', active = false }: { preset?: AIPreset; name: string; size?: 'sm' | 'md'; active?: boolean }) {
+  const src = iconURL(preset?.icon);
+  return <HStack className="ai-icon" data-size={size} data-active={active} data-custom={preset?.key === 'custom' && !active} hAlign="center" vAlign="center" gap={0} aria-hidden>
+    {src ? <HStack className="ai-icon-glyph" gap={0} style={{ '--ai-icon': `url("${src}")` } as CSSProperties} />
+      : preset?.key === 'custom' && !active ? <Plus size={14} /> : <b>{initials(name)}</b>}
+  </HStack>;
 }
 
 // 右侧详情：密钥、服务地址和模型在同一页直接编辑；测试和同步模型前先保存。
@@ -72,8 +82,8 @@ function ProviderDetail({ provider, preset, current, run, saved, removed }: {
   return <VStack className="ai-detail grow" gap={5} aria-label={title}>
     <HStack className="ai-detail-head" hAlign="between" vAlign="center" gap={3} wrap="wrap">
       <HStack gap={3} vAlign="center">
-        <ProviderMark name={title} size="sm" />
-        <h2>{title}</h2>
+        <ProviderIcon preset={preset} name={title} size="md" active={!!provider} />
+        <VStack gap={0}><h2>{title}</h2>{preset.plan === 'coding' ? <small className="ai-plan-hint">{t('@yovoice.ai.codingPlanHint')}</small> : null}</VStack>
         {provider ? current ? <Token size="sm" color="green" label={t('@yovoice.ai.inUse')} /> : null : <Token size="sm" label={t('@yovoice.ai.notAdded')} />}
       </HStack>
       {provider ? <HStack gap={4} vAlign="center">
@@ -149,17 +159,24 @@ export function AISettings({ state, run }: { state: State; run: (task: () => Pro
   const preset = presets.find(p => p.key === presetKey) ?? presets.at(-1)!;
   const addable = presets.filter(p => p.key === 'custom' || !providers.some(x => x.preset === p.key));
   const presetName = (p: AIPreset) => p.key === 'custom' ? t('@yovoice.ai.customProvider') : p.name;
+  const presetOf = (p: AIProvider) => presets.find(x => x.key === p.preset);
+  // 参照 nexus：按量 API 与编程套餐地址、密钥都不同，分组单独成行；本地与自定义服务放在最后。
+  const groups = [
+    { key: 'api', items: addable.filter(p => p.endpoint === 'fixed' && p.plan !== 'coding') },
+    { key: 'coding', items: addable.filter(p => p.plan === 'coding') },
+    { key: 'local', items: addable.filter(p => p.endpoint !== 'fixed') },
+  ].filter(group => group.items.length);
   return <VStack className="settings-panel ai-panel" gap={4} id="ai-panel" role="tabpanel" aria-label={t('@yovoice.settings.tabAI')}>
     <small className="settings-intro">{t('@yovoice.ai.intro')}</small>
     <HStack className="ai-split" gap={0}>
       <VStack className="ai-nav" gap={4}>
         {providers.length ? <List header={<small className="ai-nav-head">{t('@yovoice.ai.added')}</small>} density="compact">
-          {providers.map(p => <ListItem key={p.id} label={p.name} isSelected={p.id === selection.value} startContent={<ProviderMark name={p.name} />}
+          {providers.map(p => <ListItem key={p.id} label={p.name} description={presetOf(p)?.plan === 'coding' ? t('@yovoice.ai.codingPlan') : undefined} isSelected={p.id === selection.value} startContent={<ProviderIcon preset={presetOf(p)} name={p.name} active />}
             endContent={p.id === state.aiProviderID ? <StatusDot variant="success" label={t('@yovoice.ai.inUse')} tooltip={t('@yovoice.ai.inUse')} /> : null} onClick={() => select(p.id)} />)}
         </List> : null}
-        <List header={<small className="ai-nav-head">{t('@yovoice.ai.addable')}</small>} density="compact">
-          {addable.map(p => <ListItem key={p.key} label={presetName(p)} isSelected={selection.value === `preset:${p.key}`} startContent={<ProviderMark name={presetName(p)} />} onClick={() => select(`preset:${p.key}`)} />)}
-        </List>
+        {groups.map(group => <List key={group.key} header={<small className="ai-nav-head">{t(`@yovoice.ai.group.${group.key}`)}</small>} density="compact">
+          {group.items.map(p => <ListItem key={p.key} label={presetName(p)} isSelected={selection.value === `preset:${p.key}`} startContent={<ProviderIcon preset={p} name={presetName(p)} />} onClick={() => select(`preset:${p.key}`)} />)}
+        </List>)}
       </VStack>
       <ProviderDetail key={selection.nonce} provider={provider} preset={preset} current={!!provider && provider.id === state.aiProviderID} run={run}
         saved={id => setSelection(s => ({ ...s, value: id }))} removed={() => select(providers.find(p => p.id !== provider?.id)?.id ?? `preset:${preset.key}`)} />

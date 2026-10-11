@@ -22,6 +22,8 @@ type ModelPackage struct {
 	EngineMinimum string   `json:"engineMinimum,omitempty"`
 	Voices        []string `json:"voices,omitempty"`
 	Variant       string   `json:"variant,omitempty"`
+	// LoadOptions 是启动内核时随模型传入的加载参数，例如 ACE-Step XL 需要指定 DiT 变体。
+	LoadOptions map[string]string `json:"loadOptions,omitempty"`
 	Task          string   `json:"task,omitempty"`
 	ID            string   `json:"id"`
 	Name          string   `json:"name"`

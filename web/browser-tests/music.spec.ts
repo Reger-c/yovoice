@@ -82,3 +82,16 @@ test('音乐版本以封面并排展示，点选版本即试听', async ({ page 
   await expect(page.locator('.notice')).toHaveCount(0);
   await page.screenshot({ path: testInfo.outputPath('music-takes.png') });
 });
+
+test('音乐模型与语音一致：已下载后只列已下载的模型', async ({ page }) => {
+  const draft = { ...createMusicDraft('zh-CN'), id: 'c'.repeat(32), modelId: 'ace-step-1.5-turbo-q8' };
+  const state = emptyState();
+  state.drafts = [draft];
+  state.models = [{ id: 'ace-step-1.5-turbo-q8', path: 'ace-step-1.5-turbo-q8_0.gguf', managed: true }];
+  await page.addInitScript(value => { if (!localStorage.getItem('voice-workbench-v1')) localStorage.setItem('voice-workbench-v1', value); }, JSON.stringify(state));
+  await page.goto('/');
+  await page.getByRole('combobox', { name: '模型' }).click();
+  await expect(page.getByRole('option', { name: /ACE-Step 1\.5 Turbo · Q8/ })).toBeVisible();
+  await expect(page.getByRole('option', { name: /BF16|XL Turbo/ })).toHaveCount(0);
+  await expect(page.getByRole('option', { name: '管理模型…' })).toBeVisible();
+});

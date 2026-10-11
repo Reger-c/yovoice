@@ -52,11 +52,11 @@ func (e *Engine) stop() {
 		e.key = ""
 	}
 }
-func (e *Engine) start(ctx context.Context, executable, model, family, task, backend string, encoderSamples int, progress func(msg.Code, msg.Params)) error {
+func (e *Engine) start(ctx context.Context, executable, model, family, task, backend string, loadOptions map[string]string, encoderSamples int, progress func(msg.Code, msg.Params)) error {
 	if task == "" {
 		task = "tts"
 	}
-	key := fmt.Sprintf("%s|%s|%s|%s|%s|%d", executable, model, family, task, backend, encoderSamples)
+	key := fmt.Sprintf("%s|%s|%s|%s|%s|%v|%d", executable, model, family, task, backend, loadOptions, encoderSamples)
 	if e.process != nil && e.key == key {
 		select {
 		case <-e.done:
@@ -80,6 +80,9 @@ func (e *Engine) start(ctx context.Context, executable, model, family, task, bac
 	port := l.Addr().(*net.TCPAddr).Port
 	l.Close()
 	entry := map[string]any{"id": "index", "family": family, "path": model, "task": task, "mode": "offline"}
+	if len(loadOptions) > 0 {
+		entry["load_options"] = loadOptions
+	}
 	if encoderSamples > 0 {
 		entry["session_options"] = map[string]any{"voxcpm2.audiovae_encoder_sample_capacity": encoderSamples}
 	}
@@ -201,7 +204,7 @@ func (e *Engine) Generate(ctx context.Context, executable string, m schema.Insta
 			encoderSamples = max(encoderSamples, int(math.Ceil(duration*16000/2560))*2560)
 		}
 	}
-	if err = e.start(ctx, executable, m.Path, definition.Family, definition.Task, backend, encoderSamples, progress); err != nil {
+	if err = e.start(ctx, executable, m.Path, definition.Family, definition.Task, backend, definition.LoadOptions, encoderSamples, progress); err != nil {
 		return err
 	}
 	progress(msg.ActivitySynthesizing, nil)

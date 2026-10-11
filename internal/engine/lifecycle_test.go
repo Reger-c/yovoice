@@ -53,6 +53,15 @@ func TestEngineLifecycle(t *testing.T) {
 	if !bytes.Contains(config, []byte(`"family":"voxcpm2"`)) || !bytes.Contains(config, []byte(`"mode":"offline"`)) {
 		t.Fatal(string(config))
 	}
+	// ACE-Step XL 与 Turbo 共用内核，但需要随模型传入 DiT 变体。
+	music := schema.DefaultDraft()
+	must(t, json.Unmarshal([]byte(`{"kind":"music","modelId":"ace-step-1.5-xl-turbo-q8","text":"city pop","lyrics":"[verse]\n夏夜"}`), &music))
+	must(t, engine.Generate(ctx, executable, schema.InstalledModel{ID: music.ModelID, Path: model}, "cpu", music, "", "", out, func(msg.Code, msg.Params) {}))
+	config, err = os.ReadFile(filepath.Join(root, "runtime", "server.json"))
+	must(t, err)
+	if !bytes.Contains(config, []byte(`"load_options":{"ace_step.dit_model_path":"acestep-v15-xl-turbo"}`)) {
+		t.Fatal(string(config))
+	}
 	d.Text = "等待取消"
 	cancelled, stop := context.WithCancel(ctx)
 	timer := time.AfterFunc(200*time.Millisecond, stop)

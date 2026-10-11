@@ -2477,9 +2477,6 @@
   "@yovoice.ai.added": {
     "defaultMessage": "已添加"
   },
-  "@yovoice.ai.addable": {
-    "defaultMessage": "可添加"
-  },
   "@yovoice.ai.notAdded": {
     "defaultMessage": "未添加"
   },
@@ -2647,5 +2644,20 @@
   },
   "@yovoice.app.expandInspector": {
     "defaultMessage": "展开右侧面板"
+  },
+  "@yovoice.ai.group.api": {
+    "defaultMessage": "按量 API"
+  },
+  "@yovoice.ai.group.coding": {
+    "defaultMessage": "编程套餐"
+  },
+  "@yovoice.ai.group.local": {
+    "defaultMessage": "本地与自定义"
+  },
+  "@yovoice.ai.codingPlan": {
+    "defaultMessage": "编程套餐"
+  },
+  "@yovoice.ai.codingPlanHint": {
+    "defaultMessage": "使用编程套餐的专属密钥和额度，与按量 API 不通用"
   }
 }

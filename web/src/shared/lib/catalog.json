@@ -559,6 +559,40 @@
     "sha256": "cd7bf272588f548d4a253f57483132ef0f8f54a549f26471b09caa72c654270b"
   },
   {
+    "id": "ace-step-1.5-xl-turbo-bf16",
+    "name": "ACE-Step 1.5 XL Turbo",
+    "family": "ace_step",
+    "task": "gen",
+    "engineMinimum": "v0.9.1",
+    "version": "1.5",
+    "precision": "BF16",
+    "repo": "CaptainArni/audio.cpp-gguf",
+    "revision": "ac4d11eda6855ddedb16e42632e1a9376bfcfa81",
+    "loadOptions": {
+      "ace_step.dit_model_path": "acestep-v15-xl-turbo"
+    },
+    "remotePath": "ACE-Step1.5-GGUF/xl-turbo/ace-step-1.5-xl-turbo-bf16.gguf",
+    "size": 15277379424,
+    "sha256": "9529c24b3b929c701b34d0eee3686c76084b99e993539802f95ed171e954ff65"
+  },
+  {
+    "id": "ace-step-1.5-xl-turbo-q8",
+    "name": "ACE-Step 1.5 XL Turbo",
+    "family": "ace_step",
+    "task": "gen",
+    "engineMinimum": "v0.9.1",
+    "version": "1.5",
+    "precision": "Q8",
+    "repo": "CaptainArni/audio.cpp-gguf",
+    "revision": "ac4d11eda6855ddedb16e42632e1a9376bfcfa81",
+    "loadOptions": {
+      "ace_step.dit_model_path": "acestep-v15-xl-turbo"
+    },
+    "remotePath": "ACE-Step1.5-GGUF/xl-turbo-q8dit/ace-step-1.5-xl-turbo-q8dit.gguf",
+    "size": 10710565056,
+    "sha256": "60ddf6d4ebec685c89fb451af8a7983aca65c58baa6aa6e5e25d168b4b7613f8"
+  },
+  {
     "id": "musescore-general-sf2",
     "name": "MuseScore General",
     "family": "soundfont",
