@@ -2659,5 +2659,20 @@
   },
   "@yovoice.ai.codingPlanHint": {
     "defaultMessage": "使用编程套餐的专属密钥和额度，与按量 API 不通用"
+  },
+  "@yovoice.error.musicLyricsRequired": {
+    "defaultMessage": "YuE2 需要填写歌词，暂不支持纯音乐。"
+  },
+  "@yovoice.settings.modelDesc.yue2": {
+    "defaultMessage": "根据歌词和风格生成整首带人声的歌曲，长度由歌词决定。模型许可为 CC BY-NC 4.0，仅限非商业用途。"
+  },
+  "@yovoice.music.yueLength": {
+    "defaultMessage": "YuE2 按歌词段落生成，歌曲长度由歌词决定。"
+  },
+  "@yovoice.music.yueVocalOnly": {
+    "defaultMessage": "YuE2 只生成带人声的歌曲"
+  },
+  "@yovoice.music.yueAdvancedHint": {
+    "defaultMessage": "固定种子可以复现同一版本。"
   }
 }

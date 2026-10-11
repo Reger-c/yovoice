@@ -109,6 +109,7 @@ const (
 	ErrMusicStyle            Code = "@yovoice.error.musicStyle"
 	ErrMusicLyrics           Code = "@yovoice.error.musicLyrics"
 	ErrMusicParams           Code = "@yovoice.error.musicParams"
+	ErrMusicLyricsRequired   Code = "@yovoice.error.musicLyricsRequired"
 	ErrScoreInvalid          Code = "@yovoice.error.scoreInvalid"
 	ErrMidiInvalid           Code = "@yovoice.error.midiInvalid"
 	ErrEngineUpgradeRequired Code = "@yovoice.error.engineUpgradeRequired"
@@ -184,7 +185,7 @@ func All() []Code {
 		ErrCPUBundleInvalid, ErrBackendUnsupported, ErrPlatformArch, ErrMacBackend, ErrMacAppleSilicon,
 		ErrRequestInvalid, ErrMethodUnsupported,
 		ErrVoxModeInvalid, ErrVoxTextLimits, ErrVoxReferenceRequired, ErrVoxParams,
-		ErrMusicStyle, ErrMusicLyrics, ErrMusicParams, ErrEngineUpgradeRequired, ErrScoreInvalid, ErrMidiInvalid,
+		ErrMusicStyle, ErrMusicLyrics, ErrMusicParams, ErrMusicLyricsRequired, ErrEngineUpgradeRequired, ErrScoreInvalid, ErrMidiInvalid,
 		ErrAIProviderInvalid, ErrAINotConfigured, ErrAIAuth, ErrAIRateLimit, ErrAINetwork, ErrAIResponse, ErrAIModelsPath, ErrAIResultInvalid, ErrAITimeout,
 		ErrLegacyRestore, ErrUnknown,
 	}

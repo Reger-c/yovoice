@@ -22,17 +22,30 @@ type ModelPackage struct {
 	EngineMinimum string   `json:"engineMinimum,omitempty"`
 	Voices        []string `json:"voices,omitempty"`
 	Variant       string   `json:"variant,omitempty"`
-	// LoadOptions 是启动内核时随模型传入的加载参数，例如 ACE-Step XL 需要指定 DiT 变体。
-	LoadOptions map[string]string `json:"loadOptions,omitempty"`
-	Task        string            `json:"task,omitempty"`
-	ID          string            `json:"id"`
-	Name        string            `json:"name"`
-	Family      string            `json:"family"`
-	Version     string            `json:"version"`
-	Precision   string            `json:"precision"`
-	RemotePath  string            `json:"remotePath"`
-	Size        int64             `json:"size"`
-	SHA256      string            `json:"sha256"`
+	// LoadOptions、SessionOptions 是启动内核时随模型传入的参数，例如 ACE-Step XL 需要指定 DiT 变体，
+	// YuE2 需要指定主模型文件。
+	LoadOptions    map[string]string `json:"loadOptions,omitempty"`
+	SessionOptions map[string]string `json:"sessionOptions,omitempty"`
+	// Files 不为空时是多文件模型包：各文件按相对路径下载到 Directory，登记的模型路径是该目录。
+	// RemotePath 仍指向主模型文件，用于导入时识别。
+	Files      []ModelFile `json:"files,omitempty"`
+	Directory  string      `json:"directory,omitempty"`
+	Task       string      `json:"task,omitempty"`
+	ID         string      `json:"id"`
+	Name       string      `json:"name"`
+	Family     string      `json:"family"`
+	Version    string      `json:"version"`
+	Precision  string      `json:"precision"`
+	RemotePath string      `json:"remotePath"`
+	Size       int64       `json:"size"`
+	SHA256     string      `json:"sha256"`
+}
+
+// ModelFile 是多文件模型包中的一个文件。
+type ModelFile struct {
+	Path   string `json:"path"`
+	Size   int64  `json:"size"`
+	SHA256 string `json:"sha256"`
 }
 
 //go:embed catalog.json
@@ -100,6 +113,18 @@ func ServerBackend(backend string) string {
 	}
 	return backend
 }
+
+// IsMusic 判断模型家族是否为整首歌曲生成（风格 + 歌词）。
+func IsMusic(family string) bool { return family == "ace_step" || family == "yue2" }
+
+// PackageFiles 返回需要下载的文件；单文件模型只有主模型一项。
+func (m ModelPackage) PackageFiles() []ModelFile {
+	if len(m.Files) > 0 {
+		return m.Files
+	}
+	return []ModelFile{{Path: m.RemotePath, Size: m.Size, SHA256: m.SHA256}}
+}
+
 func Lookup(id string) (ModelPackage, error) {
 	for _, m := range Models {
 		if m.ID == id {
@@ -109,7 +134,12 @@ func Lookup(id string) (ModelPackage, error) {
 	return ModelPackage{}, msg.Err(msg.ErrModelUnsupported, nil)
 }
 func (m ModelPackage) URL(source string) (string, error) {
-	if m.RemotePath == "" {
+	return m.FileURL(source, m.RemotePath)
+}
+
+// FileURL 返回模型包内某个文件的下载地址。
+func (m ModelPackage) FileURL(source, path string) (string, error) {
+	if path == "" {
 		return "", msg.Err(msg.ErrModelImportRequired, nil)
 	}
 	revision := m.Revision
@@ -119,19 +149,19 @@ func (m ModelPackage) URL(source string) (string, error) {
 	if m.Repo != "" {
 		switch source {
 		case "huggingface":
-			return "https://huggingface.co/" + m.Repo + "/resolve/" + revision + "/" + m.RemotePath, nil
+			return "https://huggingface.co/" + m.Repo + "/resolve/" + revision + "/" + path, nil
 		case "mirror", "modelscope":
-			return "https://hf-mirror.com/" + m.Repo + "/resolve/" + revision + "/" + m.RemotePath, nil
+			return "https://hf-mirror.com/" + m.Repo + "/resolve/" + revision + "/" + path, nil
 		}
 		return "", msg.Err(msg.ErrDownloadSource, nil)
 	}
 	switch source {
 	case "huggingface":
-		return "https://huggingface.co/audio-cpp/audio.cpp-gguf/resolve/" + revision + "/" + m.RemotePath, nil
+		return "https://huggingface.co/audio-cpp/audio.cpp-gguf/resolve/" + revision + "/" + path, nil
 	case "mirror":
-		return "https://hf-mirror.com/audio-cpp/audio.cpp-gguf/resolve/" + revision + "/" + m.RemotePath, nil
+		return "https://hf-mirror.com/audio-cpp/audio.cpp-gguf/resolve/" + revision + "/" + path, nil
 	case "modelscope":
-		return "https://modelscope.cn/models/HereIsMark/audio.cpp-gguf/resolve/master/" + m.RemotePath, nil
+		return "https://modelscope.cn/models/HereIsMark/audio.cpp-gguf/resolve/master/" + path, nil
 	}
 	return "", msg.Err(msg.ErrDownloadSource, nil)
 }

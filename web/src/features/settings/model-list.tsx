@@ -18,6 +18,7 @@ function downloadStatusLabel(t: (key: string) => string, downloading: boolean, r
 function modelDescription(t: (key: string) => string, model: ModelPackage) {
   if (model.family === 'soundfont') return t('@yovoice.settings.modelDesc.soundfont');
   if (model.family === 'ace_step') return t('@yovoice.settings.modelDesc.music');
+  if (model.family === 'yue2') return t('@yovoice.settings.modelDesc.yue2');
   if (model.family === 'kokoro_tts') return t(model.id === 'kokoro-82m-q8' ? '@yovoice.settings.modelDesc.kokoroOfficial' : '@yovoice.settings.modelDesc.kokoro');
   if (model.family === 'omnivoice') return t('@yovoice.settings.modelDesc.omni');
   if (model.family === 'qwen3_tts') return t(`@yovoice.settings.modelDesc.qwen.${model.variant || 'base'}`);

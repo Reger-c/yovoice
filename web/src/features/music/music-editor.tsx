@@ -9,7 +9,7 @@ import { useTranslator } from '@astryxdesign/core/i18n';
 import { AudioLines, Check, ChevronDown, ChevronUp, Play, Sparkles } from 'lucide-react';
 import { call } from '../../shared/lib/client';
 import { AIComposer } from '../../shared/ui/ai-composer';
-import { formatTime, type Draft, type Generation, type State, type UiLocale } from '../../shared/workbench';
+import { formatTime, isYuE, type Draft, type Generation, type State, type UiLocale } from '../../shared/workbench';
 import { createMusicDraft, lyricSections, musicLanguages, styleTags } from './music-draft';
 
 import { SongCover } from './song-cover';
@@ -25,6 +25,8 @@ export function MusicEditor({ draft, state, change, locale, takes, current, sele
   takes: Generation[]; current?: string; select: (take: Generation) => void; configureAI: () => void;
 }) {
   const t = useTranslator();
+  // YuE2 只能生成带人声的歌曲，选中时隐藏纯音乐切换。
+  const yue = isYuE(draft.modelId);
   const [allTags, setAllTags] = useState(false);
   const lyrics = useRef<HTMLTextAreaElement>(null);
   const tags = splitTags(draft.text);
@@ -82,14 +84,14 @@ export function MusicEditor({ draft, state, change, locale, takes, current, sele
     <VStack className="music-block" gap={3}>
       <HStack vAlign="center" gap={2} wrap="wrap">
         <h2 className="grow">{t('@yovoice.music.lyrics')}</h2>
-        {!draft.instrumental ? <DropdownMenu hasChevron alignment="end" button={{ size: 'sm', variant: 'ghost', label: t('@yovoice.music.insertSection') }}
+        {!draft.instrumental || yue ? <DropdownMenu hasChevron alignment="end" button={{ size: 'sm', variant: 'ghost', label: t('@yovoice.music.insertSection') }}
           items={lyricSections.map(section => ({ label: `[${section}]`, onClick: () => insertSection(section) }))} /> : null}
-        <SegmentedControl label={t('@yovoice.music.lyricsMode')} size="sm" value={draft.instrumental ? 'instrumental' : 'vocal'} onChange={value => change({ instrumental: value === 'instrumental' })}>
+        {yue ? <small>{t('@yovoice.music.yueVocalOnly')}</small> : <SegmentedControl label={t('@yovoice.music.lyricsMode')} size="sm" value={draft.instrumental ? 'instrumental' : 'vocal'} onChange={value => change({ instrumental: value === 'instrumental' })}>
           <SegmentedControlItem value="vocal" label={t('@yovoice.music.vocal')} />
           <SegmentedControlItem value="instrumental" label={t('@yovoice.music.instrumental')} />
-        </SegmentedControl>
+        </SegmentedControl>}
       </HStack>
-      {draft.instrumental
+      {draft.instrumental && !yue
         ? <p className="music-instrumental">{t('@yovoice.music.instrumentalHint')}</p>
         : <TextArea ref={lyrics} className="music-lyrics" label={t('@yovoice.music.lyrics')} isLabelHidden value={draft.lyrics ?? ''} maxLength={4000} rows={14} hasSpellCheck={false} placeholder={t('@yovoice.music.lyricsPlaceholder')} onChange={value => change({ lyrics: value.slice(0, 4000) })} />}
     </VStack>

@@ -2659,5 +2659,20 @@
   },
   "@yovoice.ai.codingPlanHint": {
     "defaultMessage": "Uses the plan's own key and quota, separate from the pay-as-you-go API"
+  },
+  "@yovoice.error.musicLyricsRequired": {
+    "defaultMessage": "YuE2 needs lyrics; instrumental tracks are not supported."
+  },
+  "@yovoice.settings.modelDesc.yue2": {
+    "defaultMessage": "Generates a full vocal song from lyrics and style; length follows the lyrics. Licensed CC BY-NC 4.0, non-commercial use only."
+  },
+  "@yovoice.music.yueLength": {
+    "defaultMessage": "YuE2 sings section by section, so the lyrics decide the song length."
+  },
+  "@yovoice.music.yueVocalOnly": {
+    "defaultMessage": "YuE2 only makes vocal songs"
+  },
+  "@yovoice.music.yueAdvancedHint": {
+    "defaultMessage": "A fixed seed reproduces the same take."
   }
 }

@@ -108,8 +108,8 @@ func TestOmniAndQwenRequests(t *testing.T) {
 func TestModelVariantsAndOptions(t *testing.T) {
 	for _, m := range catalog.Models {
 		t.Run(m.ID, func(t *testing.T) {
-			if m.Family == "ace_step" {
-				t.Skip("音乐模型参数由 TestMusicRequest 覆盖")
+			if catalog.IsMusic(m.Family) {
+				t.Skip("音乐模型参数由 TestMusicRequest、TestYuE2Request 覆盖")
 			}
 			if m.Family == "soundfont" {
 				t.Skip("音色库由编曲渲染使用，不经过推理引擎")
@@ -160,6 +160,47 @@ func TestModelVariantsAndOptions(t *testing.T) {
 		if schema.Validate(d) == nil {
 			t.Fatal("拒绝无效或互斥的音色属性", invalid)
 		}
+	}
+}
+
+func TestYuE2Request(t *testing.T) {
+	d := schema.DefaultDraft()
+	d.Kind, d.ModelID, d.Text, d.Lyrics = "music", "yue2-3b-q8", "Mandarin, city pop, warm synths", " [verse]\n晚风吹过招牌 "
+	// 音乐草稿默认带 ACE-Step 时长，YuE2 不使用也不应因此失败。
+	d.ModelOptions = map[string]map[string]any{"ace_step": {"duration_seconds": float64(60)}}
+	seed := 9
+	d.Seed = &seed
+	p, err := BuildRequest(d, "", "")
+	must(t, err)
+	r := p["request"].(map[string]any)
+	o := r["options"].(map[string]any)
+	if r["text"] != "[verse]\n晚风吹过招牌" || o["lyrics"] != r["text"] || o["style"] != d.Text || o["seed"] != 9 || len(o) != 3 {
+		t.Fatal(r)
+	}
+	if d.RequiresVoice() {
+		t.Fatal("YuE2 不需要参考音色")
+	}
+	for _, patch := range []func(*schema.Draft){
+		func(d *schema.Draft) { d.Lyrics = " " },
+		func(d *schema.Draft) { d.Instrumental = true },
+		func(d *schema.Draft) { d.Text = "" },
+	} {
+		invalid := d
+		patch(&invalid)
+		if _, err := BuildRequest(invalid, "", ""); err == nil {
+			t.Fatal("无效的 YuE2 草稿应失败", invalid)
+		}
+	}
+	m, _ := catalog.Lookup("yue2-3b-bf16")
+	if len(m.Files) != 6 || m.SessionOptions["yue2.model_gguf"] != "yue2-3b-bf16.gguf" || m.Files[0].Path != m.RemotePath {
+		t.Fatal(m)
+	}
+	var total int64
+	for _, f := range m.Files {
+		total += f.Size
+	}
+	if total != m.Size {
+		t.Fatal("模型包大小应为各文件之和", total, m.Size)
 	}
 }
 
