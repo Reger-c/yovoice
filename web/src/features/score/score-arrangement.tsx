@@ -115,24 +115,26 @@ export function ScoreArrangement({ score, selected, select, label, updateTrack, 
       <VStack className="score-content" gap={0} style={{ '--score-lane': laneExpr, width: `calc(var(--score-head) + ${laneExpr})` } as CSSProperties}>
         <HStack className="score-ruler-row" gap={0}>
           <HStack className="score-track-head score-ruler-head" gap={2} vAlign="center"><small className="score-ruler-total" title={t('@yovoice.score.tracks')}>{formatTime(total)}</small><TrackZoom value={zoom} change={setZoom} disabled={false} /></HStack>
-          <HStack className="score-ruler grow" gap={0} onPointerDown={playhead ? seekAt : undefined} data-seekable={!!playhead}>
+          <HStack className="score-ruler grow" gap={0} role="list" aria-label={t('@yovoice.score.sections')} onPointerDown={playhead ? seekAt : undefined} data-seekable={!!playhead}>
             {sections.map((section, i) => {
+              // 段落直接标在时间轴上：名称、起始时间与小节范围，变速段落附上速度。
               const start = scoreSeconds(score, section.start), end = scoreSeconds(score, section.end + 1);
-              return <VStack key={`${section.name}-${section.start}`} className="score-ruler-section" data-odd={i % 2 === 1} gap={0} style={{ flexGrow: Math.max(.01, end - start) } as CSSProperties}>
-                <b>{section.name || ' '}</b><small>{formatTime(start)}</small>
+              const detail = `${t('@yovoice.score.bars', { start: section.start, end: section.end })}${section.tempo ? ` · ${section.tempo} BPM` : ''}`;
+              return <VStack key={`${section.name}-${section.start}`} className="score-ruler-section" role="listitem" data-odd={i % 2 === 1} gap={0} style={{ flexGrow: Math.max(.01, end - start) } as CSSProperties}>
+                <b>{section.name || ' '}</b><small>{formatTime(start)} · {detail}</small>
               </VStack>;
             })}
           </HStack>
         </HStack>
         {score.tracks.map((track, index) => <HStack key={track.id} className="score-track" data-role={track.role ?? 'other'} data-muted={!!track.mute} aria-current={track.id === selected ? 'true' : undefined} gap={0}
           style={{ '--track-index': Math.min(index, 12) } as CSSProperties} onPointerDown={() => select(track.id)}>
-          <HStack className="score-track-head" gap={1} vAlign="center">
+          <HStack className="score-track-head" gap={0.5} vAlign="center">
             <DropdownMenu hasChevron={false} button={{ size: 'sm', variant: 'ghost', isIconOnly: true, className: 'score-role-button', icon: <Circle className="score-role-dot" />, label: t('@yovoice.score.roleOf', { name: track.name }) }}
               items={scoreRoles.map(role => ({ label: roleLabel(role), icon: <Circle className="score-role-dot" data-role={role} />, endContent: role === (track.role ?? 'other') ? <Check size={14} aria-hidden /> : undefined, onClick: () => updateTrack(track.id, { role, level: undefined }) }))} />
             <b className="score-track-name" title={`${track.name} · ${roleLabel(track.role ?? 'other')}`}>{track.name}</b>
             {track.drums ? <small className="score-drum-kit grow">{t('@yovoice.score.drumKit')}</small>
               : <Selector label={t('@yovoice.score.instrumentOf', { name: track.name })} isLabelHidden size="sm" variant="ghost" className="score-instrument grow" value={String(track.program)} options={gmPrograms.map((name, program) => ({ value: String(program), label: name }))} onChange={value => updateTrack(track.id, { program: Number(value) })} />}
-            <label className="number-field compact"><input type="number" aria-label={t('@yovoice.score.levelOf', { name: track.name })} min={-60} max={0} step={1} value={targetLevel(track)} onChange={event => { const level = Number(event.target.value); if (level >= -60 && level < 0) updateTrack(track.id, { level }); }} />dB</label>
+            <label className="number-field compact" title={t('@yovoice.score.levelOf', { name: track.name })}><input type="number" aria-label={t('@yovoice.score.levelOf', { name: track.name })} min={-60} max={0} step={1} value={targetLevel(track)} onChange={event => { const level = Number(event.target.value); if (level >= -60 && level < 0) updateTrack(track.id, { level }); }} /><small aria-hidden="true">dB</small></label>
             <Switch label={t('@yovoice.score.playTrack', { name: track.name })} isLabelHidden size="sm" value={!track.mute} onChange={on => updateTrack(track.id, { mute: !on || undefined })} />
           </HStack>
           <ScoreLane score={score} track={track} zoom={zoom} />

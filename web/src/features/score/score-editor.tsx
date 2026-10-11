@@ -3,12 +3,12 @@ import { Button } from '@astryxdesign/core/Button';
 import { DropdownMenu } from '@astryxdesign/core/DropdownMenu';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { useTranslator } from '@astryxdesign/core/i18n';
-import { ClipboardCopy, Download, Ellipsis, FileMusic, Sparkles } from 'lucide-react';
+import { Download, FileMusic, Sparkles, Upload } from 'lucide-react';
 import { Selector } from '../../shared/selector';
 import { AIComposer } from '../../shared/ui/ai-composer';
 import { call, isDesktop } from '../../shared/lib/client';
 import { formatTime, type Draft, type Score, type ScoreTrack, type State, type UiLocale } from '../../shared/workbench';
-import { agentPrompt, exampleScore, noteCount, scoreBars, scoreDuration } from './score-draft';
+import { exampleScore, noteCount, scoreBars, scoreDuration } from './score-draft';
 import { midiToScore, scoreToMidi } from './score-midi';
 import { ScoreArrangement } from './score-arrangement';
 
@@ -33,7 +33,6 @@ export function ScoreEditor({ draft, state, change, locale, onError, configureAI
   const score = draft.score!;
   const input = useRef<HTMLInputElement>(null);
   const [selected, setSelected] = useState<string>();
-  const [copied, setCopied] = useState(false);
   const [seconds, setSeconds] = useState(60);
   const notes = noteCount(score);
   const replace = (next: Score) => { setSelected(undefined); change({ score: next }); };
@@ -51,10 +50,6 @@ export function ScoreEditor({ draft, state, change, locale, onError, configureAI
       else download(JSON.stringify(score, null, 2), 'application/json', `${fileName}.json`);
     } catch (error) { onError((error as Error).message); }
   }
-  async function copyPrompt() {
-    try { await navigator.clipboard.writeText(agentPrompt(locale, draft)); setCopied(true); setTimeout(() => setCopied(false), 2000); }
-    catch (error) { onError((error as Error).message); }
-  }
   const composer = <AIComposer kind="score" projectId={draft.id} state={state} overwrite={notes > 0} configure={configureAI} apply={result => replace(result as Score)}
     placeholder={t('@yovoice.ai.scorePlaceholder')} submitLabel={t('@yovoice.ai.scoreSubmit')}
     start={brief => call('ai.score', { projectId: draft.id, brief, seconds, locale })}
@@ -64,15 +59,11 @@ export function ScoreEditor({ draft, state, change, locale, onError, configureAI
     <HStack hAlign="between" vAlign="center" gap={2} wrap="wrap">
       <VStack gap={0}><h2>{t('@yovoice.score.arrangement')}</h2><small className="score-summary">{summary}</small></VStack>
       <HStack gap={2} vAlign="center" wrap="wrap">
-        {copied ? <small role="status">{t('@yovoice.score.promptCopied')}</small> : null}
         <DropdownMenu hasChevron alignment="end" button={{ size: 'sm', variant: 'secondary', icon: <Download />, label: t('@yovoice.score.export'), isDisabled: !notes }} items={[
           { id: 'mid', label: t('@yovoice.score.exportMidi'), onClick: () => void exportScore('mid') },
           { id: 'json', label: t('@yovoice.score.exportJson'), onClick: () => void exportScore('json') },
         ]} />
-        <DropdownMenu hasChevron={false} alignment="end" button={{ size: 'sm', variant: 'ghost', isIconOnly: true, icon: <Ellipsis />, label: t('@yovoice.project.more') }} items={[
-          { id: 'import', label: t('@yovoice.score.import'), icon: <FileMusic />, onClick: () => void importScore() },
-          { id: 'prompt', label: t('@yovoice.score.copyPrompt'), icon: <ClipboardCopy />, onClick: () => void copyPrompt() },
-        ]} />
+        <Button size="sm" variant="secondary" icon={<Upload />} label={t('@yovoice.score.importShort')} tooltip={t('@yovoice.score.import')} onClick={() => void importScore()} />
       </HStack>
       <input ref={input} hidden type="file" accept=".mid,.midi,.json" aria-label={t('@yovoice.score.file')} onChange={async event => {
         const file = event.target.files?.[0]; event.target.value = '';

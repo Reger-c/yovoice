@@ -1,4 +1,4 @@
-import { createDraft, type Draft, type Score, type ScoreNote, type ScoreRole, type ScoreTrack, type UiLocale } from '../../shared/workbench';
+import { createDraft, type Draft, type Score, type ScoreRole, type ScoreTrack, type UiLocale } from '../../shared/workbench';
 
 export const soundFontId = 'musescore-general-sf2';
 
@@ -78,19 +78,4 @@ export function createScoreDraft(locale: UiLocale, example = true): Draft {
     title: example ? (locale === 'zh-CN' ? '科技解读 · 垫底配乐' : 'Tech Explainer Underscore') : createDraft(false, locale).title,
     score: example ? exampleScore(locale) : emptyScore(),
   };
-}
-
-// 给外部 Agent 的提示词：说明乐谱格式、可用声部和电平约定，Agent 写好后导入或用 CLI 渲染。
-export function agentPrompt(locale: UiLocale, draft: Draft) {
-  const sample: ScoreNote = { bar: 1, beat: 1, pitch: 62, length: 0.5, velocity: 80 };
-  const zh = locale === 'zh-CN';
-  return [
-    zh ? `请为「${draft.title}」写一份 yovoice 编曲乐谱 JSON。` : `Write a yovoice score JSON for "${draft.title}".`,
-    zh ? '格式：{ tempo, timeSignature: [4, 4], key, sections: [{ name, start, end, tempo? }], tracks: [{ id, name, role, program, drums?, level?, pan?, reverb?, humanize?: { velocity, timingMs }, dynamics?: [{ start, end, from, to }], notes: [...] }] }'
-      : 'Format: { tempo, timeSignature: [4, 4], key, sections: [{ name, start, end, tempo? }], tracks: [{ id, name, role, program, drums?, level?, pan?, reverb?, humanize?: { velocity, timingMs }, dynamics?: [{ start, end, from, to }], notes: [...] }] }',
-    zh ? `音符示例：${JSON.stringify(sample)}。bar 与 beat 从 1 开始，length 以拍计，pitch 为 MIDI 音高（60 = C4），velocity 1–127。` : `Note example: ${JSON.stringify(sample)}. bar and beat start at 1, length is in beats, pitch is MIDI (60 = C4), velocity 1–127.`,
-    zh ? 'program 为 General MIDI 音色号（0 钢琴、40 小提琴、42 大提琴、48 弦乐合奏、89 暖音铺底、81 锯齿波）；鼓组设 drums: true，36 底鼓、38 军鼓、37 边击、42 闭镲。' : 'program is a General MIDI number (0 piano, 40 violin, 42 cello, 48 strings, 89 warm pad, 81 saw lead); set drums: true for kits, 36 kick, 38 snare, 37 side stick, 42 closed hat.',
-    zh ? 'role 取 melody、piano、strings、bass、drums、pad、arp、other，决定默认电平；每个声部只写一种乐器。' : 'role is one of melody, piano, strings, bass, drums, pad, arp, other and sets the default level; one instrument per track.',
-    zh ? '只输出 JSON。渲染：yovoice score render score.json --output music.wav --stems stems/' : 'Output JSON only. Render with: yovoice score render score.json --output music.wav --stems stems/',
-  ].join('\n');
 }

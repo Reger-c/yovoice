@@ -49,7 +49,7 @@ export function MusicInspector({ draft, state, catalog, change, generate, cancel
         <LoaderCircle size={14} className="generation-spinner" aria-hidden="true" />
         <small className="grow" role="status">{state.activity ? formatActivity(t, state.activity) : ''}</small>
         <small className="generation-elapsed" aria-label={t('@yovoice.create.elapsed')}>{formatTime(elapsed)}</small>
-      </HStack> : engineOutdated ? <HStack gap={2} vAlign="center" hAlign="between" wrap="wrap"><small className="grow">{t('@yovoice.music.engineRequired', { version: model?.engineMinimum })}</small><Button size="sm" label={t('@yovoice.music.updateEngine')} onClick={upgradeEngine} /></HStack> : <small>{t('@yovoice.music.generateHint')}</small>}
+      </HStack> : engineOutdated ? <HStack gap={2} vAlign="center" hAlign="between" wrap="wrap"><small className="grow">{t('@yovoice.music.engineRequired', { version: model?.engineMinimum })}</small><Button size="sm" label={t('@yovoice.music.updateEngine')} onClick={upgradeEngine} /></HStack> : null}
     </VStack>
     <VStack className="inspector-scroll" gap={5}>
       {header}
@@ -63,7 +63,6 @@ export function MusicInspector({ draft, state, catalog, change, generate, cancel
         <SegmentedControl label={t('@yovoice.music.duration')} size="sm" layout="fill" value={String(durationPresets.includes(duration as typeof durationPresets[number]) ? duration : '')} onChange={value => update('duration_seconds', Number(value))}>
           {durationPresets.map(value => <SegmentedControlItem key={value} value={String(value)} label={value ? formatTime(value) : t('@yovoice.music.auto')} />)}
         </SegmentedControl>
-        <small>{duration ? t('@yovoice.music.durationFixed') : t('@yovoice.music.durationAuto')}</small>
       </VStack>
       <HStack className="language-row" vAlign="center" hAlign="between"><h3 aria-hidden="true">{t('@yovoice.music.language')}</h3>
         <Selector label={t('@yovoice.music.language')} isLabelHidden width="calc(var(--spacing-10) * 3)" value={draft.synthesisLanguage || 'zh'} options={musicLanguages.map(value => ({ value, label: t(`@yovoice.music.languageName.${value}`) }))} onChange={synthesisLanguage => change({ synthesisLanguage })} />
@@ -78,7 +77,6 @@ export function MusicInspector({ draft, state, catalog, change, generate, cancel
         <label className="number-field">{t('@yovoice.music.steps')}<input type="number" min={1} max={20} step={1} value={Number(option('num_inference_steps', 8))} onChange={event => { if (event.target.value) update('num_inference_steps', Number(event.target.value)); }} /></label>
         </>}
         <SeedInput value={draft.seed} change={change} />
-        <small>{t(yue ? '@yovoice.music.yueAdvancedHint' : '@yovoice.music.advancedHint')}</small>
       </AdvancedSettings>
     </VStack>
   </VStack>;
