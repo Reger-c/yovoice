@@ -754,5 +754,31 @@
     "remotePath": "MuseScore_General.sf2",
     "size": 215614036,
     "sha256": "ee51d2c4b1525e70f19a45909c4fd7a2e26d91d115fa89dbf5a6bc413d8b9bf3"
+  },
+  {
+    "id": "generaluser-gs-sf2",
+    "name": "GeneralUser GS",
+    "family": "soundfont",
+    "task": "instrument",
+    "version": "2.0.3",
+    "precision": "SF2",
+    "repo": "datasets/jbilcke/soundfonts",
+    "revision": "a93da2d6a3f39a8378b5b00ca326765c36a3f58a",
+    "remotePath": "GeneralUser-GS.sf2",
+    "size": 32319396,
+    "sha256": "9575028c7a1f589f5770fccc8cff2734566af40cd26ed836944e9a5152688cfe"
+  },
+  {
+    "id": "sgm-v2-sf2",
+    "name": "SGM-V2.01",
+    "family": "soundfont",
+    "task": "instrument",
+    "version": "2.01",
+    "precision": "SF2",
+    "repo": "datasets/Mechai1230/Soundfont-Pack",
+    "revision": "2e5114123977c4160189b867974c622b17bacb93",
+    "remotePath": "SGM-V2.01.sf2",
+    "size": 247406594,
+    "sha256": "86f2dc4b6983257ce7f983e62afedd22ea35e6e53e3f391360d9f125ce1ea088"
   }
 ]

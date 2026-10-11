@@ -2096,9 +2096,6 @@
   "@yovoice.music.generate": {
     "defaultMessage": "Generate song"
   },
-  "@yovoice.music.generateHint": {
-    "defaultMessage": "The first song loads the model and takes longer."
-  },
   "@yovoice.music.modelSize": {
     "defaultMessage": "Not installed · {size}"
   },
@@ -2107,12 +2104,6 @@
   },
   "@yovoice.music.auto": {
     "defaultMessage": "Auto"
-  },
-  "@yovoice.music.durationAuto": {
-    "defaultMessage": "The model plans the length from the lyrics."
-  },
-  "@yovoice.music.durationFixed": {
-    "defaultMessage": "Longer songs take more time and memory."
   },
   "@yovoice.music.language": {
     "defaultMessage": "Vocal language"
@@ -2162,9 +2153,6 @@
   "@yovoice.music.steps": {
     "defaultMessage": "Sampling steps"
   },
-  "@yovoice.music.advancedHint": {
-    "defaultMessage": "Leave these on Auto to let the model choose; it usually sounds more natural."
-  },
   "@yovoice.error.engineUpgradeRequired": {
     "defaultMessage": "This model needs inference engine {version} or later. Update the engine in Settings."
   },
@@ -2198,14 +2186,8 @@
   "@yovoice.score.bars": {
     "defaultMessage": "Bars {start}–{end}"
   },
-  "@yovoice.score.copyPrompt": {
-    "defaultMessage": "Copy Agent prompt"
-  },
   "@yovoice.score.copyPromptHint": {
     "defaultMessage": "Ask an AI Agent to write the score JSON, then import it here or render it with the CLI."
-  },
-  "@yovoice.score.promptCopied": {
-    "defaultMessage": "Copied"
   },
   "@yovoice.score.downloadSoundFont": {
     "defaultMessage": "Download"
@@ -2249,9 +2231,6 @@
   "@yovoice.score.meter": {
     "defaultMessage": "Meter"
   },
-  "@yovoice.score.noSections": {
-    "defaultMessage": "No sections. Add sections in the score to mark intro, build and outro."
-  },
   "@yovoice.score.noteCount": {
     "defaultMessage": "{count} notes"
   },
@@ -2260,9 +2239,6 @@
   },
   "@yovoice.score.render": {
     "defaultMessage": "Render music"
-  },
-  "@yovoice.score.renderHint": {
-    "defaultMessage": "Each track is rendered with the sound font, levelled by role and mixed. Export stems with the CLI's --stems option."
   },
   "@yovoice.score.rhythm": {
     "defaultMessage": "Tempo and meter"
@@ -2316,7 +2292,7 @@
     "defaultMessage": "Generates songs and instrumentals from a style description and lyrics."
   },
   "@yovoice.settings.modelDesc.soundfont": {
-    "defaultMessage": "General MIDI sound font for rendering scores, with 128 instruments and drum kits."
+    "defaultMessage": "General MIDI sound font with 128 instruments and drum kits; balanced and suited to most scores."
   },
   "@yovoice.settings.tabAI": {
     "defaultMessage": "AI services"
@@ -2654,10 +2630,16 @@
   "@yovoice.music.yueVocalOnly": {
     "defaultMessage": "YuE2 only makes vocal songs"
   },
-  "@yovoice.music.yueAdvancedHint": {
-    "defaultMessage": "A fixed seed reproduces the same take."
-  },
   "@yovoice.music.reuseTake": {
     "defaultMessage": "Reuse this take's style and lyrics"
+  },
+  "@yovoice.score.importShort": {
+    "defaultMessage": "Import"
+  },
+  "@yovoice.settings.modelDesc.soundfontGeneralUser": {
+    "defaultMessage": "Compact, clean GM/GS sound font with detailed piano and drums and well-balanced instrument levels. Free for personal and commercial music."
+  },
+  "@yovoice.settings.modelDesc.soundfontSgm": {
+    "defaultMessage": "More realistic GM sound font with richer piano, string, guitar and brass samples; larger and slower to render. The author states no license, so check before commercial use."
   }
 }

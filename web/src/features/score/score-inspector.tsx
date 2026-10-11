@@ -8,11 +8,11 @@ import { Selector } from '../../shared/selector';
 import { formatActivity } from '../../shared/i18n/format';
 import { formatSize, formatTime, isSoundFont, type Draft, type ModelPackage, type Score, type State } from '../../shared/workbench';
 import { ModelSelector } from '../create/model-selector';
-import { noteCount, scoreDuration, scoreSeconds } from './score-draft';
+import { noteCount, scoreDuration } from './score-draft';
 
 const meters = [[4, 4], [3, 4], [2, 4], [6, 8], [12, 8]];
 
-// 编曲检查器：渲染、音色库、速度拍号与段落时间。段落起止时间用于对照口播稿安排配乐。
+// 编曲检查器只放设置：渲染、音色库、速度拍号与调性；段落显示在轨道区的标尺上。
 export function ScoreInspector({ draft, state, catalog, change, generate, cancel, settings, close, header }: {
   draft: Draft; state: State; catalog: ModelPackage[]; change: (patch: Partial<Draft>) => void; header?: ReactNode;
   generate: () => void; cancel: () => void; settings: () => void; close: () => void;
@@ -44,7 +44,7 @@ export function ScoreInspector({ draft, state, catalog, change, generate, cancel
         <small className="grow" role="status">{state.activity ? formatActivity(t, state.activity) : ''}</small>
         <small className="generation-elapsed" aria-label={t('@yovoice.create.elapsed')}>{formatTime(elapsed)}</small>
       </HStack> : !installed && font ? <HStack gap={2} vAlign="center" hAlign="between" wrap="wrap"><small className="grow">{t('@yovoice.score.soundFontRequired', { size: formatSize(font.size) })}</small><Button size="sm" label={t('@yovoice.score.downloadSoundFont')} onClick={settings} /></HStack>
-        : <small>{t('@yovoice.score.renderHint')}</small>}
+        : null}
     </VStack>
     <VStack className="inspector-scroll" gap={5}>
       {header}
@@ -58,15 +58,6 @@ export function ScoreInspector({ draft, state, catalog, change, generate, cancel
         <HStack className="number-field" gap={3} hAlign="between" vAlign="center"><small>{t('@yovoice.score.meter')}</small><Selector label={t('@yovoice.score.meter')} isLabelHidden size="sm" width="calc(var(--spacing-10) * 2)" value={score.timeSignature.join('/')} options={meters.map(m => ({ value: m.join('/'), label: m.join('/') }))} onChange={value => update({ timeSignature: value.split('/').map(Number) })} /></HStack>
         <TextInput label={t('@yovoice.score.key')} value={score.key ?? ''} placeholder={t('@yovoice.score.keyPlaceholder')} onChange={key => update({ key: key.slice(0, 40) })} />
         <small>{t('@yovoice.score.duration', { time: formatTime(scoreDuration(score)) })}</small>
-      </VStack>
-      <VStack gap={3}>
-        <h3>{t('@yovoice.score.sections')}</h3>
-        {score.sections?.length ? <VStack className="score-sections" gap={0} role="list" aria-label={t('@yovoice.score.sections')}>
-          {score.sections.map(section => <HStack key={`${section.name}-${section.start}`} className="score-section-row" role="listitem" gap={3} hAlign="between" vAlign="center">
-            <VStack gap={0}><b>{section.name}</b><small>{t('@yovoice.score.bars', { start: section.start, end: section.end })}{section.tempo ? ` · ${section.tempo} BPM` : ''}</small></VStack>
-            <small className="score-section-time">{formatTime(scoreSeconds(score, section.start))}–{formatTime(scoreSeconds(score, section.end + 1))}</small>
-          </HStack>)}
-        </VStack> : <small>{t('@yovoice.score.noSections')}</small>}
       </VStack>
     </VStack>
   </VStack>;

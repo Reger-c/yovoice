@@ -133,6 +133,8 @@ test('真实 WAV 导入、播放、裁剪和空状态', async ({ page }) => {
   const picker = page.getByRole('dialog');
   await picker.getByRole('button', { name: '试听测试音色', exact: true }).click({ trial: true });
   const list = picker.locator('.voice-list');
+  // 弹窗打开时有缩放动画，等动画结束再记录尺寸，否则 macOS CI 上会量到动画中途的大小。
+  await picker.evaluate(el => Promise.all(el.getAnimations({ subtree: true }).map(animation => animation.finished)));
   const listBox = await list.boundingBox();
   const dialogBox = await picker.boundingBox();
   const firstRow = picker.locator('.voice-row').filter({ has: page.getByRole('button', { name: '测试音色', exact: true }) });
@@ -246,8 +248,11 @@ test('单选与设置标签支持方向键，弹窗错误就地显示', async ({
   await expect(dialog.getByRole('textbox', { name: '录音名称' })).toHaveCount(0);
   await page.locator('input[type=file][accept^="audio/"]').setInputFiles({ name: '损坏.wav', mimeType: 'audio/wav', buffer: Buffer.from('invalid') });
   await expect(dialog.getByRole('alert')).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(dialog).toHaveCount(0);
+  // 系统文件选择返回后焦点可能还未回到弹窗，macOS 上首个 Esc 偶尔落空；重按直到弹窗关闭。
+  await expect(async () => {
+    await page.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0, { timeout: 1000 });
+  }).toPass();
 });
 
 for (const trigger of ['鼠标', '键盘']) test(`选中文字显示发音浮层，${trigger}应用后只修改选区`, async ({ page }) => {

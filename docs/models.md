@@ -104,7 +104,7 @@ Upstream reports that a fully quantized Q8 ACE-Step package makes the planner pr
 
 ## Score sound font
 
-Score projects and `yovoice score render` use the MuseScore General sound font (`musescore-general-sf2`, SF2 · about 216 MB) with all 128 General MIDI instruments and drum kits; no inference engine is needed. See [Score](score.md).
+Score projects and `yovoice score render` use the MuseScore General sound font (`musescore-general-sf2`, SF2 · about 216 MB) with all 128 General MIDI instruments and drum kits; GeneralUser GS (`generaluser-gs-sf2`, about 32 MB) and SGM-V2.01 (`sgm-v2-sf2`, about 247 MB) are optional alternatives. No inference engine is needed. See [Score](score.md).
 
 ## Licenses
 

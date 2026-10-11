@@ -2096,9 +2096,6 @@
   "@yovoice.music.generate": {
     "defaultMessage": "生成歌曲"
   },
-  "@yovoice.music.generateHint": {
-    "defaultMessage": "首次生成需要加载模型，耗时更长。"
-  },
   "@yovoice.music.modelSize": {
     "defaultMessage": "未安装 · {size}"
   },
@@ -2107,12 +2104,6 @@
   },
   "@yovoice.music.auto": {
     "defaultMessage": "自动"
-  },
-  "@yovoice.music.durationAuto": {
-    "defaultMessage": "由模型按歌词规划长度。"
-  },
-  "@yovoice.music.durationFixed": {
-    "defaultMessage": "歌曲越长，生成越慢、占用内存越多。"
   },
   "@yovoice.music.language": {
     "defaultMessage": "演唱语言"
@@ -2162,9 +2153,6 @@
   "@yovoice.music.steps": {
     "defaultMessage": "采样步数"
   },
-  "@yovoice.music.advancedHint": {
-    "defaultMessage": "留空或“自动”时由模型决定，通常更自然。"
-  },
   "@yovoice.error.engineUpgradeRequired": {
     "defaultMessage": "该模型需要 {version} 及以上的推理内核，请在设置中更新内核。"
   },
@@ -2198,14 +2186,8 @@
   "@yovoice.score.bars": {
     "defaultMessage": "第 {start}–{end} 小节"
   },
-  "@yovoice.score.copyPrompt": {
-    "defaultMessage": "复制 Agent 提示词"
-  },
   "@yovoice.score.copyPromptHint": {
     "defaultMessage": "让 AI Agent 写出乐谱 JSON，再导入这里或用命令行渲染。"
-  },
-  "@yovoice.score.promptCopied": {
-    "defaultMessage": "已复制"
   },
   "@yovoice.score.downloadSoundFont": {
     "defaultMessage": "下载"
@@ -2249,9 +2231,6 @@
   "@yovoice.score.meter": {
     "defaultMessage": "拍号"
   },
-  "@yovoice.score.noSections": {
-    "defaultMessage": "暂无段落。在乐谱里写入段落可标出前奏、展开和回落。"
-  },
   "@yovoice.score.noteCount": {
     "defaultMessage": "{count} 个音符"
   },
@@ -2260,9 +2239,6 @@
   },
   "@yovoice.score.render": {
     "defaultMessage": "渲染配乐"
-  },
-  "@yovoice.score.renderHint": {
-    "defaultMessage": "每个声部用音色库渲染，按角色对齐电平后混音；分轨可用命令行 --stems 导出。"
   },
   "@yovoice.score.rhythm": {
     "defaultMessage": "速度与拍号"
@@ -2316,7 +2292,7 @@
     "defaultMessage": "根据风格描述和歌词生成歌曲或纯音乐。"
   },
   "@yovoice.settings.modelDesc.soundfont": {
-    "defaultMessage": "用于渲染编曲的 General MIDI 音色库，含 128 种乐器和鼓组。"
+    "defaultMessage": "通用 General MIDI 音色库，含 128 种乐器和鼓组，音色均衡，适合大多数配乐。"
   },
   "@yovoice.settings.tabAI": {
     "defaultMessage": "AI 服务"
@@ -2654,10 +2630,16 @@
   "@yovoice.music.yueVocalOnly": {
     "defaultMessage": "YuE2 只生成带人声的歌曲"
   },
-  "@yovoice.music.yueAdvancedHint": {
-    "defaultMessage": "固定种子可以复现同一版本。"
-  },
   "@yovoice.music.reuseTake": {
     "defaultMessage": "复用这一版的风格和歌词"
+  },
+  "@yovoice.score.importShort": {
+    "defaultMessage": "导入"
+  },
+  "@yovoice.settings.modelDesc.soundfontGeneralUser": {
+    "defaultMessage": "体积小、音色干净的 GM/GS 音色库，钢琴与鼓组细致，各乐器音量更均衡。可免费用于个人和商业创作。"
+  },
+  "@yovoice.settings.modelDesc.soundfontSgm": {
+    "defaultMessage": "更真实的 GM 音色库，钢琴、弦乐、吉他与铜管采样更丰富，体积较大、渲染稍慢。作者未明示许可，商用前请自行确认。"
   }
 }

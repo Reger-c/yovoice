@@ -16,7 +16,7 @@ function downloadStatusLabel(t: (key: string) => string, downloading: boolean, r
 }
 
 function modelDescription(t: (key: string) => string, model: ModelPackage) {
-  if (model.family === 'soundfont') return t('@yovoice.settings.modelDesc.soundfont');
+  if (model.family === 'soundfont') return t(({ 'generaluser-gs-sf2': '@yovoice.settings.modelDesc.soundfontGeneralUser', 'sgm-v2-sf2': '@yovoice.settings.modelDesc.soundfontSgm' } as Record<string, string>)[model.id] ?? '@yovoice.settings.modelDesc.soundfont');
   if (model.family === 'ace_step') return t('@yovoice.settings.modelDesc.music');
   if (model.family === 'yue2') return t('@yovoice.settings.modelDesc.yue2');
   if (model.family === 'kokoro_tts') return t(model.id === 'kokoro-82m-q8' ? '@yovoice.settings.modelDesc.kokoroOfficial' : '@yovoice.settings.modelDesc.kokoro');

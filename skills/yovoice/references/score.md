@@ -1,12 +1,22 @@
 # 编曲参考
 
-用户要配乐、垫底音乐、按段落写曲子或把 MIDI 渲染成音频时，写一份乐谱 JSON 再用 CLI 渲染。编曲不经过推理引擎，结果可重复；需要歌声或整首流行歌曲时说明这里做不到，建议桌面端的“音乐生成”。
+用户要配乐、垫底音乐、按段落写曲子或把 MIDI 渲染成音频时，写一份乐谱 JSON 再用 CLI 渲染。编曲不经过推理引擎，结果可重复；需要歌声或整首流行歌曲时说明这里做不到，建议桌面端的“音乐生成”（ACE-Step、YuE2），CLI 与远程服务不提供歌曲生成。
 
 ## 准备
 
 ```sh
 yovoice models download musescore-general-sf2
 ```
+
+可选音色库都是 General MIDI，乐谱无需改动即可切换：
+
+| ID | 特点 | 大小 |
+| --- | --- | --- |
+| `musescore-general-sf2` | 默认，音色均衡 | 216 MB |
+| `generaluser-gs-sf2` | 小巧干净，钢琴与鼓组细致，可商用 | 32 MB |
+| `sgm-v2-sf2` | 钢琴、弦乐、吉他、铜管更真实，渲染稍慢；作者未明示许可 | 247 MB |
+
+用户没有指定时用已安装的那个，不为换音色库擅自下载大文件。
 
 ## 写谱
 
@@ -33,9 +43,11 @@ yovoice models download musescore-general-sf2
 ## 渲染
 
 ```sh
-yovoice score render score.json --output music.wav --stems stems/
+yovoice score render score.json --output music.wav --stems stems/ --soundfont generaluser-gs-sf2
 ```
 
-stdout 输出 `{"path","duration","bars","tracks","stems"}`。乐谱错误返回 `scoreInvalid`，按上面的范围修正后重试。也可 `yovoice score midi score.json --output score.mid` 导出 MIDI，或 `yovoice score from-midi song.mid --output score.json` 把用户的 MIDI 转成乐谱再修改。远程服务使用 MCP 工具 `render_score`，参数为 `title` 与 `score`。
+`--stems` 同时写出每个声部（对齐电平后、混音前）的 WAV，`--soundfont` 省略时用 `musescore-general-sf2`。
+
+stdout 输出 `{"path","duration","bars","tracks","stems"}`。乐谱错误返回 `scoreInvalid`，按上面的范围修正后重试。也可 `yovoice score midi score.json --output score.mid` 导出 MIDI，或 `yovoice score from-midi song.mid --output score.json` 把用户的 MIDI 转成乐谱再修改。远程服务使用 MCP 工具 `render_score`，参数为 `title`、`score` 和可选的 `soundFont`（远程实例上已安装的音色库 ID）。
 
 没有实际试听时，不宣称编曲效果或混音已经验证。
