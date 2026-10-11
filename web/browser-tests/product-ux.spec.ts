@@ -23,6 +23,10 @@ test('新建四种作品、取消导入、卡片菜单与重命名独立保存',
   await page.getByTestId('nav-story').click();
   const row = page.locator('.project-library-row').filter({ hasText: '雨夜故事' });
   await expect(row.getByRole('button', { name: '雨夜故事', exact: true })).toBeVisible();
+  // 标题完整显示时悬浮不再重复同样的文字，只有被截断才给出完整标题。
+  await row.getByRole('button', { name: '雨夜故事', exact: true }).hover();
+  await expect(row.getByRole('button', { name: '雨夜故事', exact: true })).not.toHaveAttribute('title');
+  await expect(page.getByRole('tooltip')).toHaveCount(0);
   await expect(row).not.toContainText('故事配音');
   await expect(row.locator('time')).toHaveAttribute('title', /创建于/);
   await row.getByRole('button', { name: '更多操作' }).click();

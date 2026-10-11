@@ -4,47 +4,25 @@
 
 ## [Unreleased]
 
-### Added
+## [0.2.0] - 2026-10-11
 
-- 新增“音乐生成”作品：用风格描述和标签定调，写下带段落标记的歌词（或切换为纯音乐），选择时长和演唱语言，由 ACE-Step 1.5 Turbo（BF16 或更省内存的 Q8）或效果更好的 XL Turbo 生成整首歌曲；每次生成保留为带专属封面的版本，可试听、对比和导出。速度、调性、拍号默认交给模型决定，也可手动指定。音乐模型需要 v0.9.1 内核，旧内核会提示在设置中更新。
-- 新增“编曲”作品：按小节和拍写下每个声部的音符，或导入 MIDI、让 Agent 写谱，用 MuseScore General 音色库逐声部渲染，按角色对齐电平后混音。轨道视图上方是段落标尺，每个声部紧凑地占一行，左侧轨头换音色、调电平、关闭发声（点色点切换角色），右侧音块按角色着色并与段落对齐；可导出 MIDI 或乐谱 JSON。编曲不需要推理内核，同一份乐谱每次渲染结果相同。
-- 新增可选的 AI 服务（设置 › AI 服务）：内置 DeepSeek、通义千问、智谱、Kimi、豆包、MiniMax、OpenAI、Anthropic、OpenRouter，支持 Ollama、LM Studio 等本地服务和兼容 Chat Completions / Responses / Anthropic Messages 的自定义接口，可获取模型列表和测试连接；密钥单独保存在本机。配置后，编曲和音乐生成顶部有 AI 写作栏，一句话写出整份编曲或风格、歌词和标题（结果自动检查，不合规时让模型修正一次）。写作在后台进行，可以继续编辑或切到别的页面，进度、用时和超时一目了然；内容为空时写好直接填入，已有内容时先确认替换；失败时显示具体原因，可重试或打开日志，也可随时取消。AI 请求超时默认 10 分钟，可在“设置 › 常规”中调整。
-- 音乐生成新增 YuE2 3B（Q8 / BF16 / Q4）：根据歌词和风格生成整首带人声的歌曲，长度由歌词决定，暂不支持纯音乐；模型许可为 CC BY-NC 4.0，仅限非商业用途。模型下载支持由多个文件组成的模型包。
-- 编曲新增两个可下载的音色库：小巧干净、可商用的 GeneralUser GS，以及钢琴、弦乐、吉他更真实的 SGM-V2.01，在编曲右侧面板切换。
-- CLI 新增 `yovoice score render|midi|from-midi`，可输出混音和分轨；远程服务 MCP 新增 `render_score` 工具（可选 `soundFont`）；Agent Skill 新增编曲参考，并说明音色库选择和音乐模型仅限桌面端。
+### English
 
-### Changed
+- New Music projects: set the style with tags, write lyrics with section markers or go instrumental, and generate full songs with ACE-Step 1.5 Turbo / XL Turbo or YuE2 3B (vocal songs whose length follows the lyrics; CC BY-NC 4.0, non-commercial). Each take is kept as a version you can preview, compare, reuse and export. Models made of several files can now be downloaded.
+- New Score projects: write notes per track by bar and beat, import MIDI, or let an agent compose, then render every track with a General MIDI sound font and mix by role. The track area spans the bottom of the window with sections on the timeline, zoom, scrolling and a playhead; export MIDI or score JSON. Choose MuseScore General, GeneralUser GS or SGM-V2.01. The CLI adds `yovoice score render|midi|from-midi` with stems, MCP adds `render_score`, and the Agent Skill adds a score guide.
+- Optional AI providers (DeepSeek, Qwen, Zhipu, Kimi, Doubao, MiniMax, OpenAI, Anthropic, OpenRouter, coding plans, local and custom endpoints) write a whole score or song style, lyrics and title from one sentence, run in the background, and can switch models on the spot.
+- A refreshed interface: ticket-style project lists with record and cassette covers, grouped settings, a separate sound font page, side panel toggles in the title bar (the right panel toggle only appears in a workspace), and hover hints only for truncated text or icon buttons.
+- The audio.cpp engine is upgraded to v0.9.1 and updates separately from the app; new Windows CUDA 12.4 and 13.3 installers.
+- Fixes for long AI requests timing out, saving on exit, Windows time-zone saves, timeline menus, deleting the last project, and clearer error messages and diagnostic logs.
 
-- 左右侧边栏开关统一集成在窗口最顶栏（macOS 位于顶栏右侧，Windows 位于最小化按钮左侧，亦可通过视图菜单切换），移除了编辑区正文标题行内突兀的折叠按钮，收起右侧面板后生成按钮保留在标题行右侧，正文独占宽度，状态跨重启保留；歌曲编辑页的“全部标签”并入标签行、段落标记收进“插入段落”菜单，界面更紧凑。
-- 编曲声部轨头重构为单行紧凑布局（色点、声部名称、音色下拉、电平输入与发声开关流畅排布），大幅节省纵向空间且声部名称完整展现；编曲轨道向右自然延伸并无缝贴合右侧面板；时间轴按小节与时长自然舒展展开，支持鼠标滚轮横向滚动与 Ctrl/Cmd 滚轮缩放；音乐版本改为一行一个的列表，显示生成时间、风格标签和时长，可复用某一版的风格和歌词。
-- 编曲页更简洁：轨道区移到底部，与播放器一样横向贯穿整个窗口，段落直接标在时间轴上（含小节范围与变速），右侧只保留设置；轨头字体统一为与下方声音音轨一致的小字号（12px），紧凑秀气；修复播放指针穿透轨头的层叠问题，向右滑动时间轴超出播放进度时指针自动隐藏；单行轨头各列严格对齐：音色只显示图标、点开可搜索切换，发声改为小喇叭按钮；声部多时轨道区限高并可上下滚动。
-- AI 写作栏可直接在已配置的服务和模型之间切换；AI 服务页去掉开关和多余说明，布局更稳定。
-- 音乐与编曲的模型选择与语音生成一致：下载过模型后只列已下载的，下载模型时仍可切换模型。
-- AI 服务页参照 nexus 重做：按量 API 与编程套餐（Kimi Code、GLM Coding Plan、百炼 Token Plan、MiniMax Token Plan、火山方舟 Coding Plan）分组单独成行，并换上各服务商的图标。
+### 简体中文
 
-### Fixed
-
-- 修复 AI 写谱等较长请求约 2 分钟即以“desktop timeout”失败的问题；AI 请求、无法使用的模型输出、慢调用和界面异常都会写入诊断日志，“打开日志目录”移到“设置 › 常规”。
-- AI 服务设置页的标题、输入框、按钮统一为与其他设置一致的尺寸；模型页可按名称、精度或用途搜索可下载的模型。
-- 修复删除最后一个作品时的保存与残留问题，切换历史版本或新建作品失败时显示更具体的错误信息。
-- 新作品优先使用已安装模型，创作页模型选择器减少未安装模型干扰。
-- 远程服务的每次生成请求不再新建作品，避免长期运行后状态文件持续增大；生成失败时返回具体错误码。
-- 生成历史不再重复保存作品时间轴，减小状态文件体积。
-- macOS 退出时作品保存失败会提示并取消退出，不再静默丢失最后的编辑；Windows 本地服务意外停止后可以正常退出，并可备份当前作品；退出流程出错时可选择“仍要退出”，不再只能用任务管理器结束。
-- 失败提示保留具体原因（如文件不存在、下载连接超时），不再只显示“出了点问题”；长提示在窄窗口中正常换行。
-- 修复部分界面尺寸失效：音量滑块过宽挤掉“保存为角色”按钮、窄屏导航与空状态留白异常。
-- 重新安装或切换推理后端后清理旧的运行时，过时的更新安装包不再保留，启动时回收中断操作遗留的临时文件。
-- 切换计算设备后再切回时沿用已安装的 GPU 内核，不再提示重新安装；此前因切换而失去登记的内核，只要文件仍在，启动后自动找回。
-- 修复 macOS 上时间线剪辑右键菜单按 Esc 无法关闭、随后多选点击失效的问题。
-- 修复 Windows 上东八区等带时区偏移的作品在重启或切换作品后无法保存、提示“出了点问题”的问题。
-
-### Improved
-
-- 全新界面质感：浅灰中性底上的白色内容区、墨色主按钮与少量橙色点缀；作品列表改为“票根”卡片，带摘录和日期存根，按月份分组；封面各有特色又同属一套：歌曲和编曲是随机图案的唱片封套，故事是站着出场角色的有声唱片，语音是一盒写着标题的磁带；声音库的角色和参考音频也改为同样的票根列表，角色是可试听的单曲唱片，参考音频外围一圈声波。列表依次淡入，悬停时唱片滑出、磁带卷轴转动，试听时唱片和声波转动；空列表显示对应的空白唱片或磁带，新建菜单带上与侧栏一致的图标，切换页面时淡入。编曲音块总览改为深色胶片底，声音库、设置页与模型规格同步更新。音乐风格标签默认只显示一行，编曲顶部操作收进“更多”。
-- 设置页统一为分组卡片，字号和对齐一致；AI 服务改为左侧服务列表、右侧直接编辑密钥、地址和模型，可同步模型列表、更换或清除密钥；音色库从模型下载中分出，单独一页；已下载的模型排在前面并单独成组。弹窗背景改为半透明虚化。
-- 推理内核升级到 audio.cpp v0.9.1，应用与内核分开更新：Windows 自动更新只下载应用本体并保留已安装的内核；内核满足应用最低版本即可继续使用，有更新的推荐版本时可在设置中选择升级。已安装的 v0.7.4 内核可继续使用，可在设置中选择升级到 v0.9.1。
-- 新增 Windows CUDA 12.4 与 CUDA 13.3 安装包（`-cuda12.4-setup.exe`、`-cuda13.3-setup.exe`），各自只内置对应的 CUDA 内核，首次启动即使用 NVIDIA 显卡；设置中也可选择 CUDA 13.3。Windows Vulkan 改用兼容更多 CPU 的便携包。
-- 桌面端操作不再互相排队：导入音色或工程期间，作品仍可自动保存，界面保持响应；退出时会中止正在进行的音频转码。
+- 新增“音乐生成”：用标签定风格，写带段落标记的歌词或改为纯音乐，由 ACE-Step 1.5 Turbo / XL Turbo 或 YuE2 3B（带人声、长度随歌词，CC BY-NC 4.0 仅限非商业）生成整首歌曲；每次生成保留为版本，可试听、对比、复用和导出。支持下载由多个文件组成的模型。
+- 新增“编曲”：按小节和拍写各声部音符，或导入 MIDI、让 Agent 写谱，用 General MIDI 音色库逐声部渲染并按角色混音。轨道区横跨窗口底部，段落标在时间轴上，可缩放、滚动并显示播放指针；可导出 MIDI 或乐谱 JSON。音色库可选 MuseScore General、GeneralUser GS 或 SGM-V2.01。CLI 新增 `yovoice score render|midi|from-midi`（含分轨），MCP 新增 `render_score`，Agent Skill 新增编曲参考。
+- 可选接入 AI 服务（DeepSeek、通义千问、智谱、Kimi、豆包、MiniMax、OpenAI、Anthropic、OpenRouter、编程套餐、本地与自定义接口），一句话写出整份编曲或歌曲的风格、歌词和标题，在后台进行，可随时切换模型。
+- 界面焕新：票根式作品列表配唱片与磁带封面，设置页分组，音色库单独成页，左右面板开关集成到标题栏（右侧面板开关只在工作区显示），悬浮提示只在文字被截断或图标按钮需要说明时出现。
+- 推理内核升级到 audio.cpp v0.9.1，与应用分开更新；新增 Windows CUDA 12.4 与 13.3 安装包。
+- 修复长 AI 请求超时、退出保存、Windows 时区作品保存、时间线菜单、删除最后一个作品等问题，错误提示和诊断日志更具体。
 
 ## [0.1.7] - 2026-10-05
 

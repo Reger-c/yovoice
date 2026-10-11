@@ -255,6 +255,11 @@ public partial class MainWindow : Window
             object? result;
             switch (method)
             {
+                case "inspector.available":
+                    // 只有工作区有右侧面板，离开工作区时隐藏标题栏开关并禁用菜单项。
+                    bool available = data.GetProperty("available").GetBoolean();
+                    ToggleInspectorButton.Visibility = available ? Visibility.Visible : Visibility.Collapsed;
+                    ToggleInspectorMenu.IsEnabled = available; result = true; break;
                 case "sidebar.save":
                     double size = data.GetProperty("size").GetDouble();
                     bool collapsed = data.GetProperty("isCollapsed").GetBoolean();

@@ -9,6 +9,7 @@ import { formatTime, type Draft, type Score, type ScoreRole, type ScoreTrack } f
 import { beatsPerBar, noteCount, scoreBars, scoreDuration, scoreRoles, scoreSeconds, targetLevel } from './score-draft';
 import { gmPrograms } from './score-instruments';
 import { TrackZoom } from '../media/playback-toolbar';
+import { overflowTitle } from '../../shared/ui/overflow-title';
 
 // 一个声部的音块：横向是时间（按段落变速换算），纵向是该声部自己的音域，深浅对应力度。
 function ScoreLane({ score, track, zoom }: { score: Score; track: ScoreTrack; zoom: number }) {
@@ -163,7 +164,7 @@ export function ScoreArrangement({ score, selected, select, label, updateTrack, 
           <HStack className="score-track-head" gap={0.5} vAlign="center">
             <DropdownMenu hasChevron={false} button={{ size: 'sm', variant: 'ghost', isIconOnly: true, className: 'score-role-button', icon: <Circle className="score-role-dot" />, label: t('@yovoice.score.roleOf', { name: track.name }) }}
               items={scoreRoles.map(role => ({ label: roleLabel(role), icon: <Circle className="score-role-dot" data-role={role} />, endContent: role === (track.role ?? 'other') ? <Check size={14} aria-hidden /> : undefined, onClick: () => updateTrack(track.id, { role, level: undefined }) }))} />
-            <b className="score-track-name" title={`${track.name} · ${roleLabel(track.role ?? 'other')}`}>{track.name}</b>
+            <b className="score-track-name" onPointerEnter={overflowTitle}>{track.name}</b>
             {/* 音色不占宽度：只显示图标，点开后可搜索选择，当前音色放在提示里。 */}
             {track.drums ? <Drum className="score-drum-kit" role="img" aria-hidden={false} aria-label={t('@yovoice.score.drumKit')}><title>{t('@yovoice.score.drumKit')}</title></Drum>
               : <Selector label={t('@yovoice.score.instrumentOf', { name: track.name })} isLabelHidden size="sm" variant="ghost" hasSearch className="score-instrument" value={String(track.program)}

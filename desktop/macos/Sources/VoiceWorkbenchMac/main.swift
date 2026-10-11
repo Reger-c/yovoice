@@ -7,6 +7,7 @@ import UniformTypeIdentifiers
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate {
     private var window: NSWindow!
     private var web: WKWebView!
+    private var inspectorAccessory: NSTitlebarAccessoryViewController?
     private let service = Process()
     private let input = Pipe()
     private var origin: URL?
@@ -44,6 +45,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
         inspectorButton.toolTip = HostL10n.t("inspector.tooltip")
         inspectorButton.frame = NSRect(x: 0, y: 0, width: 32, height: 28)
         rightAccessory.view = inspectorButton
+        // 只有工作区有右侧面板，由前端在进入或离开工作区时通知显示。
+        rightAccessory.isHidden = true
+        self.inspectorAccessory = rightAccessory
         window.addTitlebarAccessoryViewController(rightAccessory)
         window.minSize = NSSize(width: 390, height: 600)
         window.isReleasedWhenClosed = false
@@ -280,6 +284,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
         var message = message
         var data = message["data"] as? [String: Any] ?? [:]
         let method = message["method"] as? String ?? ""
+        if method == "inspector.available" {
+            let available = data["available"] as? Bool == true
+            inspectorAccessory?.isHidden = !available
+            return ["id": message["id"]!, "result": true]
+        }
         if method == "sidebar.save" {
             guard let size = data["size"] as? Double, size.isFinite, (180...360).contains(size), let collapsed = data["isCollapsed"] as? Bool else { throw failure(HostL10n.t("err.sidebarInvalid")) }
             let saved = try JSONSerialization.data(withJSONObject: ["size": size, "isCollapsed": collapsed])

@@ -16,6 +16,7 @@ const VoicePicker = lazy(() => import('../media/voice-picker').then(module => ({
 import { call } from '../../shared/lib/client';
 import { formatActivity, formatActivityError, formatCallError, formatNotice } from '../../shared/i18n/format';
 import { stableJSON, previewStale, performanceSettings, synthesisSettings, type Character, type Draft, type State, type ModelPackage, type Track } from '../../shared/workbench';
+import { overflowTitle } from '../../shared/ui/overflow-title';
 
 export function CharacterEditor({ initial, state, catalog, active = true, close, settings, apply }: { active?: boolean; initial: Character; state: State; catalog: ModelPackage[]; close: (saved?: Character) => void; settings: (modelId?: string) => void; apply?: (saved: Character) => Promise<void> }) {
   const t = useTranslator();
@@ -145,7 +146,7 @@ export function CharacterLibrary({ state, catalog, create, edit, apply, onError,
       {filtered.map((c, index) => <Ticket key={c.id} index={index} className="character-row"
         cover={<RecordCover seed={c.id} interactive><Player compact avatar={{ seed: c.id, label: t('@yovoice.character.listen'), disabled: !c.preview, select: () => setPlaying(c.id) }} suspended={!active || !!deleting} track={playing === c.id && c.preview ? { id: c.preview.id, name: c.name, fileName: c.preview.fileName, kind: 'outputs', subtitle: '', playRequest: 1 } : null} onError={onError} /></RecordCover>}
         eyebrow={[catalog.find(m => m.id === c.settings.modelId)?.name ?? c.settings.modelId, t(!c.preview ? '@yovoice.character.emptyPreview' : previewStale(c) ? '@yovoice.character.stale' : '@yovoice.character.ready')].join(' · ')}
-        title={<h3 title={c.name}>{c.name}</h3>} excerpt={c.demoText.trim()}
+        title={<h3 onPointerEnter={overflowTitle}>{c.name}</h3>} excerpt={c.demoText.trim()}
         stub={<TicketStamp value={(c.performances?.length ?? 0) + 1} unit={t('@yovoice.library.performanceUnit')} />}
         actions={<>
           <Button size="sm" label={t('@yovoice.character.apply')} onClick={() => apply(c)} />

@@ -68,18 +68,13 @@ export function WorkbenchChrome({ state, catalog, engine, ready, session, error,
     return next;
   }), []);
   useEffect(() => {
-    const handleToggle = () => {
-      if (page !== 'create') {
-        setPage('create');
-        setInspectorCollapsed(false);
-        try { localStorage.setItem('workbench-inspector-collapsed', '0'); } catch { /* 存储不可用时只在本次生效 */ }
-      } else {
-        toggleInspector();
-      }
-    };
+    // 只有工作区有右侧面板；列表、设置等页面忽略开关，不跳回上次的作品。
+    const handleToggle = () => { if (page === 'create') toggleInspector(); };
     window.addEventListener('workbench-toggle-inspector', handleToggle);
     return () => window.removeEventListener('workbench-toggle-inspector', handleToggle);
   }, [page, toggleInspector]);
+  // 标题栏的右侧面板开关由宿主绘制：离开工作区时让宿主隐藏它。
+  useEffect(() => { if (isDesktop) void call('inspector.available', { available: page === 'create' }).catch(() => undefined); }, [page]);
   const editor = useRef<HTMLTextAreaElement>(null); const previousHistory = useRef<string | undefined>(undefined);
   const onError = useCallback((message: string) => setError(message), [setError]);
   useEffect(() => {
@@ -244,7 +239,7 @@ export function WorkbenchChrome({ state, catalog, engine, ready, session, error,
   const collapsedAction = busy ? <Button size="sm" icon={<LoaderCircle className="generation-spinner" />} label={t('@yovoice.create.cancelGenerate')} onClick={() => run(() => call('operation.cancel'))} />
     : <Button size="sm" variant="primary" label={generateLabel} aria-keyshortcuts="Control+Enter" isDisabled={!generateReady} onClick={generate} />;
   return <VStack className={`workbench ${isDesktop ? 'desktop' : 'preview'}`} style={{ '--app-nav': `${navigation.size}px` } as CSSProperties} gap={0}>
-    {!isDesktop ? <HStack as="header" className="browser-titlebar" gap={2} vAlign="center"><Button label={navigation.isCollapsed ? t('@yovoice.app.expandSidebar') : t('@yovoice.app.collapseSidebar')} isIconOnly variant="ghost" size="sm" icon={<PanelLeft size={17} />} aria-expanded={!navigation.isCollapsed} onClick={toggleSidebar} /><b>yovoice</b><small>{t('@yovoice.app.browserPreview')}</small><Button label={inspectorCollapsed ? t('@yovoice.app.expandInspector') : t('@yovoice.app.collapseInspector')} isIconOnly variant="ghost" size="sm" icon={<PanelRight size={17} />} aria-expanded={!inspectorCollapsed} onClick={() => { if (page !== 'create') { setPage('create'); setInspectorCollapsed(false); } else { toggleInspector(); } }} /></HStack> : null}
+    {!isDesktop ? <HStack as="header" className="browser-titlebar" gap={2} vAlign="center"><Button label={navigation.isCollapsed ? t('@yovoice.app.expandSidebar') : t('@yovoice.app.collapseSidebar')} isIconOnly variant="ghost" size="sm" icon={<PanelLeft size={17} />} aria-expanded={!navigation.isCollapsed} onClick={toggleSidebar} /><b>yovoice</b><small>{t('@yovoice.app.browserPreview')}</small>{page === 'create' ? <Button label={inspectorCollapsed ? t('@yovoice.app.expandInspector') : t('@yovoice.app.collapseInspector')} isIconOnly variant="ghost" size="sm" icon={<PanelRight size={17} />} aria-expanded={!inspectorCollapsed} onClick={toggleInspector} /> : null}</HStack> : null}
     <AppShell variant="elevated" sideNav={navigation.isCollapsed ? undefined : sidebar} mobileNav={{ breakpoint: 'none' }} height="fill"><VStack className="app-sheet" gap={0}>
       {characterEditor ? <VStack style={{ display: page === 'characters' ? 'flex' : 'none', height: '100%', minHeight: 0 }} gap={0}><CharacterEditor active={page === 'characters'} initial={characterEditor} state={state} catalog={catalog} settings={openSettings} apply={characterOrigin.current ? async saved => { const origin = characterOrigin.current!; await applyToTarget(saved, origin.draftId, origin.speakerId); setCharacterEditor(null); } : undefined} close={() => { setCharacterEditor(null); setPage(characterReturnPage.current); }} /></VStack> : null}
       <VStack className="page-panel" style={{ display: characterActive ? 'none' : 'flex' }} gap={0}><Layout height="fill" footer={<VStack gap={0} style={{ display: page === 'create' ? 'flex' : 'none' }}>{scoring ? <ScoreDock key={draft.id} draft={draft} change={change} playhead={track ? playback : undefined} seek={time => setSeekRequest({ time, nonce: performance.now() })} /> : null}{draft.timeline || projectKind(draft) === 'story' ? <TimelineEditor exportProject={async () => { await persistDraft(draft); await call('project.export', { id: draft.id, name: draft.title }); }} key={draft.id} selectedCue={selectedCue} cueSelectionRevision={cueSelection?.revision ?? 0} playbackCue={setPlayingCue} selectCue={selectCue} draft={draft} busy={busy} regenerate={async (cueId, clipId) => { await persistDraft(draft); await call('generation.cue', { draft, cueId, clipId }); }} value={draft.timeline ?? { tracks: [] }} history={state.history} change={timeline => change({ timeline })} suspended={page !== 'create' || voicePicker !== null || characterActive || !!voiceEditor || !!voiceTarget} onError={onError} /> : <Player onProgress={scoring ? (time, playing) => setPlayback({ time, playing }) : undefined} seekRequest={scoring ? seekRequest : undefined} laneActions={instrumental ? undefined : <Button size="sm" variant="secondary" icon={<Plus />} label={t('@yovoice.timeline.add')} onClick={() => { const source = state.history.find(g => g.id === track?.id); change({ timeline: { tracks: [{ id: crypto.randomUUID(), name: t('@yovoice.timeline.track', { n: 1 }), muted: false, clips: source ? [{ id: crypto.randomUUID(), generationId: source.id, start: 0, offset: 0, duration: source.duration }] : [] }, ...(source ? [{ id: crypto.randomUUID(), name: t('@yovoice.timeline.track', { n: 2 }), muted: false, clips: [] }] : [])] } }); }} />} actions={instrumental ? undefined : <Button label={t('@yovoice.character.saveAs')} size="sm" onClick={() => openCharacter()} />} suspended={page !== 'create' || voicePicker !== null || characterActive || !!voiceEditor || !!voiceTarget} track={track} onError={onError} historyControl={projectKind(draft) !== 'story' && generations.length ? <HStack gap={1} vAlign="center">
