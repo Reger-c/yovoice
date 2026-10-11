@@ -670,7 +670,7 @@
   .score-track[aria-current="true"] { background: var(--app-surface); }
   .score-track[aria-current="true"] .score-track-head { box-shadow: inset calc(var(--border-width) * 3) 0 0 var(--role); }
   .score-track .score-track-head { color: var(--app-ink); min-height: var(--spacing-9); }
-  .score-track-name { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: end; font-weight: var(--font-weight-medium); }
+  .score-track-name { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: var(--font-weight-medium); }
   .score-drum-kit { flex: none; box-sizing: content-box; width: var(--spacing-4); height: var(--spacing-4); padding-inline: var(--spacing-1) var(--spacing-5); color: var(--app-muted); }
   .score-track-head .score-mute.astryx-button { flex: none; width: var(--spacing-7); min-width: var(--spacing-7); padding: 0; color: var(--app-muted); }
   .score-track[data-muted="true"] .score-mute.astryx-button { color: var(--color-icon-red, var(--app-muted)); }

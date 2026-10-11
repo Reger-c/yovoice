@@ -4,6 +4,8 @@ import { createScoreDraft, exampleScore, scoreDuration } from '../src/features/s
 import { midiToScore, scoreToMidi } from '../src/features/score/score-midi';
 
 test('新建编曲作品：示例乐谱、音块总览、声部调整与持久化', async ({ page }, testInfo) => {
+  // 覆盖编曲全流程（含两次刷新和窗口缩放），步骤多，放宽单测时限。
+  test.setTimeout(60_000);
   await page.goto('/');
   await page.getByTestId('nav-new').click();
   await page.getByRole('menuitem', { name: '编曲', exact: true }).click();
