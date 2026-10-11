@@ -24,15 +24,15 @@ type ModelPackage struct {
 	Variant       string   `json:"variant,omitempty"`
 	// LoadOptions 是启动内核时随模型传入的加载参数，例如 ACE-Step XL 需要指定 DiT 变体。
 	LoadOptions map[string]string `json:"loadOptions,omitempty"`
-	Task          string   `json:"task,omitempty"`
-	ID            string   `json:"id"`
-	Name          string   `json:"name"`
-	Family        string   `json:"family"`
-	Version       string   `json:"version"`
-	Precision     string   `json:"precision"`
-	RemotePath    string   `json:"remotePath"`
-	Size          int64    `json:"size"`
-	SHA256        string   `json:"sha256"`
+	Task        string            `json:"task,omitempty"`
+	ID          string            `json:"id"`
+	Name        string            `json:"name"`
+	Family      string            `json:"family"`
+	Version     string            `json:"version"`
+	Precision   string            `json:"precision"`
+	RemotePath  string            `json:"remotePath"`
+	Size        int64             `json:"size"`
+	SHA256      string            `json:"sha256"`
 }
 
 //go:embed catalog.json
