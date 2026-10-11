@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { Selector } from '../../shared/selector';
-import { Switch } from '@astryxdesign/core/Switch';
+import { Button } from '@astryxdesign/core/Button';
 import { DropdownMenu } from '@astryxdesign/core/DropdownMenu';
-import { Check, Circle } from 'lucide-react';
+import { Check, Circle, Drum, Piano, Volume2, VolumeX } from 'lucide-react';
 import { useTranslator } from '@astryxdesign/core/i18n';
 import { formatTime, type Draft, type Score, type ScoreRole, type ScoreTrack } from '../../shared/workbench';
 import { beatsPerBar, noteCount, scoreBars, scoreDuration, scoreRoles, scoreSeconds, targetLevel } from './score-draft';
@@ -132,10 +132,14 @@ export function ScoreArrangement({ score, selected, select, label, updateTrack, 
             <DropdownMenu hasChevron={false} button={{ size: 'sm', variant: 'ghost', isIconOnly: true, className: 'score-role-button', icon: <Circle className="score-role-dot" />, label: t('@yovoice.score.roleOf', { name: track.name }) }}
               items={scoreRoles.map(role => ({ label: roleLabel(role), icon: <Circle className="score-role-dot" data-role={role} />, endContent: role === (track.role ?? 'other') ? <Check size={14} aria-hidden /> : undefined, onClick: () => updateTrack(track.id, { role, level: undefined }) }))} />
             <b className="score-track-name" title={`${track.name} · ${roleLabel(track.role ?? 'other')}`}>{track.name}</b>
-            {track.drums ? <small className="score-drum-kit grow">{t('@yovoice.score.drumKit')}</small>
-              : <Selector label={t('@yovoice.score.instrumentOf', { name: track.name })} isLabelHidden size="sm" variant="ghost" className="score-instrument grow" value={String(track.program)} options={gmPrograms.map((name, program) => ({ value: String(program), label: name }))} onChange={value => updateTrack(track.id, { program: Number(value) })} />}
+            {/* 音色不占宽度：只显示图标，点开后可搜索选择，当前音色放在提示里。 */}
+            {track.drums ? <Drum className="score-drum-kit" role="img" aria-hidden={false} aria-label={t('@yovoice.score.drumKit')}><title>{t('@yovoice.score.drumKit')}</title></Drum>
+              : <Selector label={t('@yovoice.score.instrumentOf', { name: track.name })} isLabelHidden size="sm" variant="ghost" hasSearch className="score-instrument" value={String(track.program)}
+                options={gmPrograms.map((name, program) => ({ value: String(program), label: name }))} renderValue={option => <Piano size={14} aria-label={option.label} role="img"><title>{option.label}</title></Piano>}
+                onChange={value => updateTrack(track.id, { program: Number(value) })} />}
             <label className="number-field compact" title={t('@yovoice.score.levelOf', { name: track.name })}><input type="number" aria-label={t('@yovoice.score.levelOf', { name: track.name })} min={-60} max={0} step={1} value={targetLevel(track)} onChange={event => { const level = Number(event.target.value); if (level >= -60 && level < 0) updateTrack(track.id, { level }); }} /><small aria-hidden="true">dB</small></label>
-            <Switch label={t('@yovoice.score.playTrack', { name: track.name })} isLabelHidden size="sm" value={!track.mute} onChange={on => updateTrack(track.id, { mute: !on || undefined })} />
+            <Button size="sm" variant="ghost" isIconOnly className="score-mute" aria-pressed={!track.mute} icon={track.mute ? <VolumeX /> : <Volume2 />}
+              label={t('@yovoice.score.playTrack', { name: track.name })} tooltip={t('@yovoice.score.playTrack', { name: track.name })} onClick={() => updateTrack(track.id, { mute: !track.mute || undefined })} />
           </HStack>
           <ScoreLane score={score} track={track} zoom={zoom} />
         </HStack>)}

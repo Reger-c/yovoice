@@ -18,6 +18,16 @@
 yovoice models download musescore-general-sf2
 ```
 
+另有两个 General MIDI 音色库可下载，乐谱无需改动即可切换：
+
+| ID | 特点 | 大小 |
+| --- | --- | --- |
+| `musescore-general-sf2` | 默认，音色均衡 | 216 MB |
+| `generaluser-gs-sf2` | GeneralUser GS：小巧干净，钢琴与鼓组细致，可用于商业创作 | 32 MB |
+| `sgm-v2-sf2` | SGM-V2.01：钢琴、弦乐、吉他、铜管更真实，渲染稍慢；作者未明示许可 | 247 MB |
+
+在编曲右侧面板选择，或给 `yovoice score render` 传 `--soundfont ID`。
+
 编曲不需要推理内核，也不占用显卡。
 
 ## 在桌面端编曲
@@ -102,7 +112,7 @@ yovoice score from-midi song.mid --output score.json
 - `midi` / `from-midi` 在乐谱 JSON 与标准 MIDI 之间转换，不需要音色库。
 - 输出文件不覆盖已有文件。成功时 stdout 输出 JSON：`{"path": "...", "duration": 54.9, "bars": 22, "tracks": 7, "stems": "..."}`。
 
-远程服务的 MCP 提供 `render_score` 工具，参数为 `title` 和 `score`，返回 `id`、`duration` 和 `downloadPath`，见 [API 文档](api_zh.md)。
+远程服务的 MCP 提供 `render_score` 工具，参数为 `title`、`score` 和可选的 `soundFont`（已安装的音色库 ID），返回 `id`、`duration` 和 `downloadPath`，见 [API 文档](api_zh.md)。
 
 从 MIDI 导入时，每个“轨道 × 通道”成为一个声部；速度取第一个速度事件，拍号取开头的拍号，第 10 通道识别为鼓组。导入后的声部角色为 `other`，可按需修改。
 

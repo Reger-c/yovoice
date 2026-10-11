@@ -2292,7 +2292,7 @@
     "defaultMessage": "Generates songs and instrumentals from a style description and lyrics."
   },
   "@yovoice.settings.modelDesc.soundfont": {
-    "defaultMessage": "General MIDI sound font for rendering scores, with 128 instruments and drum kits."
+    "defaultMessage": "General MIDI sound font with 128 instruments and drum kits; balanced and suited to most scores."
   },
   "@yovoice.settings.tabAI": {
     "defaultMessage": "AI services"
@@ -2635,5 +2635,11 @@
   },
   "@yovoice.score.importShort": {
     "defaultMessage": "Import"
+  },
+  "@yovoice.settings.modelDesc.soundfontGeneralUser": {
+    "defaultMessage": "Compact, clean GM/GS sound font with detailed piano and drums and well-balanced instrument levels. Free for personal and commercial music."
+  },
+  "@yovoice.settings.modelDesc.soundfontSgm": {
+    "defaultMessage": "More realistic GM sound font with richer piano, string, guitar and brass samples; larger and slower to render. The author states no license, so check before commercial use."
   }
 }

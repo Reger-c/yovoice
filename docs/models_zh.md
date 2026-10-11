@@ -104,7 +104,7 @@ Kokoro 不支持音色克隆或文字情绪控制。请保留 CLI 安装包中�
 
 ## 编曲音色库
 
-“编曲”作品与 `yovoice score render` 使用 MuseScore General 音色库（`musescore-general-sf2`，SF2 · 约 216 MB），包含 128 种 General MIDI 乐器和鼓组，不需要推理内核。用法见[编曲](score_zh.md)。
+“编曲”作品与 `yovoice score render` 使用 MuseScore General 音色库（`musescore-general-sf2`，SF2 · 约 216 MB），包含 128 种 General MIDI 乐器和鼓组；另可选 GeneralUser GS（`generaluser-gs-sf2`，约 32 MB）和 SGM-V2.01（`sgm-v2-sf2`，约 247 MB）。不需要推理内核。用法见[编曲](score_zh.md)。
 
 ## 使用协议
 

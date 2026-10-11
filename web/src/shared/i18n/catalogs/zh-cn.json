@@ -2292,7 +2292,7 @@
     "defaultMessage": "根据风格描述和歌词生成歌曲或纯音乐。"
   },
   "@yovoice.settings.modelDesc.soundfont": {
-    "defaultMessage": "用于渲染编曲的 General MIDI 音色库，含 128 种乐器和鼓组。"
+    "defaultMessage": "通用 General MIDI 音色库，含 128 种乐器和鼓组，音色均衡，适合大多数配乐。"
   },
   "@yovoice.settings.tabAI": {
     "defaultMessage": "AI 服务"
@@ -2635,5 +2635,11 @@
   },
   "@yovoice.score.importShort": {
     "defaultMessage": "导入"
+  },
+  "@yovoice.settings.modelDesc.soundfontGeneralUser": {
+    "defaultMessage": "体积小、音色干净的 GM/GS 音色库，钢琴与鼓组细致，各乐器音量更均衡。可免费用于个人和商业创作。"
+  },
+  "@yovoice.settings.modelDesc.soundfontSgm": {
+    "defaultMessage": "更真实的 GM 音色库，钢琴、弦乐、吉他与铜管采样更丰富，体积较大、渲染稍慢。作者未明示许可，商用前请自行确认。"
   }
 }

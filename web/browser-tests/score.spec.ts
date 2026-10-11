@@ -20,10 +20,17 @@ test('新建编曲作品：示例乐谱、音块总览、声部调整与持久�
   // 轨道视图：鼓组不显示音色，角色决定默认电平，关闭发声后写入 mute。
   const rows = page.locator('.score-track');
   await expect(rows).toHaveCount(7);
-  await expect(rows.last()).toContainText('鼓组');
+  await expect(rows.last().getByRole('img', { name: '鼓组' })).toBeVisible();
+  // 音色只显示图标，点开后可搜索切换。
+  await page.getByRole('button', { name: '琶音 的音色' }).click();
+  await page.getByRole('option', { name: 'Celesta' }).click();
+  await expect(page.getByRole('button', { name: '琶音 的音色' }).locator('svg title')).toHaveText('Celesta');
   await expect(page.getByLabel('铺底 的目标电平')).toHaveValue('-29');
   await page.getByLabel('铺底 的目标电平').fill('-26');
-  await page.getByRole('switch', { name: '琶音 发声' }).click();
+  const mute = page.getByRole('button', { name: '琶音 发声' });
+  await expect(mute).toHaveAttribute('aria-pressed', 'true');
+  await mute.click();
+  await expect(mute).toHaveAttribute('aria-pressed', 'false');
   // 角色收在色点菜单里：切换后行颜色随之变化。
   await page.getByRole('button', { name: '琶音 的角色' }).click();
   await page.getByRole('menuitem', { name: '钢琴' }).click();
@@ -53,7 +60,11 @@ test('新建编曲作品：示例乐谱、音块总览、声部调整与持久�
   const scroll = page.locator('.score-scroll');
   const headWidth = await rows.first().locator('.score-track-head').evaluate(el => el.clientWidth);
   const headHeight = await rows.first().locator('.score-track-head').evaluate(el => el.clientHeight);
-  expect(headWidth).toBeLessThanOrEqual(240);
+  expect(headWidth).toBeLessThanOrEqual(200);
+  // 轨头各列对齐：每行的音色、电平与发声按钮左边缘一致。
+  const columns = await rows.evaluateAll(list => list.map(row => [...row.querySelectorAll('.score-track-head > :not(.score-track-name)')].map(el => Math.round(el.getBoundingClientRect().left)).slice(-2).join()));
+  expect(new Set(columns).size).toBe(1);
+  await page.locator('.score-arrangement').screenshot({ path: '/mnt/project-files/yovoice-redesign/v7/score-v5.png' });
   expect(headHeight).toBeLessThanOrEqual(42);
   await expect.poll(() => scroll.evaluate(el => el.scrollWidth > el.clientWidth)).toBe(true);
   await scroll.evaluate(el => { el.dispatchEvent(new WheelEvent('wheel', { deltaY: 120, bubbles: true, cancelable: true })); });
@@ -62,6 +73,13 @@ test('新建编曲作品：示例乐谱、音块总览、声部调整与持久�
   await expect.poll(() => scroll.evaluate(el => el.scrollWidth > el.clientWidth * 1.5)).toBe(true);
   await scroll.evaluate(el => { el.scrollLeft = 200; });
   await expect.poll(() => rows.first().locator('.score-track-head').evaluate(el => Math.round(el.getBoundingClientRect().left - el.closest('.score-scroll')!.getBoundingClientRect().left))).toBe(0);
+  // 轨道区有最大高度（视口的 45%），声部多时上下滚动，时间轴固定在顶部。
+  await page.setViewportSize({ width: 1280, height: 600 });
+  await expect.poll(() => page.locator('.score-arrangement').evaluate(el => el.getBoundingClientRect().height)).toBeLessThanOrEqual(600 * .45 + 1);
+  await expect.poll(() => scroll.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
+  await scroll.evaluate(el => { el.scrollTop = el.scrollHeight; });
+  await expect.poll(() => scroll.evaluate(el => el.scrollTop)).toBeGreaterThan(0);
+  await expect.poll(() => page.locator('.score-ruler-row').evaluate(el => Math.round(el.getBoundingClientRect().top - el.closest('.score-scroll')!.getBoundingClientRect().top))).toBe(0);
 
   await expect(page.locator('.saved')).toContainText('已保存');
   await page.reload();
@@ -74,6 +92,7 @@ test('新建编曲作品：示例乐谱、音块总览、声部调整与持久�
   await page.getByRole('button', { name: '渲染配乐', exact: true }).click();
   await expect(page.getByRole('tab', { name: '音色库', selected: true })).toBeVisible();
   await expect(page.locator('[data-model-id="musescore-general-sf2"]')).toContainText('General MIDI 音色库');
+  await expect(page.locator('[data-model-id$="-sf2"]')).toHaveCount(3);
   await page.getByTestId('nav-score').click();
   await expect(page.locator('.project-library-row:visible')).toHaveCount(1);
   await page.getByTestId('nav-new').click();

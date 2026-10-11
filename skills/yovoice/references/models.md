@@ -17,6 +17,8 @@
 
 官方 Qwen3-TTS 还有 0.6B CustomVoice；当前固定模型仓库未发布对应独立 GGUF，暂不列为可下载模型。Safetensors 多文件包未接入当前单文件 GGUF 管理流程。
 
+`yovoice models list --json` 里的 ACE-Step、YuE2 是音乐模型，只在桌面端“音乐生成”使用，`generate` 不支持；`*-sf2` 是编曲音色库，见[编曲参考](score.md)。
+
 ## 下载与精度
 
 `yovoice models list --json` 返回模型 ID、下载路径、大小、SHA-256，以及当前支持的高级参数定义。App 使用同一目录。

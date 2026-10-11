@@ -183,6 +183,12 @@ func TestMCPRemoteWorkflow(t *testing.T) {
 	if !result.IsError {
 		t.Fatal("未知路径参数未拒绝")
 	}
+	// 音色库只接受目录里的 SoundFont，不能借渲染加载语音模型。
+	result, err = session.CallTool(ctx, &mcp.CallToolParams{Name: "render_score", Arguments: map[string]any{"soundFont": "kokoro-82m-q8", "score": map[string]any{"tempo": 120, "timeSignature": []int{4, 4}, "tracks": []any{}}}})
+	must(t, err)
+	if !result.IsError {
+		t.Fatal("非音色库模型未拒绝")
+	}
 }
 
 type tokenTransport struct{ token string }

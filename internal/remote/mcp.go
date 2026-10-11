@@ -97,16 +97,23 @@ func (a *API) newMCPHandler() http.Handler {
 		job, err := a.submitJob(in.RequestID, d)
 		return nil, job, err
 	})
-	mcp.AddTool(server, &mcp.Tool{Name: "render_score", Description: "把编曲乐谱渲染为混音 WAV，返回 id、duration 和 downloadPath。乐谱以小节和拍为单位：tempo、timeSignature、可选 sections（段落及变速），tracks 每个声部含 program（GM 音色号）或 drums、role（melody/piano/strings/bass/drums/pad/arp/other，决定默认电平）、notes（bar、beat 从 1 开始、pitch 为 MIDI 音高、length 以拍计、velocity），可选 level、pan、reverb、humanize、dynamics。需先安装音色库 musescore-general-sf2"}, func(ctx context.Context, req *mcp.CallToolRequest, in struct {
-		Title string       `json:"title,omitempty" jsonschema:"作品标题"`
-		Score schema.Score `json:"score" jsonschema:"乐谱"`
+	mcp.AddTool(server, &mcp.Tool{Name: "render_score", Description: "把编曲乐谱渲染为混音 WAV，返回 id、duration 和 downloadPath。乐谱以小节和拍为单位：tempo、timeSignature、可选 sections（段落及变速），tracks 每个声部含 program（GM 音色号）或 drums、role（melody/piano/strings/bass/drums/pad/arp/other，决定默认电平）、notes（bar、beat 从 1 开始、pitch 为 MIDI 音高、length 以拍计、velocity），可选 level、pan、reverb、humanize、dynamics。soundFont 选择已安装的音色库（musescore-general-sf2 默认、generaluser-gs-sf2、sgm-v2-sf2）"}, func(ctx context.Context, req *mcp.CallToolRequest, in struct {
+		Title     string       `json:"title,omitempty" jsonschema:"作品标题"`
+		SoundFont string       `json:"soundFont,omitempty" jsonschema:"音色库 ID，默认 musescore-general-sf2"`
+		Score     schema.Score `json:"score" jsonschema:"乐谱"`
 	}) (*mcp.CallToolResult, any, error) {
+		if in.SoundFont == "" {
+			in.SoundFont = "musescore-general-sf2"
+		}
+		if m, err := catalog.Lookup(in.SoundFont); err != nil || m.Family != "soundfont" {
+			return nil, nil, fmt.Errorf("未知音色库：%s", in.SoundFont)
+		}
 		if !a.busy.TryLock() {
 			return nil, nil, fmt.Errorf("推理服务繁忙，请稍后重试")
 		}
 		defer a.busy.Unlock()
 		d := schema.DefaultDraft()
-		d.Kind, d.ModelID, d.Title, d.Score = "score", "musescore-general-sf2", in.Title, &in.Score
+		d.Kind, d.ModelID, d.Title, d.Score = "score", in.SoundFont, in.Title, &in.Score
 		if d.Title == "" {
 			d.Title = "API 编曲"
 		}

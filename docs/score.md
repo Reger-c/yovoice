@@ -18,6 +18,16 @@ Rendering needs the MuseScore General sound font (`musescore-general-sf2`, SF2, 
 yovoice models download musescore-general-sf2
 ```
 
+Two more General MIDI sound fonts can be downloaded and switched without changing the score:
+
+| ID | Character | Size |
+| --- | --- | --- |
+| `musescore-general-sf2` | Default, balanced | 216 MB |
+| `generaluser-gs-sf2` | GeneralUser GS: compact and clean, detailed piano and drums, free for commercial music | 32 MB |
+| `sgm-v2-sf2` | SGM-V2.01: more realistic piano, strings, guitars and brass, slower to render; the author states no license | 247 MB |
+
+Pick one in the score's settings panel, or pass `--soundfont ID` to `yovoice score render`.
+
 Scores do not need the inference engine or a GPU.
 
 ## In the desktop app
@@ -102,7 +112,7 @@ yovoice score from-midi song.mid --output score.json
 - `midi` / `from-midi` convert between score JSON and standard MIDI without a sound font.
 - Existing files are never overwritten. On success stdout has JSON: `{"path": "...", "duration": 54.9, "bars": 22, "tracks": 7, "stems": "..."}`.
 
-The remote service's MCP exposes `render_score` with `title` and `score`, returning `id`, `duration` and `downloadPath`; see the [API guide](api.md).
+The remote service's MCP exposes `render_score` with `title`, `score` and an optional `soundFont` (an installed sound font ID), returning `id`, `duration` and `downloadPath`; see the [API guide](api.md).
 
 When importing MIDI, each track × channel becomes a track; tempo comes from the first tempo event, meter from the opening time signature, and channel 10 becomes a drum kit. Imported tracks get the `other` role, which you can change.
 

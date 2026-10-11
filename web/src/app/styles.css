@@ -640,7 +640,7 @@
 
   /* 编曲轨道视图：单行轨头固定宽度，轨道向右延伸贴紧检查器，右侧音块与段落标尺共用时间轴。 */
   /* 轨道区放在底部全宽面板里，与下方播放器同宽，横向贯穿检查器下方。 */
-  .score-arrangement { min-width: 0; flex: none; max-height: 45vh; margin: var(--spacing-2) var(--spacing-3) 0; --score-head: calc(var(--spacing-10) * 6); border: var(--border-width) solid var(--app-line); border-radius: var(--radius-container); background: var(--app-white); overflow: hidden; }
+  .score-arrangement { min-width: 0; flex: none; max-height: 45vh; margin: var(--spacing-2) var(--spacing-3) 0; --score-head: calc(var(--spacing-10) * 5); border: var(--border-width) solid var(--app-line); border-radius: var(--radius-container); background: var(--app-white); overflow: hidden; }
   .score-scroll { width: 100%; min-width: 0; min-height: 0; overflow-x: auto; overflow-y: auto; overscroll-behavior-x: contain; scrollbar-width: thin; scrollbar-color: var(--app-line) transparent; }
   .score-scroll::-webkit-scrollbar { height: var(--spacing-2); }
   .score-scroll::-webkit-scrollbar-track { background: transparent; }
@@ -670,9 +670,10 @@
   .score-track[aria-current="true"] { background: var(--app-surface); }
   .score-track[aria-current="true"] .score-track-head { box-shadow: inset calc(var(--border-width) * 3) 0 0 var(--role); }
   .score-track .score-track-head { color: var(--app-ink); min-height: var(--spacing-9); }
-  .score-track-name { flex: 0 1 auto; max-width: calc(var(--spacing-10) * 1.5); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: var(--font-weight-medium); }
-  .score-drum-kit { flex: 1 1 0; min-width: 0; color: var(--app-muted); font-size: var(--app-small-font); padding-inline-start: var(--spacing-1); display: flex; align-items: center; }
-  .score-track .astryx-switch { flex: none; }
+  .score-track-name { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: end; font-weight: var(--font-weight-medium); }
+  .score-drum-kit { flex: none; box-sizing: content-box; width: var(--spacing-4); height: var(--spacing-4); padding-inline: var(--spacing-1) var(--spacing-5); color: var(--app-muted); }
+  .score-track-head .score-mute.astryx-button { flex: none; width: var(--spacing-7); min-width: var(--spacing-7); padding: 0; color: var(--app-muted); }
+  .score-track[data-muted="true"] .score-mute.astryx-button { color: var(--color-icon-red, var(--app-muted)); }
   .score-role-button { flex: none; color: var(--role); }
   .score-track-head .score-role-button.astryx-button { width: var(--spacing-6); min-width: var(--spacing-6); padding: 0; }
   /* 单行轨头空间有限：不显示电平单位（悬停提示和读屏标签仍有），把宽度留给音色名。 */
@@ -694,10 +695,9 @@
   .score-track .number-field.compact input { width: calc(var(--spacing-8) - var(--spacing-1)); min-height: var(--spacing-7); padding: 0 var(--spacing-0-5); background: transparent; border-color: transparent; appearance: textfield; transition: background var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard); }
   .score-track .number-field.compact input::-webkit-inner-spin-button { display: none; }
   .score-track .number-field.compact input:hover, .score-track .number-field.compact input:focus { background: var(--app-white); border-color: var(--app-line); }
-  .score-instrument, .score-track-head > .astryx-field { flex: 1 1 0; min-width: 0; }
-  .score-track-head > .astryx-field * { min-width: 0; }
-  .score-instrument > button { min-width: 0; min-height: var(--spacing-7); padding-inline: var(--spacing-1); color: var(--app-muted); font-size: var(--app-small-font); overflow: hidden; }
-  .score-instrument > button > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .score-track-head > .astryx-field { flex: none; width: var(--spacing-10); min-width: 0; }
+  .score-track-head .score-instrument.astryx-selector { min-width: 0; min-height: var(--spacing-7); padding: 0 var(--spacing-1); gap: var(--spacing-0-5); color: var(--app-muted); }
+  .score-instrument > button { flex: none; min-width: 0; padding: 0; }
   @keyframes score-track-in { from { opacity: 0; filter: blur(var(--spacing-0-5)); } }
   @media (prefers-reduced-motion: reduce) {
     .ai-composer, .ai-composer-body, .score-track { animation: none; }
