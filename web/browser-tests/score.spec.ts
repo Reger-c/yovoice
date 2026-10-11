@@ -24,6 +24,22 @@ test('新建编曲作品：示例乐谱、音块总览、声部调整与持久�
   await expect(page.getByLabel('铺底 的目标电平')).toHaveValue('-29');
   await page.getByLabel('铺底 的目标电平').fill('-26');
   await page.getByRole('switch', { name: '琶音 发声' }).click();
+  // 角色收在色点菜单里：切换后行颜色随之变化。
+  await page.getByRole('button', { name: '琶音 的角色' }).click();
+  await page.getByRole('menuitem', { name: '钢琴' }).click();
+  await expect(rows.nth(5)).toHaveAttribute('data-role', 'piano');
+  await page.getByRole('button', { name: '琶音 的角色' }).click();
+  await page.getByRole('menuitem', { name: '琶音' }).click();
+  // 宽屏下右侧面板可收起，收起后主操作移到标题栏，并跨刷新保留。
+  await page.getByRole('button', { name: '收起右侧面板' }).click();
+  await expect(page.locator('.score-inspector')).toBeHidden();
+  await expect(page.getByRole('button', { name: '渲染配乐', exact: true })).toBeVisible();
+  await expect(page.locator('.saved')).toContainText('已保存');
+  await page.reload();
+  await expect(page.locator('.score-inspector')).toBeHidden();
+  await page.getByRole('button', { name: '展开右侧面板' }).click();
+  await expect(page.locator('.score-inspector')).toBeVisible();
+  await expect(page.getByRole('button', { name: '渲染配乐', exact: true })).toHaveCount(1);
   await page.getByRole('spinbutton', { name: '速度（BPM）' }).fill('120');
   await expect(page.locator('.score-summary')).toContainText('120 BPM');
   await page.screenshot({ path: testInfo.outputPath('score.png') });

@@ -4,11 +4,12 @@ import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
 import { useTranslator } from '@astryxdesign/core/i18n';
 import { LoaderCircle } from 'lucide-react';
-import { Selector, SelectorOption } from '../../shared/selector';
+import { Selector } from '../../shared/selector';
 import definitions from '../../shared/lib/generation-options.json';
 import { formatActivity } from '../../shared/i18n/format';
-import { formatSize, formatTime, isMusicModel, modelEngineReady, type Draft, type ModelPackage, type State } from '../../shared/workbench';
+import { formatTime, isMusicModel, modelEngineReady, type Draft, type ModelPackage, type State } from '../../shared/workbench';
 import { AdvancedSettings, SeedInput } from '../create/shared-controls';
+import { ModelSelector } from '../create/model-selector';
 import { durationPresets, musicLanguages } from './music-draft';
 
 const optionValues = (key: string) => definitions.ace_step.find(spec => spec.key === key)?.values ?? [];
@@ -52,10 +53,7 @@ export function MusicInspector({ draft, state, catalog, change, generate, cancel
       {header}
       <VStack className="inspector-actions" gap={3}>
         <HStack className="inspector-heading" hAlign="between" vAlign="center"><h2 className="inspector-section-title">{t('@yovoice.create.model')}</h2><Button label={t('@yovoice.create.backToScript')} className="inspector-toggle" variant="secondary" onClick={close} /></HStack>
-        <Selector label={t('@yovoice.create.model')} isLabelHidden width="100%" className="model-selector" value={draft.modelId} isDisabled={busy}
-          renderOption={item => <SelectorOption label={item.label} description={item.description} layout="inline" />} renderValue={item => item.label}
-          options={[...models.map(model => ({ value: model.id, label: `${model.name} · ${model.precision}`, description: state.models.some(installed => installed.id === model.id) ? t('@yovoice.create.modelInstalled') : t('@yovoice.music.modelSize', { size: formatSize(model.size) }) })), { value: 'manage', label: t('@yovoice.create.manageModels') }]}
-          onChange={modelId => { if (modelId === 'manage') settings(); else change({ modelId }); }} />
+        <ModelSelector label={t('@yovoice.create.model')} models={models} state={state} value={draft.modelId} isDisabled={generating} manage={settings} onChange={modelId => change({ modelId })} />
       </VStack>
       <VStack gap={3}>
         <h3>{t('@yovoice.music.duration')}</h3>

@@ -126,6 +126,8 @@
   .document-heading .document-title { flex: 1; min-width: 0; }
   .saved { display: inline-flex; align-items: center; gap: var(--spacing-2); }
   .inspector-toggle, .inspector-document-actions { display: none; }
+  .inspector-collapsed-action { flex-shrink: 0; }
+  @media (min-width: 901px) { .collapse-inspector .inspector { display: none; } }
   .writing { flex: 1; min-height: 0; overflow: hidden; padding: 0 var(--spacing-4); padding-top: var(--spacing-5); }
   .document-title { width: 100%; padding: 0; border: 0; outline: 0; border-radius: var(--radius-inner); background: transparent; font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); line-height: 1.25; letter-spacing: -.025em; }
   .document-title:focus-visible { outline: var(--border-width) solid var(--app-wave); outline-offset: 0; }
@@ -372,7 +374,7 @@
   .settings-help summary { justify-content: start; gap: var(--spacing-3); }
   .time { font-variant-numeric: tabular-nums; }
   @media (max-width: 1190px) { :root { --app-nav: calc(var(--spacing-10) * 4.5); --app-inspector: calc(var(--spacing-8) * 11); --app-editor-font: var(--font-size-lg); --app-title-font: var(--font-size-3xl); } .player { gap: var(--spacing-3); } }
-  @media (max-width: 900px) { :root { --app-nav: calc(var(--spacing-10) * 4); --app-inspector: calc(var(--spacing-8) * 11); } .inspector { display: none; } .show-inspector .inspector { display: grid; } .inspector-toggle { display: inline-flex; } .sidebar { padding-inline: var(--spacing-2); } .settings-page,.library-page { padding: var(--spacing-5) var(--spacing-6) var(--spacing-6); } }
+  @media (max-width: 900px) { :root { --app-nav: calc(var(--spacing-10) * 4); --app-inspector: calc(var(--spacing-8) * 11); } .inspector { display: none; } .show-inspector .inspector { display: grid; } .inspector-toggle { display: inline-flex; } .inspector-collapse,.inspector-collapsed-action { display: none; } .sidebar { padding-inline: var(--spacing-2); } .settings-page,.library-page { padding: var(--spacing-5) var(--spacing-6) var(--spacing-6); } }
   @media (max-width: 600px) { :root { --app-nav: calc(var(--spacing-8) * 2); --app-player: calc(var(--spacing-9) * 2); --app-title-font: var(--font-size-3xl); --app-editor-font: var(--font-size-lg); } .nav-item { font-size: 0; justify-content: center; padding: var(--spacing-2); gap: 0; } .new-project { font-size: 0; gap: 0; padding: var(--spacing-2); } .recent-projects { display: none; } .writing { min-height: calc(var(--spacing-10) * 14); padding-top: var(--spacing-5); } .sidebar { padding-bottom: var(--spacing-2); } .audio-panel { margin: var(--spacing-2); } .play-main { min-width: var(--spacing-10); min-height: var(--spacing-10); } .volume-control input { display: none; } .timeline .transport { min-height: var(--spacing-12); } .transport-time { font-size: var(--font-size-xs); } .transport { padding-inline: var(--spacing-2); } .time-ruler small:nth-child(even) { visibility: hidden; } .show-inspector .document { display: none; } .show-inspector .inspector-document-actions { display: flex; } .show-inspector .inspector { display: grid; grid-template-rows: auto minmax(0, 1fr); width: 100%; } .settings-page,.library-page { padding: var(--spacing-5); } }
   @media (max-width: 600px) {
     .workbench .astryx-app-shell-sidenav { width: calc(var(--spacing-8) * 2); }
@@ -392,7 +394,6 @@
   .music-style textarea { font-size: calc(var(--app-ui-font) + var(--spacing-0-5)); }
   .music-tag-group { min-width: var(--spacing-10); }
   .music-tag.astryx-button { border-radius: var(--radius-full); }
-  .music-section.astryx-button { font-family: ui-monospace, "SF Mono", Consolas, monospace; color: var(--app-muted); }
   .music-instrumental, .music-empty { padding: var(--spacing-4); border-radius: var(--radius-container); background: var(--app-surface); color: var(--app-muted); line-height: 1.8; }
   .music-take.astryx-button { height: auto; padding: var(--spacing-2); align-items: stretch; text-align: left; white-space: normal; }
   .music-take[aria-current="true"] .song-cover { box-shadow: 0 0 0 calc(var(--border-width) * 2) var(--app-ink); }
@@ -436,7 +437,12 @@
   .ai-nav-head { padding-inline: var(--spacing-2); color: var(--app-muted); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); }
   .ai-nav .astryx-list-item { border-radius: var(--radius-element); }
   .ai-nav .astryx-list-item[aria-selected="true"] { background: var(--color-background-muted); }
-  .ai-mark { flex-shrink: 0; background: var(--color-background-muted); color: var(--app-ink); font-weight: var(--font-weight-semibold); }
+  .ai-icon { flex-shrink: 0; width: var(--spacing-7); height: var(--spacing-7); border: var(--border-width) solid var(--app-line); border-radius: var(--radius-element); background: var(--app-white); color: var(--app-ink); font-size: var(--font-size-xs); }
+  .ai-icon[data-size="md"] { width: var(--spacing-10); height: var(--spacing-10); font-size: var(--font-size-sm); }
+  .ai-icon[data-active="true"] { border-color: color-mix(in srgb, var(--color-success) 42%, var(--app-line)); }
+  .ai-icon[data-custom="true"] { border-style: dashed; color: var(--app-muted); }
+  .ai-icon-glyph { width: 62%; height: 62%; background: var(--app-ink); mask: var(--ai-icon, none) center / contain no-repeat; -webkit-mask: var(--ai-icon, none) center / contain no-repeat; }
+  .ai-plan-hint { color: var(--app-muted); }
   .ai-detail { min-width: 0; padding: var(--spacing-6) var(--spacing-8); overflow-y: auto; }
   .ai-detail-head h2 { font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); }
   .ai-field-title { font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); color: var(--app-muted); }
@@ -613,14 +619,13 @@
   .ai-notice[data-status="done"] svg { color: var(--color-icon-green); }
 
   /* 音乐：三个区块之间用细线分隔，选中的标签描边加勾，不再整块涂黑。 */
-  .music-block + .music-block { padding-top: var(--spacing-5); border-top: var(--border-width) solid var(--app-line); }
+  .music-block + .music-block { padding-top: var(--spacing-4); border-top: var(--border-width) solid var(--app-line); }
   .music-tag.astryx-button[aria-pressed="true"] { border-color: var(--app-ink); background: var(--app-surface); color: var(--app-ink); }
   .music-tag.astryx-button { transition: background var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard); }
   .music-block .astryx-segmented-control { flex: none; width: max-content; }
-  .music-sections .music-tag-group { margin-inline-end: var(--spacing-1); color: var(--app-muted); }
 
   /* 编曲轨道视图：左侧轨头固定宽度，右侧音块与段落标尺共用同一时间轴。 */
-  .score-arrangement { flex-shrink: 0; --score-head: calc(var(--spacing-10) * 8); border: var(--border-width) solid var(--app-line); border-radius: var(--radius-container); background: var(--app-white); overflow: hidden; }
+  .score-arrangement { flex-shrink: 0; --score-head: calc(var(--spacing-10) * 9); border: var(--border-width) solid var(--app-line); border-radius: var(--radius-container); background: var(--app-white); overflow: hidden; }
   .score-ruler-row { border-bottom: var(--border-width) solid var(--app-line); background: var(--app-surface); }
   .score-track-head { flex: none; width: var(--score-head); min-width: 0; padding: var(--spacing-2) var(--spacing-3); border-right: var(--border-width) solid var(--app-line); }
   .score-ruler-head { justify-content: space-between; color: var(--app-muted); }
@@ -637,24 +642,35 @@
   .score-track[aria-current="true"] { background: var(--app-surface); }
   .score-track[aria-current="true"] .score-track-head { box-shadow: inset calc(var(--border-width) * 3) 0 0 var(--role); }
   .score-track .score-track-head { color: var(--app-ink); }
-  .score-track-title b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .score-track-title small, .score-drum-kit { color: var(--app-muted); }
-  .score-role-dot { flex: none; width: var(--spacing-2); height: var(--spacing-2); border-radius: var(--radius-full); background: var(--role); }
+  .score-track .score-track-head { padding-block: var(--spacing-1); }
+  .score-track-name { flex: none; width: calc(var(--spacing-10) * 1.5); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: var(--font-weight-medium); }
+  .score-drum-kit { color: var(--app-muted); padding-inline: var(--spacing-2); min-width: 0; }
+  .score-track .astryx-switch { flex: none; }
+  .score-role-button { flex: none; color: var(--role); }
+  .score-role-dot { fill: var(--role); stroke: var(--role); width: var(--spacing-3); height: var(--spacing-3); }
   .score-lane { position: relative; flex: 1; min-width: 0; align-self: stretch; transition: opacity var(--duration-medium) var(--ease-standard); }
   .score-lane canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; border-top: 0 solid var(--app-line); }
   .score-track[data-muted="true"] .score-lane { opacity: .25; }
-  .score-track[data-muted="true"] .score-role-dot { background: transparent; box-shadow: inset 0 0 0 var(--border-width) var(--role); }
-  .score-track[data-role="melody"] { --role: var(--color-icon-orange); }
-  .score-track[data-role="piano"] { --role: var(--color-icon-blue); }
-  .score-track[data-role="strings"] { --role: var(--color-icon-purple); }
-  .score-track[data-role="bass"] { --role: var(--color-icon-teal); }
-  .score-track[data-role="drums"] { --role: var(--color-icon-pink); }
-  .score-track[data-role="pad"] { --role: var(--color-icon-green); }
-  .score-track[data-role="arp"] { --role: var(--color-icon-yellow); }
+  .score-track[data-muted="true"] .score-role-button .score-role-dot { fill: transparent; }
+  .score-arrangement [data-role="melody"] { --role: var(--color-icon-orange); }
+  .score-arrangement [data-role="piano"] { --role: var(--color-icon-blue); }
+  .score-arrangement [data-role="strings"] { --role: var(--color-icon-purple); }
+  .score-arrangement [data-role="bass"] { --role: var(--color-icon-teal); }
+  .score-arrangement [data-role="drums"] { --role: var(--color-icon-pink); }
+  .score-arrangement [data-role="pad"] { --role: var(--color-icon-green); }
+  .score-arrangement [data-role="arp"] { --role: var(--color-icon-yellow); }
+  .score-arrangement [data-role="other"] { --role: var(--color-icon-gray); }
   .score-track .number-field.compact { gap: var(--spacing-1); color: var(--app-muted); }
-  .score-track .number-field.compact input { width: calc(var(--spacing-8) * 2); }
+  .score-track .number-field.compact { flex: none; }
+  .score-track .number-field.compact input { width: var(--spacing-10); min-height: var(--spacing-7); padding: var(--spacing-1); background: transparent; border-color: transparent; appearance: textfield; transition: background var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard); }
+  .score-track .number-field.compact input::-webkit-inner-spin-button { display: none; }
+  .score-track .number-field.compact input:hover, .score-track .number-field.compact input:focus { background: var(--app-white); border-color: var(--app-line); }
+  .score-instrument-slot { min-width: 0; }
+  .score-instrument-slot > *, .score-instrument { flex: 1 1 0; min-width: 0; }
+  .score-instrument > button { min-width: 0; overflow: hidden; }
+  .score-instrument > button > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   @keyframes score-track-in { from { opacity: 0; filter: blur(var(--spacing-0-5)); } }
-  @media (max-width: 1100px) { .score-arrangement { --score-head: calc(var(--spacing-10) * 6); } }
+  @media (max-width: 1100px) { .score-arrangement { --score-head: calc(var(--spacing-10) * 7.5); } .score-track-name { width: calc(var(--spacing-10) * 1.25); } }
   @media (prefers-reduced-motion: reduce) {
     .ai-composer, .ai-composer-body, .score-track { animation: none; }
     .ai-composer[data-status="running"]::after { animation: none; opacity: .5; width: 100%; }

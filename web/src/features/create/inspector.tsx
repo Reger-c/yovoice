@@ -7,7 +7,8 @@ import { Button } from '@astryxdesign/core/Button';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { Slider } from '@astryxdesign/core/Slider';
-import { Selector, SelectorOption } from '../../shared/selector';
+import { ModelSelector } from './model-selector';
+import { Selector } from '../../shared/selector';
 import { Switch } from '@astryxdesign/core/Switch';
 import { useTranslator } from '@astryxdesign/core/i18n';
 import { ChevronUp, ChevronRight, LoaderCircle } from 'lucide-react';
@@ -71,11 +72,6 @@ export function Inspector({ draft, state, catalog, change, chooseVoice, chooseEm
     : (['zh', 'en'] as const)).map(value => ({ value, label: t(`@yovoice.language.${value}`) }));
   // 配音与角色只列语音模型。
   const voiceModels = catalog.filter(model => isVoiceModel(model.id));
-  const installedModels = voiceModels.filter(model => state.models.some(installed => installed.id === model.id));
-  const selectedModel = voiceModels.find(model => model.id === draft.modelId);
-  const modelOptions = installedModels.length
-    ? [...(selectedModel && !installedModels.some(model => model.id === selectedModel.id) ? [selectedModel] : []), ...installedModels]
-    : voiceModels;
   return <VStack as="aside" className={embedded ? undefined : "inspector"} gap={0}>
     {!embedded ? <VStack className="generation-action" gap={3}>
       {generationAction ?? (generating ? <Button label={t('@yovoice.create.cancelGenerate')} onClick={cancel} width="100%" /> : <Button label={t('@yovoice.create.generate')} variant="primary" width="100%" size="lg" aria-keyshortcuts="Control+Enter" isDisabled={busy || !(draft.subtitles ? draft.subtitles.cues.some(cue => cue.text.trim()) : draft.text.trim())} onClick={generate} />)}
@@ -90,9 +86,8 @@ export function Inspector({ draft, state, catalog, change, chooseVoice, chooseEm
     {libraryActions}
     <VStack className="inspector-actions" gap={3}>
       <h2 className="inspector-section-title">{t('@yovoice.create.model')}</h2>
-      <Selector label={t('@yovoice.create.model')} isLabelHidden renderOption={option => <SelectorOption label={option.label} description={option.description} layout="inline" />} renderValue={option => option.label} className="model-selector" width="100%" value={draft.modelId} isDisabled={busy}
-        options={[...modelOptions.map(model => ({ value: model.id, label: `${model.name} · ${model.precision}`, description: state.models.some(installed => installed.id === model.id) ? t('@yovoice.create.modelInstalled') : t('@yovoice.create.modelMissing') })), ...(embedded || !allowModelManagement ? [] : [{ value: 'manage', label: t('@yovoice.create.manageModels') }])]}
-        onChange={modelId => { if (modelId === 'manage') { settings(); return; } change({ modelId, speaker: catalog.find(model => model.id === modelId)?.family === catalog.find(model => model.id === draft.modelId)?.family && !modelId.startsWith('kokoro-') ? draft.speaker : '', synthesisLanguage: catalog.find(model => model.id === modelId)?.family === catalog.find(model => model.id === draft.modelId)?.family ? draft.synthesisLanguage : 'auto', voiceDescription: catalog.find(model => model.id === modelId)?.family === catalog.find(model => model.id === draft.modelId)?.family ? draft.voiceDescription : '', language: modelId.startsWith('index-2.5') || ['zh', 'en'].includes(draft.language) ? draft.language : 'zh' }); }} />
+      <ModelSelector label={t('@yovoice.create.model')} models={voiceModels} state={state} value={draft.modelId} isDisabled={generating} manage={embedded || !allowModelManagement ? undefined : settings}
+        onChange={modelId => { change({ modelId, speaker: catalog.find(model => model.id === modelId)?.family === catalog.find(model => model.id === draft.modelId)?.family && !modelId.startsWith('kokoro-') ? draft.speaker : '', synthesisLanguage: catalog.find(model => model.id === modelId)?.family === catalog.find(model => model.id === draft.modelId)?.family ? draft.synthesisLanguage : 'auto', voiceDescription: catalog.find(model => model.id === modelId)?.family === catalog.find(model => model.id === draft.modelId)?.family ? draft.voiceDescription : '', language: modelId.startsWith('index-2.5') || ['zh', 'en'].includes(draft.language) ? draft.language : 'zh' }); }} />
 
     </VStack>
     <HStack className="inspector-heading" hAlign="between" vAlign="center"><h2 className="inspector-section-title">{t('@yovoice.create.voiceSettings')}</h2>{!embedded ? <Button label={t('@yovoice.create.backToScript')} className="inspector-toggle" variant="secondary" onClick={close} /> : null}</HStack>

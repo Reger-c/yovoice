@@ -2070,7 +2070,7 @@
     "defaultMessage": "Lyrics"
   },
   "@yovoice.music.insertSection": {
-    "defaultMessage": "Insert section marker"
+    "defaultMessage": "Insert section"
   },
   "@yovoice.music.instrumental": {
     "defaultMessage": "Instrumental"
@@ -2477,9 +2477,6 @@
   "@yovoice.ai.added": {
     "defaultMessage": "Added"
   },
-  "@yovoice.ai.addable": {
-    "defaultMessage": "Available"
-  },
   "@yovoice.ai.notAdded": {
     "defaultMessage": "Not added"
   },
@@ -2641,5 +2638,26 @@
   },
   "@yovoice.settings.noModelMatch": {
     "defaultMessage": "No matching models."
+  },
+  "@yovoice.app.collapseInspector": {
+    "defaultMessage": "Collapse side panel"
+  },
+  "@yovoice.app.expandInspector": {
+    "defaultMessage": "Expand side panel"
+  },
+  "@yovoice.ai.group.api": {
+    "defaultMessage": "Pay-as-you-go APIs"
+  },
+  "@yovoice.ai.group.coding": {
+    "defaultMessage": "Coding plans"
+  },
+  "@yovoice.ai.group.local": {
+    "defaultMessage": "Local & custom"
+  },
+  "@yovoice.ai.codingPlan": {
+    "defaultMessage": "Coding plan"
+  },
+  "@yovoice.ai.codingPlanHint": {
+    "defaultMessage": "Uses the plan's own key and quota, separate from the pay-as-you-go API"
   }
 }

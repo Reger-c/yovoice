@@ -24,7 +24,8 @@ test('新建音乐作品：示例、风格标签、段落标记、纯音乐与�
 
   const lyrics = page.getByLabel('歌词', { exact: true });
   await lyrics.evaluate((el: HTMLTextAreaElement) => el.setSelectionRange(el.value.length, el.value.length));
-  await page.getByRole('button', { name: '[bridge]', exact: true }).click();
+  await page.getByRole('button', { name: '插入段落' }).click();
+  await page.getByRole('menuitem', { name: '[bridge]', exact: true }).click();
   await expect(lyrics).toHaveValue(/一直等\n\n\[bridge\]\n$/);
 
   // 音乐作品使用独立检查器：只列音乐模型，时长与语言写入作品。
@@ -80,4 +81,17 @@ test('音乐版本以封面并排展示，点选版本即试听', async ({ page 
   await expect(takes.nth(2)).toHaveAttribute('aria-current', 'true');
   await expect(page.locator('.notice')).toHaveCount(0);
   await page.screenshot({ path: testInfo.outputPath('music-takes.png') });
+});
+
+test('音乐模型与语音一致：已下载后只列已下载的模型', async ({ page }) => {
+  const draft = { ...createMusicDraft('zh-CN'), id: 'c'.repeat(32), modelId: 'ace-step-1.5-turbo-q8' };
+  const state = emptyState();
+  state.drafts = [draft];
+  state.models = [{ id: 'ace-step-1.5-turbo-q8', path: 'ace-step-1.5-turbo-q8_0.gguf', managed: true }];
+  await page.addInitScript(value => { if (!localStorage.getItem('voice-workbench-v1')) localStorage.setItem('voice-workbench-v1', value); }, JSON.stringify(state));
+  await page.goto('/');
+  await page.getByRole('combobox', { name: '模型' }).click();
+  await expect(page.getByRole('option', { name: /ACE-Step 1\.5 Turbo · Q8/ })).toBeVisible();
+  await expect(page.getByRole('option', { name: /BF16|XL Turbo/ })).toHaveCount(0);
+  await expect(page.getByRole('option', { name: '管理模型…' })).toBeVisible();
 });

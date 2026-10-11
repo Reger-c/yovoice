@@ -4,9 +4,10 @@ import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { useTranslator } from '@astryxdesign/core/i18n';
 import { LoaderCircle } from 'lucide-react';
-import { Selector, SelectorOption } from '../../shared/selector';
+import { Selector } from '../../shared/selector';
 import { formatActivity } from '../../shared/i18n/format';
 import { formatSize, formatTime, isSoundFont, type Draft, type ModelPackage, type Score, type State } from '../../shared/workbench';
+import { ModelSelector } from '../create/model-selector';
 import { noteCount, scoreDuration, scoreSeconds } from './score-draft';
 
 const meters = [[4, 4], [3, 4], [2, 4], [6, 8], [12, 8]];
@@ -49,10 +50,7 @@ export function ScoreInspector({ draft, state, catalog, change, generate, cancel
       {header}
       <VStack className="inspector-actions" gap={3}>
         <HStack className="inspector-heading" hAlign="between" vAlign="center"><h2 className="inspector-section-title">{t('@yovoice.score.soundFont')}</h2><Button label={t('@yovoice.create.backToScript')} className="inspector-toggle" variant="secondary" onClick={close} /></HStack>
-        <Selector label={t('@yovoice.score.soundFont')} isLabelHidden width="100%" className="model-selector" value={draft.modelId} isDisabled={busy}
-          renderOption={item => <SelectorOption label={item.label} description={item.description} layout="inline" />} renderValue={item => item.label}
-          options={[...fonts.map(model => ({ value: model.id, label: model.name, description: state.models.some(m => m.id === model.id) ? t('@yovoice.create.modelInstalled') : formatSize(model.size) })), { value: 'manage', label: t('@yovoice.create.manageModels') }]}
-          onChange={modelId => { if (modelId === 'manage') settings(); else change({ modelId }); }} />
+        <ModelSelector label={t('@yovoice.score.soundFont')} models={fonts} state={state} value={draft.modelId} isDisabled={generating} manage={settings} name={model => model.name} onChange={modelId => change({ modelId })} />
       </VStack>
       <VStack gap={3}>
         <h3>{t('@yovoice.score.rhythm')}</h3>

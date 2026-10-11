@@ -26,9 +26,13 @@ type Preset struct {
 	KeyURL     string `json:"keyURL,omitempty"`
 	// Endpoint 为 fixed（地址固定）、local（本地服务，可改地址、无需密钥）或 custom（全部可改）。
 	Endpoint string `json:"endpoint"`
+	// Plan 为 coding 表示编程套餐：与同一家的按量 API 地址、密钥都不同，单独成行。
+	Plan string `json:"plan,omitempty"`
+	// Icon 是界面使用的服务商图标名，为空时显示名称首字。
+	Icon string `json:"icon,omitempty"`
 }
 
-// Presets 参考 nexus 的服务商目录，去掉编程套餐与图像生成，补充本地服务。界面持有同一份 JSON 副本。
+// Presets 参考 nexus 的服务商目录：按量 API 与编程套餐分开列出，去掉图像生成，补充本地服务。界面持有同一份 JSON 副本。
 //
 //go:embed presets.json
 var presetsJSON []byte
