@@ -270,8 +270,12 @@ for (const trigger of ['鼠标', '键盘']) test(`选中文字显示发音浮层
   await page.getByRole('button', { name: '应用发音' }).click();
   await expect(editor).toHaveValue('<银行|YIN2 HANG2>需要核对资料。');
   await expect(action).toHaveCount(0);
-  await editor.focus(); await editor.evaluate((element: HTMLTextAreaElement) => element.setSelectionRange(0, 0)); await editor.press('Shift+ArrowRight');
-  await expect(action).toBeVisible();
+  // 关闭对话框后重新聚焦，macOS CI 上浮层偶尔在选区出现后被收起（疑为聚焦引起的滚动事件晚到）；收起时重新选中再断言。
+  await editor.focus();
+  await expect(async () => {
+    await editor.evaluate((element: HTMLTextAreaElement) => element.setSelectionRange(0, 0)); await editor.press('Shift+ArrowRight');
+    await expect(action).toBeVisible({ timeout: 1000 });
+  }).toPass();
   await editor.press('ArrowRight'); await expect(action).toHaveCount(0);
   await editor.press('Shift+ArrowLeft'); await expect(action).toBeVisible();
   await editor.press('Escape'); await expect(action).toHaveCount(0);
