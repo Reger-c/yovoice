@@ -33,7 +33,7 @@ const AIProviderLimit = 16
 
 // AI 写作任务的默认与允许的超时（秒），每次请求单独计时。
 const (
-	AITimeoutDefault = 300
+	AITimeoutDefault = 600
 	AITimeoutMin     = 30
 	AITimeoutMax     = 1800
 )
