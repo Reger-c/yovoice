@@ -10,9 +10,11 @@ Open Settings › AI services. The left column lists added and available service
 
 | Service | Address | Key |
 | --- | --- | --- |
-| DeepSeek, Qwen (Bailian), GLM, Kimi, Doubao (Ark), MiniMax, OpenAI, Anthropic, OpenRouter | Built in | Required; **Get an API key from …** opens the provider's console |
+| DeepSeek, Qwen (Bailian), GLM, Kimi, Doubao (Ark), MiniMax, OpenAI, Anthropic, OpenRouter, OrcaRouter | Built in | Required; **Get an API key from …** opens the provider's console |
 | Ollama, LM Studio | Defaults to this computer (`127.0.0.1`), editable | Usually not needed |
 | Custom | Any compatible address | Optional |
+
+OrcaRouter also has free models: after adding a key, **Sync model list** and pick a free one to try the AI features at no cost.
 
 A custom service chooses one of three protocols: OpenAI Chat Completions, OpenAI Responses or Anthropic Messages, plus the path of its model list (for example `/models`; leave it empty if the service has none and type the model name).
 
