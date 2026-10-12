@@ -7,6 +7,7 @@ import { ArrowUpRight, Check, CircleAlert, LoaderCircle, Settings2, WandSparkles
 import { call, isDesktop } from '../lib/client';
 import { formatCallError } from '../i18n/format';
 import { Selector } from '../selector';
+import { OrcaConnect } from './orca-connect';
 import { formatTime, type AITask, type AITaskKind, type State } from '../workbench';
 
 // 任务已用时间：运行中每秒刷新，结束后停在完成时刻。
@@ -63,6 +64,7 @@ export function AIComposer({ kind, projectId, state, placeholder, submitLabel, e
   if (!provider?.model && !task) return <HStack className="ai-composer" data-status="setup" gap={3} vAlign="center" wrap="wrap">
     <WandSparkles className="ai-composer-mark" size={16} aria-hidden />
     <small className="grow">{t(`@yovoice.ai.setup.${kind}`)}</small>
+    <OrcaConnect />
     <Button size="sm" variant="secondary" icon={<Settings2 />} label={t('@yovoice.ai.configure')} onClick={configure} />
   </HStack>;
   return <VStack className="ai-composer" data-status={status ?? 'idle'} gap={0} aria-busy={status === 'running'}>
