@@ -9,7 +9,12 @@ public sealed record UpdateRelease(
     [property: JsonPropertyName("tag_name")] string Tag,
     bool Draft, bool Prerelease, UpdateAsset[] Assets)
 {
+    // 发布说明与日期只用于界面展示，缺失时不影响更新。
+    public string? Body { get; init; }
+    [JsonPropertyName("published_at")] public DateTimeOffset? PublishedAt { get; init; }
     public string Version => Tag[1..];
+    // 界面最多展示的发布说明长度，避免异常长的正文撑大消息。
+    public string? Notes => Body is null ? null : Body.Length > 20000 ? Body[..20000] : Body;
     // 自动更新只下载不含内核的更新包，保留已安装的 CPU 或 CUDA 内核；内核在设置中单独升级。
     public UpdateAsset? Package(string current)
     {

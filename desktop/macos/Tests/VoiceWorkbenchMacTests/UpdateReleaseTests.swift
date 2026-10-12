@@ -15,6 +15,15 @@ final class UpdateReleaseTests: XCTestCase {
         XCTAssertThrowsError(try UpdateRelease(tag_name: release.tag_name, draft: false, prerelease: false, assets: [foreign]).package(newerThan: "0.9.9"))
     }
 
+    func testReleaseNotesAreDecodedForDisplay() throws {
+        let json = #"{"tag_name":"v0.10.0","draft":false,"prerelease":false,"assets":[],"body":"English\n- New","published_at":"2026-10-11T08:00:00Z"}"#
+        let release = try JSONDecoder().decode(UpdateRelease.self, from: Data(json.utf8))
+        XCTAssertEqual(release.notes, "English\n- New")
+        XCTAssertEqual(release.published_at, "2026-10-11T08:00:00Z")
+        XCTAssertNil(UpdateRelease(tag_name: "v0.10.0", draft: false, prerelease: false, assets: []).notes)
+        XCTAssertEqual(UpdateRelease(tag_name: "v0.10.0", draft: false, prerelease: false, assets: [], body: String(repeating: "x", count: 30000)).notes?.count, 20000)
+    }
+
     func testCorruptDownloadIsDeletedBeforeExtraction() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

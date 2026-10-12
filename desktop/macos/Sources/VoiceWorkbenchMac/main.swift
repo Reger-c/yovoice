@@ -110,6 +110,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
         let updateItem = NSMenuItem(title: HostL10n.t("menu.checkUpdates"), action: nil, keyEquivalent: "")
         appItem.submenu?.addItem(updateItem)
         updater = AppUpdater(menuItem: updateItem, root: root)
+        updater?.onChange = { [weak self] snapshot in
+            guard let self, self.web != nil else { return }
+            self.post(["event": "update", "update": snapshot.json])
+        }
+        // 菜单“检查更新”在界面内打开更新详情；界面尚未就绪时由更新器弹原生对话框。
+        updater?.showInApp = { [weak self] in
+            guard let self, let web = self.web, web.url != nil else { return false }
+            self.window.makeKeyAndOrderFront(nil)
+            web.evaluateJavaScript("window.dispatchEvent(new Event('workbench-show-update'))", completionHandler: nil)
+            return true
+        }
         appItem.submenu?.addItem(.separator())
         appItem.submenu?.addItem(withTitle: HostL10n.t("menu.quit"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         let edit = NSMenuItem()
@@ -387,6 +398,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             guard NSWorkspace.shared.open(directory) else { throw failure(HostL10n.t("err.modelDirOpen")) }
             return ["id": message["id"]!, "result": true]
+        }
+        if method == "app.update.get" {
+            return ["id": message["id"]!, "result": updater.map { $0.snapshot.json as Any } ?? NSNull()]
+        }
+        if method == "app.update.check" {
+            updater?.checkFromApp()
+            return ["id": message["id"]!, "result": true]
+        }
+        if method == "app.update.install" {
+            return ["id": message["id"]!, "result": updater?.install() ?? false]
         }
         if method == "logs.open" {
             NSWorkspace.shared.open(root.appendingPathComponent("logs"))

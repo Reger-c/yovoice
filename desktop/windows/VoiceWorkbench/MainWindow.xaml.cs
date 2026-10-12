@@ -43,6 +43,11 @@ public partial class MainWindow : Window
         tray = new Forms.NotifyIcon { Icon = trayIcon, Text = "yovoice", ContextMenuStrip = trayMenu, Visible = true };
         tray.MouseClick += (_, e) => { if (e.Button == Forms.MouseButtons.Left) RestoreWindow(); };
         updater = new AppUpdater(this, CheckUpdatesMenu, service.Root);
+        updater.Changed += snapshot => { if (!closed) PostJson(JsonSerializer.Serialize(new { @event = "update", update = snapshot }, WebJson)); };
+        // 窗口隐藏在托盘时，用系统通知提示新版本已就绪。
+        updater.Ready += version => { if (!IsVisible && !closed) tray.ShowBalloonTip(8000, "yovoice 有新版本", $"{version} 已下载完成，打开 yovoice 重启即可更新。", Forms.ToolTipIcon.Info); };
+        tray.BalloonTipClicked += (_, _) => { RestoreWindow(); ShowUpdateInApp(); };
+        updater.ShowInApp = ShowUpdateInApp;
         service.StateChanged += json => { if (!closed) _ = Dispatcher.InvokeAsync(() => PostJson(json)); };
         service.Failed += error => { if (!closed && !shuttingDown) _ = Dispatcher.InvokeAsync(() => AppDialog.Show(this, "本地服务已停止", error)); };
         Loaded += async (_, _) => { await InitializeWebAsync(); updater.Start(); };
@@ -157,6 +162,14 @@ public partial class MainWindow : Window
         RestoreWindow();
         exitRequested = true;
         Close();
+    }
+    // 菜单“检查更新”在界面内打开更新详情；界面尚未就绪时返回 false，由更新器弹原生对话框。
+    private bool ShowUpdateInApp()
+    {
+        if (web?.CoreWebView2 is null || recovering || shuttingDown) return false;
+        RestoreWindow();
+        try { _ = web.CoreWebView2.ExecuteScriptAsync("window.dispatchEvent(new Event('workbench-show-update'))"); return true; }
+        catch (InvalidOperationException) { return false; }
     }
     private void ExitMenu_Click(object sender, RoutedEventArgs e) => RequestExit();
     private void ShowWindowMenu_Click(object sender, RoutedEventArgs e)
@@ -321,6 +334,12 @@ public partial class MainWindow : Window
                     string modelDirectory = state.GetProperty("preferences").GetProperty("modelDirectory").GetString() ?? Path.Combine(service.Root, "models");
                     Directory.CreateDirectory(modelDirectory);
                     Process.Start(new ProcessStartInfo(modelDirectory) { UseShellExecute = true }); result = true; break;
+                case "app.update.get":
+                    result = JsonSerializer.SerializeToElement(updater.Snapshot, WebJson); break;
+                case "app.update.check":
+                    _ = updater.CheckFromAppAsync(); result = true; break;
+                case "app.update.install":
+                    result = updater.Install(); break;
                 case "logs.open":
                     Process.Start(new ProcessStartInfo(Path.Combine(service.Root, "logs")) { UseShellExecute = true }); result = true; break;
                 default: result = await service.CallAsync(method, data); break;
@@ -330,6 +349,8 @@ public partial class MainWindow : Window
         catch (ServiceCallException error) { HostLog.Write(service.Root, "rpc.failed:" + method, error); Post(new { id, error = error.Wire }); }
         catch (Exception error) { HostLog.Write(service.Root, "bridge.failed:" + method, error); Post(new { id, error = error.Message }); }
     }
+    // 更新状态按网页约定使用驼峰字段名。
+    private static readonly JsonSerializerOptions WebJson = new(JsonSerializerDefaults.Web);
     private void Post(object value) => PostJson(JsonSerializer.Serialize(value));
     private void PostJson(string json)
     {

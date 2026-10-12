@@ -637,6 +637,23 @@
   .model-search-empty { color: var(--app-muted); }
   .ai-notice[data-status="done"] svg { color: var(--color-icon-green); }
 
+  /* 应用更新：全局提示、侧栏入口与发布说明。 */
+  .update-notice { min-width: min(calc(var(--spacing-10) * 11), calc(100vw - var(--spacing-6))); }
+  .update-notice > svg { flex-shrink: 0; color: var(--color-accent); }
+  .update-notice[data-status="updated"] > svg { color: var(--color-icon-green); }
+  .sidebar-update { padding: var(--spacing-3); border: var(--border-width) solid var(--app-line); border-radius: var(--radius-container); background: var(--app-white); }
+  .sidebar-update-title { justify-content: start; width: 100%; padding-inline: 0; font-weight: var(--font-weight-medium); }
+  .sidebar-update-title svg { color: var(--color-accent); }
+  .update-progress { width: 100%; }
+  .update-progress-row .settings-row-control { flex: 1 1 calc(var(--spacing-10) * 6); }
+  .release-notes-panel { padding-top: var(--spacing-4); border-top: var(--border-width) solid var(--app-line); }
+  .release-notes { max-height: 40vh; overflow: auto; font-size: var(--app-small-font); line-height: 1.8; }
+  .release-notes ul { margin: 0; padding-inline-start: var(--spacing-5); list-style: disc; }
+  .release-notes li + li { margin-top: var(--spacing-2); }
+  .release-notes code { padding: 0 var(--spacing-1); border-radius: var(--radius-element); background: var(--color-background-muted); font-size: 0.92em; }
+  .release-link { font-size: var(--app-small-font); white-space: nowrap; }
+  @media (max-width: 600px) { .sidebar-update { display: none; } }
+
   /* 音乐：三个区块之间用细线分隔，选中的标签描边加勾，不再整块涂黑。 */
   .music-block + .music-block { padding-top: var(--spacing-4); border-top: var(--border-width) solid var(--app-line); }
   .music-tag.astryx-button[aria-pressed="true"] { border-color: var(--app-ink); background: var(--app-surface); color: var(--app-ink); }
