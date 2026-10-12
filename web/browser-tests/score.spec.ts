@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { seedState } from './seed';
 import { emptyState } from '../src/shared/workbench';
 import { createScoreDraft, exampleScore, scoreDuration } from '../src/features/score/score-draft';
 import { midiToScore, scoreToMidi } from '../src/features/score/score-midi';
@@ -152,4 +153,21 @@ test('乐谱时长按段落变速累加', () => {
   const score = exampleScore('zh-CN');
   // 1–18 小节 100 BPM（43.2 秒），19–22 小节 88 BPM（约 10.9 秒）。
   expect(scoreDuration(score)).toBeCloseTo(18 * 4 * 0.6 + 4 * 4 * 60 / 88, 6);
+});
+
+test('缺少乐谱的旧编曲作品可以正常打开，不再白屏', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/');
+  await page.getByTestId('nav-new').click();
+  await page.getByRole('menuitem', { name: '编曲', exact: true }).click();
+  await expect(page.locator('.saved')).toContainText('已保存');
+  const state = await page.evaluate(() => JSON.parse(localStorage.getItem('voice-workbench-v1')!));
+  for (const draft of state.drafts) if (draft.kind === 'score') { delete draft.score; draft.title = '旧编曲'; }
+  await seedState(page, state);
+  await page.reload();
+  await expect(page.getByLabel('作品名称')).toHaveValue('旧编曲');
+  await page.getByTestId('nav-score').click();
+  await expect(page.locator('.project-library-row').filter({ hasText: '旧编曲' })).toBeVisible();
+  expect(errors).toEqual([]);
 });

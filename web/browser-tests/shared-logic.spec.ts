@@ -4,18 +4,25 @@ import { SubtitleParser } from '../src/features/create/subtitle-parser';
 import { Timeline } from '../src/features/media/timeline';
 import { CallError, noticeMessage, parseCallError } from '../src/shared/lib/call-error';
 import { formatCallError, formatNotice } from '../src/shared/i18n/format';
-import { createDraft, previewStale, projectKind, requiresVoice, synthesisSettings, withCueIds, type Character, type Draft } from '../src/shared/workbench';
+import { createDraft, previewStale, projectKind, requiresVoice, synthesisSettings, normalizeDraft, type Character, type Draft } from '../src/shared/workbench';
 
 // 不打开页面，直接校验界面依赖的纯逻辑。
 
 test('旧字幕补齐稳定标识，已有标识与无字幕作品保持原对象', () => {
   const draft: Draft = { ...createDraft(), id: 'd', subtitles: { speakers: [], cues: [{ start: 0, end: 1, text: 'a', speakerId: '1' }, { id: 'kept', start: 1, end: 2, text: 'b', speakerId: '1' }] } };
-  const first = withCueIds(draft);
+  const first = normalizeDraft(draft);
   expect(first.subtitles!.cues.map(c => c.id)).toEqual(['legacy-d-0', 'kept']);
-  expect(withCueIds(draft).subtitles!.cues[0].id).toBe(first.subtitles!.cues[0].id);
-  expect(withCueIds(first)).toBe(first);
+  expect(normalizeDraft(draft).subtitles!.cues[0].id).toBe(first.subtitles!.cues[0].id);
+  expect(normalizeDraft(first)).toBe(first);
   const plain = createDraft();
-  expect(withCueIds(plain)).toBe(plain);
+  expect(normalizeDraft(plain)).toBe(plain);
+});
+
+test('缺少乐谱的旧编曲作品补上空乐谱，已有乐谱保持原对象', () => {
+  const legacy: Draft = { ...createDraft(), id: 's', kind: 'score' };
+  expect(normalizeDraft(legacy).score).toMatchObject({ tempo: 100, timeSignature: [4, 4], tracks: [] });
+  const scored: Draft = { ...legacy, score: { tempo: 90, timeSignature: [3, 4], tracks: [] } };
+  expect(normalizeDraft(scored)).toBe(scored);
 });
 
 test('试听过期只看文本与参数取值，忽略键顺序和与 Go 默认值相同的缺省字段', () => {
