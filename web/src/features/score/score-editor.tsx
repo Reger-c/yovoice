@@ -8,7 +8,7 @@ import { Selector } from '../../shared/selector';
 import { AIComposer } from '../../shared/ui/ai-composer';
 import { call, isDesktop } from '../../shared/lib/client';
 import { formatTime, type Draft, type Score, type State, type UiLocale } from '../../shared/workbench';
-import { exampleScore, noteCount, scoreBars, scoreDuration } from './score-draft';
+import { emptyScore, exampleScore, noteCount, scoreBars, scoreDuration } from './score-draft';
 import { midiToScore, scoreToMidi } from './score-midi';
 
 const lengths = [30, 60, 90, 120, 180, 300];
@@ -29,7 +29,7 @@ function download(data: BlobPart, type: string, name: string) {
 // 编曲区：曲子概要与导入导出、一句话交给 AI 写谱，以及 DAW 式的轨道视图（轨头调音色与电平，右侧音块对齐段落）。
 export function ScoreEditor({ draft, state, change, locale, onError, configureAI }: { draft: Draft; state: State; change: (patch: Partial<Draft>) => void; locale: UiLocale; onError: (error: string) => void; configureAI: () => void }) {
   const t = useTranslator();
-  const score = draft.score!;
+  const score = draft.score ?? emptyScore();
   const input = useRef<HTMLInputElement>(null);
   const [seconds, setSeconds] = useState(60);
   const notes = noteCount(score);

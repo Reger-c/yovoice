@@ -8,7 +8,7 @@ import { Selector } from '../../shared/selector';
 import { formatActivity } from '../../shared/i18n/format';
 import { formatSize, formatTime, isSoundFont, type Draft, type ModelPackage, type Score, type State } from '../../shared/workbench';
 import { ModelSelector } from '../create/model-selector';
-import { noteCount, scoreDuration } from './score-draft';
+import { emptyScore, noteCount, scoreDuration } from './score-draft';
 
 const meters = [[4, 4], [3, 4], [2, 4], [6, 8], [12, 8]];
 
@@ -18,7 +18,7 @@ export function ScoreInspector({ draft, state, catalog, change, generate, cancel
   generate: () => void; cancel: () => void; settings: () => void; close: () => void;
 }) {
   const t = useTranslator();
-  const score = draft.score!;
+  const score = draft.score ?? emptyScore();
   const busy = state.activity?.status === 'running';
   const generating = busy && state.activity?.kind === 'generate' && state.activity.projectId === draft.id;
   const [elapsed, setElapsed] = useState(0);

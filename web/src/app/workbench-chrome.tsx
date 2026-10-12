@@ -28,7 +28,7 @@ import { ConfirmDelete } from '../shared/ui/app-dialog';
 import { call, isDesktop } from '../shared/lib/client';
 import { noticeMessage } from '../shared/lib/call-error';
 import { formatNotice } from '../shared/i18n/format';
-import { isKokoroModel, isVoiceModel, isReferenceModel, modelEngineReady, runtimeStatus, runtimeUsable, isVoxModel, requiresVoice, projectKind, createDraft, synthesisSettings, performanceSettings, cueSettings, withCueIds, type Character, type Draft, type EngineInfo, type State, type ModelPackage, type Voice, type Generation, type Track } from '../shared/workbench';
+import { isKokoroModel, isVoiceModel, isReferenceModel, modelEngineReady, runtimeStatus, runtimeUsable, isVoxModel, requiresVoice, projectKind, createDraft, synthesisSettings, performanceSettings, cueSettings, normalizeDraft, type Character, type Draft, type EngineInfo, type State, type ModelPackage, type Voice, type Generation, type Track } from '../shared/workbench';
 import { SidebarNav } from './sidebar-nav';
 import { Notifications } from './notifications';
 import { PronunciationDialog, type Pronunciation } from './pronunciation-dialog';
@@ -100,7 +100,7 @@ export function WorkbenchChrome({ state, catalog, engine, ready, session, error,
     setTrack(refresh); setPreviewTrack(refresh);
   }, [state.voices, state.history, ready, setDraft]);
   useEffect(() => { setPreviewTrack(null); setTrack(current => current ? { ...current, playRequest: undefined } : null); }, [page]);
-  useEffect(() => { if (ready) setDraft(current => Timeline.accept(withCueIds(current), state.history)); }, [state.history, draft.id, ready, setDraft]);
+  useEffect(() => { if (ready) setDraft(current => Timeline.accept(normalizeDraft(current), state.history)); }, [state.history, draft.id, ready, setDraft]);
   const generate = () => {
     if (state.activity?.status === 'running') return;
     if (draft.subtitles) {
@@ -127,9 +127,9 @@ export function WorkbenchChrome({ state, catalog, engine, ready, session, error,
   }, []);
   async function newDraft(next: Draft) {
     if (draftPersisted) await persistDraft(draft); await persistDraft(next);
-    setDraft(withCueIds(next)); setPage('create');
+    setDraft(normalizeDraft(next)); setPage('create');
   }
-  function selectDraft(item: Draft) { run(async () => { if (draftPersisted) await persistDraft(draft); setDraft(withCueIds(item.id === draft.id ? draft : item)); setDraftPersisted(true); setPage('create'); }); }
+  function selectDraft(item: Draft) { run(async () => { if (draftPersisted) await persistDraft(draft); setDraft(normalizeDraft(item.id === draft.id ? draft : item)); setDraftPersisted(true); setPage('create'); }); }
   function selectVoice(voice: Voice) { if (voicePicker !== 'add') change(voicePicker === 'emotion' ? { emotionVoiceId: voice.id } : { voiceId: voice.id, referenceText: voice.referenceText ?? '' }); setVoicePicker(null); }
   function annotate(selection: TextSelection) {
     setPronunciation({ ...selection, sound: '' });
@@ -161,7 +161,7 @@ export function WorkbenchChrome({ state, catalog, engine, ready, session, error,
   const projectList = state.drafts.map(d => d.id === draft.id ? { ...draft, createdAt: d.createdAt, updatedAt: d.updatedAt } : d);
   const [voiceQuery, setVoiceQuery] = useState('');
   const [historyQuery, setHistoryQuery] = useState('');
-  const openHistory = (item: Draft) => run(async () => { if (draftPersisted) await persistDraft(draft); setDraft(withCueIds(item)); setDraftPersisted(true); setHistoryQuery(''); setPreviewTrack(null); setPage('history'); });
+  const openHistory = (item: Draft) => run(async () => { if (draftPersisted) await persistDraft(draft); setDraft(normalizeDraft(item)); setDraftPersisted(true); setHistoryQuery(''); setPreviewTrack(null); setPage('history'); });
   const [characterEditor, setCharacterEditor] = useState<Character | null>(null);
   const characterActive = !!characterEditor && page === 'characters';
   const characterReturnPage = useRef('create');
@@ -185,7 +185,7 @@ export function WorkbenchChrome({ state, catalog, engine, ready, session, error,
     const source = draftId === 'new' ? { ...createDraft(false, state.preferences.uiLocale), kind: 'text' as const } : projectList.find(d => d.id === draftId);
     if (!source || (source.subtitles && !source.subtitles.speakers.some(s => s.id === speakerId))) throw new Error('@yovoice.error.draftIDInvalid');
     const next = source.subtitles ? { ...source, subtitles: { ...source.subtitles, cues: source.subtitles.cues.map(cue => cue.speakerId === speakerId ? { ...cue, performance: undefined } : cue), speakers: source.subtitles.speakers.map(s => s.id === speakerId ? { ...s, characterId: voice.id, settings: structuredClone(voice.settings) } : s) } } : { ...source, ...structuredClone(voice.settings), characterId: voice.id, performance: undefined };
-    if (draftId === draft.id) { await persistDraft(next); setDraft(withCueIds(next)); setPage('create'); }
+    if (draftId === draft.id) { await persistDraft(next); setDraft(normalizeDraft(next)); setPage('create'); }
     else await newDraft(next);
     if (next.subtitles) setCueSelection(current => ({ draftId: next.id, index: Math.max(0, next.subtitles!.cues.findIndex(c => c.speakerId === speakerId)), revision: (current?.revision ?? 0) + 1 }));
   }

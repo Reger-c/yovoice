@@ -1,4 +1,6 @@
-import { createDraft, type Draft, type Score, type ScoreRole, type ScoreTrack, type UiLocale } from '../../shared/workbench';
+import { createDraft, emptyScore, type Draft, type Score, type ScoreRole, type ScoreTrack, type UiLocale } from '../../shared/workbench';
+
+export { emptyScore };
 
 export const soundFontId = 'musescore-general-sf2';
 
@@ -29,7 +31,6 @@ export const noteCount = (score: Score) => score.tracks.reduce((sum, t) => sum +
 const names = ['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
 export const pitchName = (pitch: number) => `${names[pitch % 12]}${Math.floor(pitch / 12) - 1}`;
 
-export const emptyScore = (): Score => ({ tempo: 100, timeSignature: [4, 4], key: '', sections: [], tracks: [] });
 
 // 示例：科技解读视频的垫底配乐。D 小调 100 BPM 22 小节，前奏只有铺底和钢琴，展开加入弦乐、低音、琶音和鼓，回落时钢琴放慢收在 Dm。
 export function exampleScore(locale: UiLocale): Score {
