@@ -6,6 +6,7 @@ import { useTranslator } from '@astryxdesign/core/i18n';
 import { AudioLines, ChevronRight, FileMusic, Mic, Music, Pencil, Settings2, Trash2 } from 'lucide-react';
 import { projectKind, type Draft, type State } from '../shared/workbench';
 import { overflowTitle } from '../shared/ui/overflow-title';
+import { UpdateSidebarCard } from '../features/update/update-notice';
 
 // 侧栏：新建入口、作品类型、声音库、最近作品与设置。
 export function SidebarNav(props: {
@@ -35,7 +36,7 @@ export function SidebarNav(props: {
         <Button className="project-quick-delete" label={t('@yovoice.nav.deleteProject', { title: item.id === draft.id ? draft.title : item.title })} icon={<Trash2 />} isIconOnly size="sm" variant="ghost" onClick={() => removeDraft(item.id === draft.id ? draft : item)} />
       </HStack>)}</VStack>
     </details>
-    <VStack className="sidebar-bottom" gap={3}><Button data-testid="nav-settings" label={t('@yovoice.nav.settings')} icon={<Settings2 size={18} />} variant="ghost" className={`nav-item ${page === 'settings' ? 'selected' : ''}`} onClick={() => setPage('settings')} /></VStack>
+    <VStack className="sidebar-bottom" gap={3}><UpdateSidebarCard /><Button data-testid="nav-settings" label={t('@yovoice.nav.settings')} icon={<Settings2 size={18} />} variant="ghost" className={`nav-item ${page === 'settings' ? 'selected' : ''}`} onClick={() => setPage('settings')} /></VStack>
     <ResizeHandle label={t('@yovoice.nav.resize')} direction="horizontal" position="overlay" pillPlacement="center" resizable={resizable} isAlwaysVisible={false} />
   </VStack>;
 }

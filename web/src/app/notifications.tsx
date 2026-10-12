@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Button } from '@astryxdesign/core/Button';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { useTranslator } from '@astryxdesign/core/i18n';
@@ -30,7 +30,7 @@ function AITaskNotice({ task, title, open }: { task: AITask; title?: string; ope
 }
 
 // 全局错误提示与后台任务进度；关闭的失败任务按内容记忆，不再重复提示。
-export function Notifications({ error, clearError, activity, draftId, page, cancel, aiTask, aiTitle, openAITask }: { error: string; clearError: () => void; activity: Activity | null; draftId: string; page: string; cancel: () => void; aiTask?: AITask; aiTitle?: string; openAITask: () => void }) {
+export function Notifications({ error, clearError, activity, draftId, page, cancel, aiTask, aiTitle, openAITask, children }: { children?: ReactNode; error: string; clearError: () => void; activity: Activity | null; draftId: string; page: string; cancel: () => void; aiTask?: AITask; aiTitle?: string; openAITask: () => void }) {
   const t = useTranslator();
   const [dismissedActivity, setDismissedActivity] = useState(() => localStorage.getItem('yovoice-dismissed-task') ?? '');
   const activityKey = activity ? stableJSON(activity) : '';
@@ -39,5 +39,6 @@ export function Notifications({ error, clearError, activity, draftId, page, canc
       {error || (activity?.status === 'failed' && !activity.characterId && (!activity.projectId || activity.projectId === draftId) && page === 'create' && activityKey !== dismissedActivity) ? <HStack className="notice" role="alert" gap={3} hAlign="between" vAlign="center"><CircleAlert className="notice-icon" aria-hidden /><p className="grow"><NoticeText error={error} activity={activity} /></p><Button label={t('@yovoice.action.closeNotice')} size="sm" variant="ghost" isIconOnly icon={<X size={16} />} onClick={() => { clearError(); if (activity?.status === 'failed') { setDismissedActivity(activityKey); localStorage.setItem('yovoice-dismissed-task', activityKey); } }} /></HStack> : null}
       {busy && activity && !['download', 'generate'].includes(activity.kind) ? <HStack className="activity" role="status" gap={3} vAlign="center"><VStack className="grow" gap={2}><HStack hAlign="between"><ActivityLabel activity={activity} />{activity.total > 0 ? <small>{formatSize(activity.received)} / {formatSize(activity.total)}</small> : null}</HStack><progress value={activity.total > 0 ? activity.received : undefined} max={activity.total || 1} /></VStack><Button label={activity.kind === 'download' ? t('@yovoice.action.pause') : t('@yovoice.action.cancel')} size="sm" onClick={cancel} /></HStack> : null}
       {aiTask && aiTask.status !== 'cancelled' && (page !== 'create' || aiTask.projectId !== draftId) ? <AITaskNotice task={aiTask} title={aiTitle} open={openAITask} /> : null}
+      {children}
   </VStack>;
 }

@@ -26,4 +26,8 @@ Require(UpdateRelease.Checksum($"{new string('b', 64)}  ./other.exe\n{hash}  ./{
 Reject(() => UpdateRelease.Checksum($"{hash}  ./other.exe", name));
 Reject(() => UpdateRelease.Checksum($"{hash}  {name}\n{hash}  {name}", name));
 Reject(() => UpdateRelease.Checksum($"invalid  {name}", name));
-Console.WriteLine("版本比较、正式版筛选、Setup 选择、下载地址和校验文件检查通过。");
+// 发布说明与日期随版本信息一起读取，供界面展示。
+var parsed = System.Text.Json.JsonSerializer.Deserialize<UpdateRelease>("""{"tag_name":"v0.10.0","draft":false,"prerelease":false,"assets":[],"body":"### English\n- New","published_at":"2026-10-11T08:00:00Z"}""", new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+Require(parsed.Notes == "### English\n- New" && parsed.PublishedAt == DateTimeOffset.Parse("2026-10-11T08:00:00Z"));
+Require((release with { Body = new string('x', 30000) }).Notes!.Length == 20000 && release.Notes is null);
+Console.WriteLine("版本比较、正式版筛选、Setup 选择、下载地址和校验文件、发布说明检查通过。");

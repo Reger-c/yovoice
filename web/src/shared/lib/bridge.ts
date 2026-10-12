@@ -10,8 +10,10 @@ export const isMac = window.__workbenchPlatform === 'macos';
 
 const listeners = new Set<(state: State) => void>();
 const pending = new Map<string, { resolve: (value: unknown) => void; reject: (reason: Error) => void; timer: ReturnType<typeof setTimeout> }>();
+const updateListeners = new Set<(update: unknown) => void>();
 native?.addEventListener('message', ({ data }) => {
   if (data.event === 'state') { listeners.forEach(fn => fn(data.state)); return; }
+  if (data.event === 'update') { updateListeners.forEach(fn => fn(data.update)); return; }
   const callback = pending.get(data.id);
   if (!callback) return;
   clearTimeout(callback.timer); pending.delete(data.id);
@@ -19,6 +21,9 @@ native?.addEventListener('message', ({ data }) => {
 });
 
 export function subscribeDesktop(listener: (state: State) => void) { listeners.add(listener); return () => { listeners.delete(listener); }; }
+
+// 宿主推送的应用更新状态，结构见 features/update/app-update.ts。
+export function subscribeDesktopUpdate(listener: (update: unknown) => void) { updateListeners.add(listener); return () => { updateListeners.delete(listener); }; }
 
 export function desktopCall<T>(method: string, data: unknown): Promise<T> {
   return new Promise<T>((resolve, reject) => {

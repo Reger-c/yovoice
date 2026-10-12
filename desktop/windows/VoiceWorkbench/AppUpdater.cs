@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -10,6 +11,11 @@ using System.Windows.Controls;
 using System.Windows.Threading;
 
 namespace VoiceWorkbench.Desktop;
+
+// 推送给界面的更新状态；字段与 web/src/features/update/app-update.ts 的 AppUpdate 一致。
+public sealed record UpdateSnapshot(
+    string Current, string Status, string? Version = null, string? Notes = null, DateTimeOffset? PublishedAt = null,
+    long Received = 0, long Total = 0, string? Error = null, DateTimeOffset? CheckedAt = null, string? UpdatedFrom = null);
 
 public sealed class AppUpdater : IDisposable
 {
@@ -30,13 +36,21 @@ public sealed class AppUpdater : IDisposable
     private string? commitPath;
     private ReadyUpdate? ready;
     private sealed record ReadyUpdate(string Package, string Hash, string Version);
+    public UpdateSnapshot Snapshot { get; private set; }
+    // 状态变化时通知界面；新版本就绪时额外通知宿主（如托盘提示）。
+    public event Action<UpdateSnapshot>? Changed;
+    public event Action<string>? Ready;
+    // 菜单检查交给界面展示时返回 true；界面不可用时回退到原生对话框。
+    public Func<bool>? ShowInApp { get; set; }
 
     public AppUpdater(Window owner, MenuItem menu, string root)
     {
         this.owner = owner; this.menu = menu; this.root = root;
+        Snapshot = new UpdateSnapshot(current, "disabled");
         client.DefaultRequestHeaders.UserAgent.ParseAdd($"yovoice-Windows/{current}");
         menu.Click += async (_, _) =>
         {
+            if (ShowInApp?.Invoke() == true) { await CheckAsync(); return; }
             if (ready is not null) { PromptInstall(); return; }
             showResult = true;
             await CheckAsync();
@@ -46,20 +60,43 @@ public sealed class AppUpdater : IDisposable
     public void Start()
     {
         if (Environment.GetEnvironmentVariable("WORKBENCH_DATA") is not null) return;
+        Publish(Snapshot with { Status = "idle", UpdatedFrom = RecordLaunchVersion() });
         timer.Start();
         _ = CheckAsync();
     }
+    // 记录本次启动的版本；版本升高说明刚完成更新，界面据此展示“已更新”。
+    private string? RecordLaunchVersion()
+    {
+        string path = Path.Combine(root, "last-version.txt");
+        string? previous = null;
+        try
+        {
+            if (File.Exists(path)) previous = File.ReadAllText(path).Trim();
+            File.WriteAllText(path, current);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
+        return previous is not null && Version.TryParse(previous, out var last) && Version.TryParse(current, out var running) && last < running ? previous : null;
+    }
+    private void Publish(UpdateSnapshot next)
+    {
+        Snapshot = next;
+        Changed?.Invoke(next);
+    }
+    // 界面主动检查：结果在界面展示，不弹原生对话框。
+    public Task CheckFromAppAsync() => CheckAsync();
     private async Task CheckAsync()
     {
         if (checking || ready is not null || disposed) return;
         checking = true;
         menu.Header = "正在检查更新…";
+        Publish(Snapshot with { Status = "checking", Error = null, Received = 0, Total = 0 });
         try
         {
             using var response = await client.GetAsync("https://api.github.com/repos/leemysw/yovoice/releases/latest", stopped.Token);
             if (response.StatusCode == HttpStatusCode.NotFound)
             {
                 menu.Header = "检查更新…";
+                Publish(Snapshot with { Status = "latest", CheckedAt = DateTimeOffset.Now });
                 if (showResult) AppDialog.Show(owner, "暂无可用更新", "GitHub 上尚无可用的正式版本。");
                 return;
             }
@@ -71,29 +108,22 @@ public sealed class AppUpdater : IDisposable
             if (asset is null)
             {
                 menu.Header = "检查更新…";
+                // 已是最新时仍带上当前正式版的说明，供刚更新后的“新功能”展示。
+                bool same = release.Version == current;
+                Publish(Snapshot with { Status = "latest", Version = same ? release.Version : null, Notes = same ? release.Notes : null, PublishedAt = same ? release.PublishedAt : null, CheckedAt = DateTimeOffset.Now });
                 if (showResult) AppDialog.Show(owner, "已是最新版本", $"当前版本：yovoice {current}");
                 return;
             }
+            Publish(Snapshot with { Status = "downloading", Version = release.Version, Notes = release.Notes, PublishedAt = release.PublishedAt, CheckedAt = DateTimeOffset.Now });
             string checksums = await client.GetStringAsync(release.Asset("SHA256SUMS.txt").Url, stopped.Token);
             string hash = UpdateRelease.Checksum(checksums, asset.Name);
             string directory = Path.Combine(root, "updates", release.Tag);
             Directory.CreateDirectory(directory);
             string package = Path.Combine(directory, asset.Name);
             menu.Header = $"正在后台下载 {release.Version}…";
-            if (!File.Exists(package))
-            {
-                string partial = package + ".part";
-                try
-                {
-                    using var download = await client.GetAsync(asset.Url, HttpCompletionOption.ResponseHeadersRead, stopped.Token);
-                    download.EnsureSuccessStatusCode();
-                    await using (var file = File.Create(partial))
-                        await download.Content.CopyToAsync(file, stopped.Token);
-                    File.Move(partial, package, true);
-                }
-                finally { File.Delete(partial); }
-            }
+            if (!File.Exists(package)) await DownloadAsync(asset.Url, package);
             menu.Header = "正在校验更新…";
+            Publish(Snapshot with { Status = "verifying" });
             await using (var file = File.OpenRead(package))
             {
                 string actual = Convert.ToHexString(await SHA256.HashDataAsync(file, stopped.Token));
@@ -105,6 +135,8 @@ public sealed class AppUpdater : IDisposable
             }
             ready = new ReadyUpdate(package, hash, release.Version);
             menu.Header = $"重启并更新至 {release.Version}…";
+            Publish(Snapshot with { Status = "ready" });
+            Ready?.Invoke(release.Version);
             if (showResult) PromptInstall();
         }
         catch (OperationCanceledException) when (stopped.IsCancellationRequested) { }
@@ -117,10 +149,46 @@ public sealed class AppUpdater : IDisposable
                 File.WriteAllText(Path.Combine(root, "logs", "update-check.log"), $"{DateTimeOffset.Now}: {error}\n");
             }
             catch (IOException) { }
-            if (showResult && !disposed && AppDialog.Show(owner, "未能完成更新", error.Message + "\n\n你也可以从 GitHub 下载最新版本。", "打开下载页", "稍后再试"))
+            string message = error is HttpRequestException or TaskCanceledException ? "无法连接更新服务，请检查网络或代理后重试。" : error.Message;
+            if (!disposed) Publish(Snapshot with { Status = "failed", Error = message, CheckedAt = DateTimeOffset.Now });
+            if (showResult && !disposed && AppDialog.Show(owner, "未能完成更新", message + "\n\n你也可以从 GitHub 下载最新版本。", "打开下载页", "稍后再试"))
                 Process.Start(new ProcessStartInfo("https://github.com/leemysw/yovoice/releases/latest") { UseShellExecute = true });
         }
         finally { checking = false; showResult = false; }
+    }
+    // 断点续传到 .part 文件，并按字节上报进度；最终由 SHA-256 校验完整性。
+    private async Task DownloadAsync(Uri url, string package)
+    {
+        string partial = package + ".part";
+        long offset = File.Exists(partial) ? new FileInfo(partial).Length : 0;
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        if (offset > 0) request.Headers.Range = new RangeHeaderValue(offset, null);
+        using var download = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, stopped.Token);
+        if (download.StatusCode == HttpStatusCode.RequestedRangeNotSatisfiable) { File.Delete(partial); throw new IOException("下载的更新包不完整，请重试。"); }
+        download.EnsureSuccessStatusCode();
+        // 服务器忽略续传请求时从头下载。
+        if (download.StatusCode != HttpStatusCode.PartialContent) offset = 0;
+        long total = download.Content.Headers.ContentLength is long length ? offset + length : 0;
+        long received = offset;
+        Publish(Snapshot with { Received = received, Total = total });
+        await using (var file = new FileStream(partial, offset > 0 ? FileMode.Append : FileMode.Create, FileAccess.Write, FileShare.None))
+        await using (var stream = await download.Content.ReadAsStreamAsync(stopped.Token))
+        {
+            var buffer = new byte[81920];
+            var clock = Stopwatch.StartNew();
+            int read;
+            while ((read = await stream.ReadAsync(buffer, stopped.Token)) > 0)
+            {
+                await file.WriteAsync(buffer.AsMemory(0, read), stopped.Token);
+                received += read;
+                // 进度最多每 200 毫秒推送一次，避免频繁刷新界面。
+                if (clock.ElapsedMilliseconds < 200) continue;
+                clock.Restart();
+                Publish(Snapshot with { Received = received, Total = total });
+            }
+        }
+        Publish(Snapshot with { Received = received, Total = Math.Max(total, received) });
+        File.Move(partial, package, true);
     }
     private void RemoveStaleUpdates(string keep)
     {
@@ -137,8 +205,16 @@ public sealed class AppUpdater : IDisposable
     {
         if (ready is null || installRequested) return;
         if (!AppDialog.Show(owner, "更新已准备好", $"yovoice {ready.Version} 已下载并通过校验。重启后将安装更新，当前作品会先自动保存。", "重启并更新", "稍后")) return;
+        Install();
+    }
+    // 界面上的“重启并更新”已是明确确认，直接进入保存并退出流程。
+    public bool Install()
+    {
+        if (ready is null || installRequested) return false;
         installRequested = true;
-        owner.Close();
+        Publish(Snapshot with { Status = "installing" });
+        owner.Dispatcher.BeginInvoke(owner.Close);
+        return true;
     }
     // 助手就绪后才关闭服务；只有写入确认文件并退出后才允许替换。
     public async Task PrepareInstallAsync()
@@ -176,6 +252,7 @@ public sealed class AppUpdater : IDisposable
     }
     public void CancelInstall()
     {
+        bool wasRequested = installRequested;
         installRequested = false;
         if (installer is { HasExited: false })
         {
@@ -184,6 +261,8 @@ public sealed class AppUpdater : IDisposable
         }
         installer?.Dispose(); installer = null;
         if (commitPath is not null) File.Delete(commitPath);
+        // 用户取消退出后更新仍可再次安装。
+        if (wasRequested && ready is not null && !disposed) Publish(Snapshot with { Status = "ready" });
     }
     public void Dispose()
     {

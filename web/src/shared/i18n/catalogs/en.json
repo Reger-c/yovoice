@@ -2641,5 +2641,116 @@
   },
   "@yovoice.settings.modelDesc.soundfontSgm": {
     "defaultMessage": "More realistic GM sound font with richer piano, string, guitar and brass samples; larger and slower to render. The author states no license, so check before commercial use."
+  },
+  "@yovoice.update.group": {
+    "defaultMessage": "Version and updates"
+  },
+  "@yovoice.update.title": {
+    "defaultMessage": "Software update"
+  },
+  "@yovoice.update.currentVersion": {
+    "defaultMessage": "yovoice {version}"
+  },
+  "@yovoice.update.versionChange": {
+    "defaultMessage": "Current {current} → new {version}"
+  },
+  "@yovoice.update.published": {
+    "defaultMessage": "Released {date}"
+  },
+  "@yovoice.update.autoHint": {
+    "defaultMessage": "Checked at launch and every 4 hours; new versions download in the background."
+  },
+  "@yovoice.update.latestHint": {
+    "defaultMessage": "Up to date · Last checked {time}"
+  },
+  "@yovoice.update.checking": {
+    "defaultMessage": "Checking for updates…"
+  },
+  "@yovoice.update.check": {
+    "defaultMessage": "Check for updates"
+  },
+  "@yovoice.update.foundTitle": {
+    "defaultMessage": "New version {version} available"
+  },
+  "@yovoice.update.downloading": {
+    "defaultMessage": "Downloading {version}"
+  },
+  "@yovoice.update.downloadStarting": {
+    "defaultMessage": "Connecting…"
+  },
+  "@yovoice.update.verifying": {
+    "defaultMessage": "Verifying update…"
+  },
+  "@yovoice.update.progress": {
+    "defaultMessage": "Download progress"
+  },
+  "@yovoice.update.background": {
+    "defaultMessage": "Continue in background"
+  },
+  "@yovoice.update.readyTitle": {
+    "defaultMessage": "{version} is ready"
+  },
+  "@yovoice.update.readyBody": {
+    "defaultMessage": "The update is downloaded and verified. It installs on restart, and your work is saved first."
+  },
+  "@yovoice.update.restart": {
+    "defaultMessage": "Restart to update"
+  },
+  "@yovoice.update.later": {
+    "defaultMessage": "Later"
+  },
+  "@yovoice.update.installingTitle": {
+    "defaultMessage": "Saving and restarting…"
+  },
+  "@yovoice.update.installingBody": {
+    "defaultMessage": "Saving your work and stopping the local service before installing. yovoice reopens when done."
+  },
+  "@yovoice.update.failedTitle": {
+    "defaultMessage": "Update could not finish"
+  },
+  "@yovoice.update.failedBody": {
+    "defaultMessage": "Updates are unavailable right now. Try again later."
+  },
+  "@yovoice.update.retry": {
+    "defaultMessage": "Try again"
+  },
+  "@yovoice.update.openDownloads": {
+    "defaultMessage": "Open download page"
+  },
+  "@yovoice.update.latestTitle": {
+    "defaultMessage": "You are up to date"
+  },
+  "@yovoice.update.disabled": {
+    "defaultMessage": "Development builds do not check for updates. Install a release build."
+  },
+  "@yovoice.update.close": {
+    "defaultMessage": "Close"
+  },
+  "@yovoice.update.whatsNew": {
+    "defaultMessage": "What's new"
+  },
+  "@yovoice.update.thisVersion": {
+    "defaultMessage": "What's new in this version"
+  },
+  "@yovoice.update.fullNotes": {
+    "defaultMessage": "View on GitHub"
+  },
+  "@yovoice.update.viewNotes": {
+    "defaultMessage": "What's new"
+  },
+  "@yovoice.update.noticeFound": {
+    "defaultMessage": "New version {version} found, downloading in the background"
+  },
+  "@yovoice.update.noticeReady": {
+    "defaultMessage": "Version {version} is ready. Restart to update"
+  },
+  "@yovoice.update.noticeUpdated": {
+    "defaultMessage": "Updated to {version}"
+  },
+  "@yovoice.update.sidebarDownloading": {
+    "defaultMessage": "Downloading {version}"
+  },
+  "@yovoice.update.sidebarReady": {
+    "defaultMessage": "Version {version}"
   }
 }

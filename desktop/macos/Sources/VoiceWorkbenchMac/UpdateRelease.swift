@@ -10,8 +10,13 @@ struct UpdateRelease: Decodable {
     let draft: Bool
     let prerelease: Bool
     let assets: [Asset]
+    // 发布说明与日期只用于界面展示，缺失时不影响更新。
+    var body: String?
+    var published_at: String?
 
     var version: String { String(tag_name.dropFirst()) }
+    // 界面最多展示的发布说明长度，避免异常长的正文撑大消息。
+    var notes: String? { body.map { String($0.prefix(20000)) } }
 
     func package(newerThan current: String) throws -> Asset? {
         guard !draft, !prerelease else { return nil }
