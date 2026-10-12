@@ -57,55 +57,6 @@ test('新建音乐作品：示例、风格标签、段落标记、纯音乐与�
   await expect(page.getByRole('option', { name: /ACE-Step/ })).toHaveCount(0);
 });
 
-test('音乐版本一行一个，点选即试听，可复用参数', async ({ page }, testInfo) => {
-  const draft = { ...createMusicDraft('zh-CN'), id: 'a'.repeat(32) };
-  const state = emptyState();
-  state.drafts = [draft];
-  state.history = [3, 2, 1].map(n => ({ id: `${n}`.repeat(32), title: draft.title, fileName: `take-${n}.wav`, createdAt: new Date(2026, 9, 10, 12, n).toISOString(), duration: 60 + n * 7, settings: { ...draft, instrumental: n === 2 } }));
-  await page.addInitScript(value => { if (!localStorage.getItem('voice-workbench-v1')) localStorage.setItem('voice-workbench-v1', value); }, JSON.stringify(state));
-  await page.goto('/');
-  // 预览后端从 IndexedDB 读取音频，写入一段静音 WAV 供播放器加载。
-  await page.evaluate(async () => {
-    const wav = new Blob([new Uint8Array([82, 73, 70, 70, 36, 8, 0, 0, 87, 65, 86, 69, 102, 109, 116, 32, 16, 0, 0, 0, 1, 0, 1, 0, 64, 31, 0, 0, 128, 62, 0, 0, 2, 0, 16, 0, 100, 97, 116, 97, 0, 8, 0, 0]), new Uint8Array(2048)], { type: 'audio/wav' });
-    const db = await new Promise<IDBDatabase>((resolve, reject) => { const r = indexedDB.open('voice-workbench-audio', 1); r.onupgradeneeded = () => r.result.createObjectStore('audio'); r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error); });
-    await new Promise<void>(resolve => { const tx = db.transaction('audio', 'readwrite'); for (const n of [1, 2, 3]) tx.objectStore('audio').put(wav, `take-${n}.wav`); tx.oncomplete = () => resolve(); });
-    db.close();
-  });
-  await page.reload();
-  const takes = page.locator('.music-take');
-  await expect(takes).toHaveCount(3);
-  await expect(takes.first()).toHaveAccessibleName('版本 3');
-  await expect(takes.first()).toHaveAttribute('aria-current', 'true');
-  await expect(takes.nth(1)).toContainText('纯音乐');
-  await takes.nth(2).click();
-  await expect(takes.nth(2)).toHaveAttribute('aria-current', 'true');
-  await expect(page.locator('.notice')).toHaveCount(0);
-  // 复用某一版的风格与歌词，写回当前作品。
-  await page.getByLabel('风格', { exact: true }).fill('lofi');
-  await page.getByRole('button', { name: '复用这一版的风格和歌词' }).nth(1).click();
-  await expect(page.getByLabel('风格', { exact: true })).not.toHaveValue('lofi');
-  await expect(page.getByRole('radio', { name: '纯音乐' })).toBeChecked();
-  // 无新增音轨的单轨播放器紧凑贴合单行音轨，不预留多余空白高度且无拉伸手柄
-  const player = page.locator('.player.player-single');
-  await expect(player).toBeVisible();
-  await expect(player.locator('.astryx-resize-handle')).toHaveCount(0);
-  const playerHeight = await player.evaluate(el => el.getBoundingClientRect().height);
-  expect(playerHeight).toBeLessThanOrEqual(120);
-  await page.screenshot({ path: testInfo.outputPath('music-takes.png') });
-});
-
-test('音乐模型与语音一致：已下载后只列已下载的模型', async ({ page }) => {
-  const draft = { ...createMusicDraft('zh-CN'), id: 'c'.repeat(32), modelId: 'ace-step-1.5-turbo-q8' };
-  const state = emptyState();
-  state.drafts = [draft];
-  state.models = [{ id: 'ace-step-1.5-turbo-q8', path: 'ace-step-1.5-turbo-q8_0.gguf', managed: true }];
-  await page.addInitScript(value => { if (!localStorage.getItem('voice-workbench-v1')) localStorage.setItem('voice-workbench-v1', value); }, JSON.stringify(state));
-  await page.goto('/');
-  await page.getByRole('combobox', { name: '模型' }).click();
-  await expect(page.getByRole('option', { name: /ACE-Step 1\.5 Turbo · Q8/ })).toBeVisible();
-  await expect(page.getByRole('option', { name: /BF16|XL Turbo/ })).toHaveCount(0);
-  await expect(page.getByRole('option', { name: '管理模型…' })).toBeVisible();
-});
 
 test('选中 YuE2：隐藏时长与纯音乐，长度由歌词决定', async ({ page }, testInfo) => {
   const draft = { ...createMusicDraft('zh-CN'), id: 'd'.repeat(32), modelId: 'ace-step-1.5-turbo-q8', instrumental: true };

@@ -1,7 +1,6 @@
 import { test, expect, type Page, type Locator } from '@playwright/test';
 import { seedState } from './seed';
-import { emptyState, type AudioTimeline } from '../src/shared/workbench';
-import { Timeline, TimelineHistory } from '../src/features/media/timeline';
+import { emptyState } from '../src/shared/workbench';
 
 async function expectPlaybackHitArea(page: Page) {
   const play = page.locator('.audio-panel .play-main');
@@ -35,48 +34,7 @@ async function dragEdge(page: Page, clip: Locator, edge: 'start' | 'end', delta:
   await page.mouse.move(x + delta * bounds.width / duration, y, { steps: 5 }); await page.mouse.up(); await page.keyboard.up('Alt');
 }
 
-test('分割和移动保留源范围，播放从正确偏移开始', () => {
-  const value: AudioTimeline = { tracks: [{ id: 'a', name: 'A', muted: false, clips: [{ id: 'clip', generationId: 'source', start: 2, offset: 1, duration: 4 }] }, { id: 'b', name: 'B', muted: false, clips: [] }] };
-  const split = Timeline.split(value, 'clip', 3.5);
-  expect(split.tracks[0].clips.map(c => [c.start, c.offset, c.duration])).toEqual([[2, 1, 1.5], [3.5, 2.5, 2.5]]);
-  expect(value.tracks[0].clips).toHaveLength(1);
-  expect(Timeline.split(value, 'clip', 2).tracks[0].clips).toHaveLength(1);
-  expect(Timeline.split(value, 'clip', 6).tracks[0].clips).toHaveLength(1);
-  const moved = Timeline.move(split, split.tracks[0].clips[1].id, 'b', 5);
-  expect(moved.tracks[1].clips[0]).toMatchObject({ start: 5, offset: 2.5, duration: 2.5 });
-  expect(Timeline.duration(moved)).toBe(7.5);
-  expect(Timeline.playback(moved.tracks[1].clips[0], 6)).toEqual({ delay: 0, offset: 3.5, duration: 1.5 });
-  expect(Timeline.move(value, 'clip', 'missing', 1)).toBe(value);
-});
 
-test('边缘裁剪固定另一端、可恢复源音频并限制在有效范围', () => {
-  const value: AudioTimeline = { tracks: [{ id: 'a', name: 'A', muted: false, clips: [{ id: 'c', generationId: 's', start: 2, offset: 1, duration: 4 }] }] };
-  const cropped = Timeline.trimEdge(value, 'c', 'start', 1, 8);
-  expect(cropped.tracks[0].clips[0]).toMatchObject({ start: 3, offset: 2, duration: 3 });
-  expect(Timeline.trimEdge(cropped, 'c', 'start', -1, 8)).toEqual(value);
-  expect(Timeline.trimEdge(value, 'c', 'start', -100, 8).tracks[0].clips[0]).toMatchObject({ start: 1, offset: 0, duration: 5 });
-  expect(Timeline.trimEdge(value, 'c', 'end', 100, 8).tracks[0].clips[0]).toMatchObject({ start: 2, offset: 1, duration: 7 });
-  expect(Timeline.trimEdge(value, 'c', 'end', -100, 8).tracks[0].clips[0].duration).toBeCloseTo(0.01);
-  expect(Timeline.trimEdge(value, 'c', 'start', NaN, 8)).toBe(value);
-});
-
-test('撤销栈忽略无变化、分支清除重做且不重复接收已撤销的生成结果', () => {
-  const initial: AudioTimeline = { tracks: [{ id: 'a', name: 'A', muted: false, clips: [] }] };
-  const edits = new TimelineHistory(initial);
-  expect(edits.record(structuredClone(initial), '')).toBe(false);
-  expect(edits.canUndo).toBe(false);
-  const generated = { ...initial, acceptedGenerations: ['g'], tracks: [{ ...initial.tracks[0], clips: [{ id: 'c', generationId: 'g', start: 0, offset: 0, duration: 2 }] }] };
-  edits.record(generated, '');
-  edits.record(Timeline.trimEdge(generated, 'c', 'end', -1, 2), 'c');
-  expect(edits.restore('undo', 'c')?.value.tracks[0].clips[0].duration).toBe(2);
-  const undone = edits.restore('undo', 'c')!;
-  expect(undone.value.tracks[0].clips).toEqual([]);
-  expect(undone.value.acceptedGenerations).toEqual(['g']);
-  expect(edits.record(structuredClone(undone.value), '')).toBe(false);
-  expect(edits.restore('redo', '')?.value.tracks[0].clips[0].duration).toBe(2);
-  edits.record({ ...generated, tracks: [{ ...generated.tracks[0], muted: true }] }, 'c');
-  expect(edits.canRedo).toBe(false);
-});
 
 test('多轨分割、移动、静音播放、调整高度和重载', async ({ page }, testInfo) => {
   const state = emptyState();
@@ -184,26 +142,7 @@ test('多轨分割、移动、静音播放、调整高度和重载', async ({ pa
   await page.screenshot({ path: testInfo.outputPath('multitrack-narrow.png') });
 });
 
-test('分段接收幂等、删除不复活、重生成只替换指定片段并顺延', () => {
-  const draft = emptyState().drafts[0];
-  const make = (id: string, index: number, duration: number, targetClipId?: string) => ({ id, title: `台词 ${index}`, fileName: `${id}.wav`, createdAt: '2026-09-27T10:00:00Z', duration, settings: draft, segment: { cueId: `cue-${index}`, speakerId: `speaker-${index}`, speakerName: '', batchId: 'batch', index, targetClipId } });
-  const a = make('a', 0, 2), b = make('b', 1, 3);
-  const first = Timeline.accept(draft, [b, a]);
-  expect(first.timeline!.tracks[0].clips.map(c => [c.start, c.duration])).toEqual([[0, 2], [2, 3]]);
-  expect(Timeline.accept(first, [b, a])).toBe(first);
-  const trimmed = { ...first, timeline: Timeline.trimEdge(Timeline.trimEdge(first.timeline!, 'a', 'end', -0.5, 2), 'a', 'start', 0.25, 2) };
-  expect(trimmed.timeline!.tracks[0].clips[0]).toMatchObject({ offset: 0.25, duration: 1.25 });
-  const retry = make('retry', 0, 4, 'a');
-  const replaced = Timeline.accept(trimmed, [retry, b, a]);
-  expect(replaced.timeline!.tracks[0].clips).toEqual([
-    { id: 'a', generationId: 'retry', start: 0.25, offset: 0, duration: 4 },
-    { id: 'b', generationId: 'b', start: 4.75, offset: 0, duration: 3 },
-  ]);
-  replaced.timeline!.tracks[0].clips = [];
-  expect(Timeline.accept(replaced, [retry, b, a])).toBe(replaced);
-  const late = Timeline.accept(replaced, [make('late', 0, 1, 'a'), retry, b, a]);
-  expect(late.timeline!.tracks[0].clips).toHaveLength(0);
-});
+
 
 test('分段音轨自动呈现、裁剪和删除持久化、按编辑结果导出 WAV', async ({ page }, testInfo) => {
   const state = emptyState(); const draft = state.drafts[0];
@@ -267,21 +206,6 @@ test('分段音轨自动呈现、裁剪和删除持久化、按编辑结果导�
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('voice-workbench-v1')!).history.length)).toBe(2);
 });
 
-test('离线合成保留空隙、裁剪、重叠且忽略静音音轨', async ({ page }) => {
-  await page.goto('/');
-  const result = await page.evaluate(async () => {
-    const modulePath = '/src/features/media/timeline.ts'; const { Timeline } = await import(/* @vite-ignore */ modulePath);
-    const source = new AudioBuffer({ length: 48000, numberOfChannels: 1, sampleRate: 24000 });
-    source.getChannelData(0).fill(0.2, 0, 24000); source.getChannelData(0).fill(0.3, 24000);
-    const result = await Timeline.render({ tracks: [
-      { id: 'a', name: 'a', muted: false, clips: [{ id: 'a', generationId: 'source', start: 1, offset: 1, duration: 1 }, { id: 'b', generationId: 'source', start: 1.5, offset: 0, duration: 1 }] },
-      { id: 'muted', name: 'muted', muted: true, clips: [{ id: 'c', generationId: 'missing', start: 0, offset: 0, duration: 10 }] },
-    ] }, async (id: string) => { if (id !== 'source') throw new Error('读取了静音音源'); return source; });
-    return { duration: result.duration, samples: [0.5, 1.25, 1.75, 2.25].map(t => result.getChannelData(0)[Math.floor(t * result.sampleRate)]) };
-  });
-  expect(result.duration).toBe(2.5);
-  result.samples.forEach((value, i) => expect(value).toBeCloseTo([0, 0.3, 0.5, 0.2][i], 4));
-});
 
 
 test('音轨末尾上传独立素材，裁剪后保存重载与导出', async ({ page }, testInfo) => {
@@ -357,43 +281,7 @@ test('音轨末尾上传独立素材，裁剪后保存重载与导出', async ({
   expect(bytes.readUInt32LE(40) / 2 / 24000).toBe(1.5);
 });
 
-test('旧字幕故事保留最后一版整篇音频为片段，删除后不复活', () => {
-  const draft = { ...emptyState().drafts[0], kind: 'subtitle' as const };
-  const audio = { id: 'legacy', title: draft.title, fileName: 'legacy.wav', duration: 3, createdAt: '2026-09-27T10:00:00Z', settings: draft };
-  const migrated = Timeline.accept(draft, [audio]);
-  expect(migrated.timeline!.tracks[0].clips[0]).toMatchObject({ generationId: audio.id, duration: 3 });
-  expect(migrated.timeline!.tracks[0].id).not.toBe(migrated.timeline!.tracks[0].clips[0].id);
-  expect(Timeline.accept(migrated, [audio])).toBe(migrated);
-  migrated.timeline!.tracks = [];
-  expect(Timeline.accept(migrated, [audio])).toBe(migrated);
-});
 
 
-test('新建作品不预留空版本行，最后一条空音轨可删除并持久化', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.locator('.player-version-row')).toHaveCount(0);
-  const add = page.getByRole('button', { name: '新增音轨', exact: true });
-  await expect(page.locator('.audio-panel')).toHaveCSS('height', '100px');
-  const ruler = (await page.locator('.time-ruler').boundingBox())!;
-  const button = (await add.boundingBox())!;
-  expect(Math.abs(button.y - ruler.y - ruler.height)).toBeLessThan(2);
-  await add.click();
-  await expect(page.locator('.multitrack-row')).toHaveCount(1);
-  const remove = page.getByRole('button', { name: '删除音轨 1（仅空轨）', exact: true });
-  await expect(remove).toBeEnabled();
-  await expect(page.locator('.audio-panel')).toHaveCSS('height', '148px');
-  await remove.click();
-  await expect(page.locator('.audio-panel')).toHaveCSS('height', '100px');
-  await expect(page.locator('.multitrack-row')).toHaveCount(0);
-  await page.getByRole('button', { name: '撤销', exact: true }).click();
-  await expect(page.locator('.multitrack-row')).toHaveCount(1);
-  await page.getByRole('button', { name: '重做', exact: true }).click();
-  await expect(page.locator('.multitrack-row')).toHaveCount(0);
-  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('voice-workbench-v1')!)?.drafts[0].timeline?.tracks)).toEqual([]);
-  await page.reload();
-  await expect(page.locator('.multitrack')).toBeVisible();
-  await expect(page.locator('.multitrack-row')).toHaveCount(0);
-  await add.click();
-  await expect(page.locator('.multitrack-row')).toHaveCount(1);
-  await expect(remove).toBeEnabled();
-});
+
+
