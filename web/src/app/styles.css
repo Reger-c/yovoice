@@ -355,8 +355,9 @@
   .inspector .astryx-slider > span { font-size: var(--app-small-font); font-variant-numeric: tabular-nums; }
   .inspector .number-field { color: var(--app-muted); }
   .inspector .number-field input { color: var(--app-ink); }
-  .emotion-disclosure { align-self: flex-start; padding-inline: 0; gap: var(--spacing-3); min-height: var(--spacing-8); font-size: var(--app-small-font); color: var(--app-muted); }
-  .emotion-disclosure,.emotion-disclosure:hover,.emotion-disclosure:active { background: transparent; box-shadow: none; filter: none; }
+  .emotion-disclosure { align-self: flex-start; padding-inline: 0; gap: var(--spacing-2); min-height: var(--spacing-8); font-size: var(--app-small-font); color: var(--app-muted); border: none; }
+  .emotion-disclosure, .emotion-disclosure:hover, .emotion-disclosure:active, .emotion-disclosure:focus-visible { background: transparent; box-shadow: none; filter: none; }
+  .emotion-disclosure:hover, .emotion-disclosure:focus-visible { color: var(--app-ink); }
   .emotion-preset-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .emotion-preset-grid .astryx-button[aria-pressed="true"] { background: var(--app-line); color: var(--app-ink); border-color: var(--app-muted); }
   .language-row { min-height: var(--spacing-10); }
