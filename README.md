@@ -3,8 +3,9 @@
 </p>
 
 <h1 align="center">yovoice</h1>
-<p align="center">Give your words a voice.</p>
+<p align="center">Give your words a voice. Compose your ideas into songs.</p>
 <p align="center">
+  <a href="https://yovoice.leemysw.com"><img src="https://img.shields.io/badge/website-yovoice.leemysw.com-10b981?style=flat-square" alt="Website" /></a>
   <a href="web/package.json"><img src="https://img.shields.io/badge/version-0.2.0-blue?style=flat-square" alt="Version 0.2.0" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-orange?style=flat-square" alt="License: Apache-2.0" /></a>
   <img src="https://img.shields.io/badge/macOS-14%2B-black?style=flat-square" alt="macOS 14+ (Apple Silicon)" />
@@ -12,13 +13,25 @@
 </p>
 <p align="center">English · <a href="README_zh.md">简体中文</a></p>
 
-<p align="center"><a href="docs/cli.md">CLI & Agent Skill</a> · <a href="docs/api.md">API / MCP Deployment</a> · <a href="docs/development.md">Development</a></p>
+<p align="center"><a href="https://yovoice.leemysw.com">Website</a> · <a href="docs/cli.md">CLI & Agent Skill</a> · <a href="docs/api.md">API / MCP Deployment</a> · <a href="docs/development.md">Development</a></p>
 
 ---
 
-yovoice is an open-source voice creation tool for macOS and Windows that turns text into natural, expressive speech locally. With voice cloning, emotion control, audio project management, and a choice of TTS models, it requires no cloud API calls and incurs no per-character charges, giving you more control over narration, voiceovers, and audio content creation at a lower cost.
+yovoice is an open-source, local-first audio and music creation studio for macOS and Windows. 
+
+Turn text into expressive speech, natural cloned voices, complete vocal songs, and multi-track scores right on your machine. Featuring zero-shot voice cloning, emotional performance controls, AI music generation with lyrics, and General MIDI score arranging—**all running 100% locally with zero cloud API calls, zero per-character fees, and zero Python environment headaches.**
 
 ![yovoice creation workspace — browser preview](docs/images/yovoice-workspace.png)
+
+---
+
+## Why yovoice?
+
+- 🔒 **100% Local Privacy**: Runs entirely on your local GPU/CPU. Your manuscripts, reference voices, and creations never leave your computer.
+- 💸 **Zero Recurring Fees**: Say goodbye to per-character/per-minute meters and expensive cloud voice/music subscriptions.
+- ⚡ **Native C++ Performance (No Python Hell)**: Powered by [audio.cpp](https://github.com/0xShug0/audio.cpp) v0.9.1. Ships with bundled Windows CUDA 12.4/13.3 runtimes and native macOS Metal support. Double-click and create—no Conda or PyTorch conflicts.
+- 🎛️ **Creator Workstation**: Multi-take versioning for side-by-side comparison, waveform trimming, timeline scrolling, and clean stems/MIDI export.
+- 🤖 **MCP & AI Agent Ecosystem**: Connect DeepSeek, Qwen, Claude, OpenAI, or local Ollama to write scores and lyrics in seconds. Includes a native Model Context Protocol (MCP) server for Cursor and Claude Code.
 
 ---
 
@@ -32,7 +45,17 @@ yovoice is an open-source voice creation tool for macOS and Windows that turns t
 - **Optional AI service** — connect DeepSeek, Qwen, Kimi, OpenAI, Anthropic, Ollama or any compatible API to let AI write arrangements and lyrics; keys stay on this computer. See [AI service](docs/ai.md).
 - **Local models** — run IndexTTS 2.0 / 2.5, VoxCPM2, OmniVoice, Qwen3-TTS and Kokoro through audio.cpp, with resumable model downloads and GGUF import.
 - **Hardware acceleration** — Metal on Apple Silicon; CPU, NVIDIA CUDA, and experimental Vulkan on Windows.
-- **Agent Skill** — ask your AI agent to set up local speech generation and create voiceovers from text and reference audio.
+- **Agent Skill & MCP** — ask your AI agent to set up local speech generation and create voiceovers from text and reference audio.
+
+---
+
+## Hardware & VRAM Quick Guide
+
+| Use Case | Recommended Hardware | Recommended Models |
+| --- | --- | --- |
+| 🟢 **Lightweight & Blazing Fast** | Any CPU / 4 GB+ RAM | **Kokoro-82M** (only 189 MB Q8, millisecond latency, runs great on CPU) |
+| 🟡 **High-Fidelity Voice Cloning** | 4 GB – 6 GB VRAM / 8 GB+ Apple Silicon | **VoxCPM2** (2B, 48 kHz), **IndexTTS 2.0/2.5**, **Qwen3-TTS** |
+| 🔴 **Full Song & Music Generation** | 12 GB+ VRAM / 16 GB+ Apple Silicon | **ACE-Step 1.5 Turbo** (BF16, 10 GB), **YuE2 3B** |
 
 ---
 
@@ -53,14 +76,13 @@ yovoice is an open-source voice creation tool for macOS and Windows that turns t
 | Kokoro-82M 1.1-zh | 82M | Q8 · 255.32 MB | 100 Chinese and 3 English voices; experimental, import only |
 | ACE-Step 1.5 Turbo | — | BF16 · 10.09 GB | Songs and instrumentals from a style prompt and lyrics, 50+ vocal languages; requires engine v0.9.1 |
 
-
 All models are available in the App and CLI. See [model selection](docs/models.md) for input requirements and examples. OmniVoice weights use the CC-BY-NC license and are restricted to non-commercial use.
 
 ---
 
 ## Installation
 
-Choose the package for your platform from the repository’s [Releases](../../releases) tab.
+Choose the package for your platform from the repository’s [Releases](../../releases) tab or visit the [official website](https://yovoice.leemysw.com).
 
 | Platform | Package | Install |
 | --- | --- | --- |
@@ -71,7 +93,7 @@ Choose the package for your platform from the repository’s [Releases](../../re
 
 The Windows installer downloads and installs [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/) if needed. Models are downloaded inside the app; uninstalling preserves user data in `~/.yovoice`.
 
-Check for updates from the app menu on macOS or Windows. Updates are also checked and downloaded in the background; restart to install when ready. Windows updates download only the app (`-update.exe`) and keep the installed runtime; when a release recommends a newer runtime you can upgrade it in Settings → Inference engine, and it is required only when the runtime is below the minimum version the app needs.
+Check for updates from the app menu on macOS or Windows. Updates are also checked and downloaded in the background; restart to install when ready. Windows updates download only the app (`-update.exe`) and keep the installed runtime; when a release recommends a newer runtime you can upgrade it in Settings → Inference engine.
 
 ![Install yovoice on macOS](docs/images/yovoice-macos-install.png)
 
@@ -79,10 +101,10 @@ Check for updates from the app menu on macOS or Windows. Updates are also checke
 
 ## Quick Start
 
-1. **Set up a model.** Download a model in Settings.
-2. **Create a project.** Choose Story dubbing or Speech generation.
-3. **Add content.** Enter text or import subtitles, then choose a character and adjust the voice.
-4. **Generate audio.** Select Generate speech, then preview, edit and export.
+1. **Set up a model.** Download a model in Settings (e.g. Kokoro-82M for fast narration, or VoxCPM2 for cloning).
+2. **Create a project.** Choose Story dubbing, Speech generation, Music, or Score.
+3. **Add content.** Enter text, lyrics, or notes, then pick a character and adjust style.
+4. **Generate audio.** Select Generate, then preview, compare takes, edit, and export.
 
 ---
 

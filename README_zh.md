@@ -2,8 +2,9 @@
   <img src="web/public/icon/voice-workbench-app-icon-v1.png" width="96" alt="yovoice" />
 </p>
 <h1 align="center">yovoice</h1>
-<p align="center">让文字拥有你的声音。</p>
+<p align="center">让文字拥有你的声音，让创意谱成完整乐章。</p>
 <p align="center">
+  <a href="https://yovoice.leemysw.com"><img src="https://img.shields.io/badge/website-yovoice.leemysw.com-10b981?style=flat-square" alt="官网" /></a>
   <a href="web/package.json"><img src="https://img.shields.io/badge/version-0.2.0-blue?style=flat-square" alt="Version 0.2.0" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-orange?style=flat-square" alt="License: Apache-2.0" /></a>
   <img src="https://img.shields.io/badge/macOS-14%2B-black?style=flat-square" alt="macOS 14+ (Apple Silicon)" />
@@ -11,13 +12,25 @@
 </p>
 <p align="center"><a href="README.md">English</a> · 简体中文</p>
 
-<p align="center"><a href="docs/cli_zh.md">CLI 与 Agent Skill</a> · <a href="docs/api_zh.md">API / MCP 部署</a> · <a href="docs/development_zh.md">开发指南</a></p>
+<p align="center"><a href="https://yovoice.leemysw.com">官方网站</a> · <a href="docs/cli_zh.md">CLI 与 Agent Skill</a> · <a href="docs/api_zh.md">API / MCP 部署</a> · <a href="docs/development_zh.md">开发指南</a></p>
 
 ---
 
-yovoice 是一款适用于 macOS 和 Windows 的开源声音创作工具，在本地将文字转化为自然、富有表现力的语音。支持音色复刻、情绪控制与音频作品管理，可自主选择 TTS 模型，无需调用云端 API，也没有按字数计费的开销，让旁白、配音和有声内容创作更自主、更低成本。
+yovoice 是一款适用于 macOS 和 Windows 的开源、本地优先（Local-first）声音与音乐创作工作台。
+
+在本地将文字转化为自然逼真的语音、整首带人声歌曲或多轨乐谱。支持零样本音色克隆、情绪风格控制、带歌词人声的 AI 音乐生成、多轨 MIDI 编曲渲染与音频工程管理。**完全在本地运行，无云端 API 调用，无按字/按秒扣费开销，无需复杂的 Python 环境配置**，让旁白、配音、有声内容与音乐创作更自主、更私密、更低成本。
 
 ![yovoice 创作工作台，浏览器预览](docs/images/yovoice-workspace.png)
+
+---
+
+## 为什么选择 yovoice？
+
+- 🔒 **100% 本地离线与数据隐私**：所有模型均在本地显卡/CPU 推理，文本稿件和声音样本永远不会上传到第三方云端。
+- 💸 **零按字/按秒扣费**：无需订阅昂贵的云端 API（告别 ElevenLabs、Suno、商用配音会员计费）。
+- ⚡ **原生 C++ 极速引擎，免配 Python**：基于 [audio.cpp](https://github.com/0xShug0/audio.cpp) v0.9.1 原生构建，支持 macOS Metal 与 Windows NVIDIA CUDA 12.4/13.3 开箱即用，告别 Conda 与 PyTorch 依赖地狱。
+- 🎛️ **全流程专业创作流**：多版本试听对比（Takes）、多轨时间轴吸附裁剪、General MIDI 音色库本地渲染与分轨导出（Stems）。
+- 🤖 **原生 MCP 与 AI Agent 协创**：支持接入 DeepSeek、通义千问、Claude、OpenAI 或本地 Ollama 自动写歌写谱，并提供 Model Context Protocol (MCP) 服务，支持在 Cursor 或 Claude Code 中直接调用。
 
 ---
 
@@ -31,7 +44,17 @@ yovoice 是一款适用于 macOS 和 Windows 的开源声音创作工具，在�
 - **可选 AI 服务** — 接入 DeepSeek、通义千问、Kimi、OpenAI、Anthropic、Ollama 或任意兼容接口，让 AI 写谱、写歌词；密钥只保存在本机。详见[AI 服务](docs/ai_zh.md)。
 - **本地模型** — 通过 audio.cpp 运行 IndexTTS 2.0 / 2.5、VoxCPM2、OmniVoice、Qwen3-TTS 和 Kokoro，支持模型下载续传与 GGUF 导入。
 - **硬件加速** — Apple Silicon 支持 Metal；Windows 支持 CPU、NVIDIA CUDA 和实验性 Vulkan。
-- **Agent Skill** — 让 AI Agent 准备本地语音生成环境，根据文稿和参考音频完成配音。
+- **Agent Skill & MCP** — 让 AI Agent 准备本地语音生成环境，根据文稿和参考音频完成配音。
+
+---
+
+## 硬件配置速查指引
+
+| 创作场景 | 推荐配置 | 适用模型推荐 |
+| --- | --- | --- |
+| 🟢 **轻量极速朗读与旁白** | 任何 CPU / 4GB+ 内存 | **Kokoro-82M** (Q8 仅 189 MB，毫秒级合成，纯 CPU 也能飞快运行) |
+| 🟡 **高音质克隆与声音设计** | 4GB ~ 6GB 显存 / Apple Silicon 8GB+ | **VoxCPM2** (2B, 48kHz)、**IndexTTS 2.0/2.5**、**Qwen3-TTS** |
+| 🔴 **整首歌生成与伴奏演奏** | 12GB+ 显存 / Apple Silicon 16GB+ | **ACE-Step 1.5 Turbo** (BF16, 10GB)、**YuE2 3B** |
 
 ---
 
@@ -52,14 +75,13 @@ yovoice 是一款适用于 macOS 和 Windows 的开源声音创作工具，在�
 | Kokoro-82M 1.1-zh | 82M | Q8 · 255.32 MB | 100 种中文音色及 3 种英文音色；实验性，仅支持导入 |
 | ACE-Step 1.5 Turbo | — | BF16 · 10.09 GB | 根据风格描述和歌词生成歌曲或纯音乐，支持 50 多种演唱语言；需要 v0.9.1 内核 |
 
-
 App 与 CLI 均支持以上模型，输入要求与示例见[模型选择](docs/models_zh.md)。OmniVoice 权重采用 CC-BY-NC 许可，仅限非商业用途。
 
 ---
 
 ## 安装
 
-在仓库的 [Releases](../../releases) 页面选择对应平台的安装包。
+在仓库的 [Releases](../../releases) 页面选择对应平台的安装包，或访问[官方网站](https://yovoice.leemysw.com)。
 
 | 平台 | 安装包 | 安装方式 |
 | --- | --- | --- |
@@ -70,7 +92,7 @@ App 与 CLI 均支持以上模型，输入要求与示例见[模型选择](docs/
 
 Windows 安装器会在缺少时联网安装 [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/)。模型在应用内下载。卸载应用保留 `~/.yovoice` 中的作品和模型。
 
-macOS 和 Windows 均支持在应用菜单中检查更新，也会自动检查并后台下载；下载完成后可选择重启安装。Windows 自动更新只下载应用本体（`-update.exe`），保留已安装的内核；新版本推荐更高的内核时，可在 设置 → 推理引擎 中选择升级，仅当内核低于应用要求的最低版本时才必须升级。
+macOS 和 Windows 均支持在应用菜单中检查更新，也会自动检查并后台下载；下载完成后可选择重启安装。Windows 自动更新只下载应用本体（`-update.exe`），保留已安装的内核；新版本推荐更高的内核时，可在 设置 → 推理引擎 中选择升级。
 
 ![yovoice macOS 安装界面](docs/images/yovoice-macos-install.png)
 
@@ -78,10 +100,10 @@ macOS 和 Windows 均支持在应用菜单中检查更新，也会自动检查�
 
 ## 快速上手
 
-1. **准备模型。** 在设置中下载所需模型。
-2. **新建作品。** 选择“故事配音”或“语音生成”。
-3. **填写内容。** 输入文字或导入字幕，选择角色并调整声音。
-4. **生成音频。** 点击“生成语音”，试听、编辑并导出。
+1. **准备模型。** 在设置中下载所需模型（例如轻量朗读用 Kokoro-82M，声音克隆用 VoxCPM2）。
+2. **新建作品。** 选择“故事配音”、“语音生成”、“音乐生成”或“编曲”。
+3. **填写内容。** 输入文字、歌词或音符，选择角色并调整风格。
+4. **生成音频。** 点击“生成”，试听对比多版本（Takes）、编辑并导出。
 
 ---
 
