@@ -10,9 +10,11 @@ yovoice 可以选择接入大模型。配置 AI 服务后，编曲作品中的�
 
 | 服务 | 地址 | 密钥 |
 | --- | --- | --- |
-| DeepSeek、通义千问（百炼）、智谱 GLM、Kimi、豆包（火山方舟）、MiniMax、OpenAI、Anthropic、OpenRouter | 内置 | 需要；“从 … 获取 API 密钥”打开对应控制台 |
+| DeepSeek、通义千问（百炼）、智谱 GLM、Kimi、豆包（火山方舟）、MiniMax、OpenAI、Anthropic、OpenRouter、OrcaRouter | 内置 | 需要；“从 … 获取 API 密钥”打开对应控制台 |
 | Ollama、LM Studio | 默认本机（`127.0.0.1`），可修改 | 通常不需要 |
 | 自定义 | 任意兼容地址 | 可选 |
+
+OrcaRouter 提供免费模型：填好密钥后“同步模型列表”，选择免费模型即可零成本试用 AI 功能。
 
 自定义服务可选择三种协议：OpenAI Chat Completions、OpenAI Responses 或 Anthropic Messages，并填写模型列表路径（如 `/models`；服务没有模型列表时留空，直接填写模型名）。
 
