@@ -25,7 +25,7 @@ func TestConnectOrcaRouter(t *testing.T) {
 			rw.WriteHeader(http.StatusForbidden)
 			return
 		}
-		_, _ = rw.Write([]byte(`{"key":"sk-orca-connected-0001"}`))
+		_, _ = rw.Write([]byte(`{"key":"sk-orca-connected-0001","user_id":"1","scope":"api"}`))
 	}))
 	defer keys.Close()
 	oldKeys := orcaKeysURL

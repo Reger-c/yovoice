@@ -79,6 +79,7 @@ func (w *Workbench) ConnectOrcaRouter() (string, error) {
 		"code_challenge_method": {"S256"},
 		"state":                 {state},
 		"app_name":              {orcaAppName},
+		"scope":                 {"api"},
 		"ref":                   {orcaRef},
 	}
 	session := &connectSession{done: make(chan struct{})}
@@ -186,18 +187,19 @@ func (w *Workbench) exchangeOrcaCode(ctx context.Context, code, verifier string)
 		return "", fmt.Errorf("auth/keys HTTP %d", res.StatusCode)
 	}
 	var out struct {
-		Key    string `json:"key"`
-		APIKey string `json:"api_key"`
-		Data   struct {
-			Key string `json:"key"`
-		} `json:"data"`
+		Key   string `json:"key"`
+		Scope string `json:"scope"`
 	}
 	if e = json.Unmarshal(raw, &out); e != nil {
 		return "", e
 	}
-	key := strings.TrimSpace(out.Key + out.APIKey + out.Data.Key)
+	key := strings.TrimSpace(out.Key)
 	if key == "" || len(key) > 4096 {
 		return "", errors.New("auth/keys returned no key")
+	}
+	// 只接受普通 api 权限的密钥，返回的权限与请求不符时拒绝使用。
+	if out.Scope != "" && out.Scope != "api" {
+		return "", fmt.Errorf("auth/keys returned scope %q", out.Scope)
 	}
 	return key, nil
 }
