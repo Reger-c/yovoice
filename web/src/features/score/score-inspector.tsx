@@ -38,7 +38,7 @@ export function ScoreInspector({ draft, state, catalog, change, generate, cancel
   return <VStack as="aside" className="inspector score-inspector" gap={0}>
     <VStack className="generation-action" gap={3}>
       {generating ? <Button label={t('@yovoice.create.cancelGenerate')} onClick={cancel} width="100%" />
-        : <Button label={t('@yovoice.score.render')} variant="primary" width="100%" size="lg" aria-keyshortcuts="Control+Enter" isDisabled={busy || empty} onClick={generate} />}
+        : <Button label={t('@yovoice.score.render')} variant="primary" width="100%" aria-keyshortcuts="Control+Enter" isDisabled={busy || empty} onClick={generate} />}
       {generating ? <HStack className="generation-status" gap={2} vAlign="center">
         <LoaderCircle size={14} className="generation-spinner" aria-hidden="true" />
         <small className="grow" role="status">{state.activity ? formatActivity(t, state.activity) : ''}</small>

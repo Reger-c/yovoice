@@ -79,7 +79,7 @@ export function CharacterEditor({ initial, state, catalog, active = true, close,
   const editorActions = <HStack gap={2}><Button label={t('@yovoice.character.close')} variant="secondary" isLoading={saving} isDisabled={editingBusy} onClick={() => void finish()} /><Button label={t('@yovoice.library.save')} variant="primary" isDisabled={editingBusy || !!invalid} onClick={() => void save()} />{apply ? <Button label={t('@yovoice.library.saveApply')} isDisabled={editingBusy || !!invalid} onClick={() => void save(false, true)} /> : null}</HStack>;
   const previewAction = <VStack gap={3}>
     <HStack className="inspector-document-actions" hAlign="end">{editorActions}</HStack>
-    {pending && busy ? <Button label={t('@yovoice.create.cancelGenerate')} width="100%" onClick={() => { void call('operation.cancel').catch(e => setError(formatCallError(t, e))); }} /> : <Button label={t(preview ? '@yovoice.character.regenerate' : '@yovoice.character.preview')} variant="primary" width="100%" size="lg" isLoading={requesting || !!pending} isDisabled={editingBusy || busy || !!invalid || !character.demoText.trim()} onClick={() => void generate()} />}
+    {pending && busy ? <Button label={t('@yovoice.create.cancelGenerate')} width="100%" onClick={() => { void call('operation.cancel').catch(e => setError(formatCallError(t, e))); }} /> : <Button label={t(preview ? '@yovoice.character.regenerate' : '@yovoice.character.preview')} variant="primary" width="100%" isLoading={requesting || !!pending} isDisabled={editingBusy || busy || !!invalid || !character.demoText.trim()} onClick={() => void generate()} />}
     {pending && state.activity ? <small role="status">{formatActivity(t, state.activity)}</small> : null}
   </VStack>;
   return <>
@@ -93,14 +93,14 @@ export function CharacterEditor({ initial, state, catalog, active = true, close,
       actions={editorActions} inspector={<Inspector draft={draft} state={state} catalog={catalog} change={change} chooseVoice={() => setChoosing('voice')} chooseEmotion={() => setChoosing('emotion')} play={value => setTrack({ ...value, playRequest: performance.now() })} generate={() => void generate()} cancel={() => {}} settings={() => settings(draft.modelId)} advanced={advanced} setAdvanced={setAdvanced} close={() => setShowInspector(false)} allowModelManagement generationAction={previewAction} libraryActions={<>
         <HStack gap={2} vAlign="end">
           <Selector label={t('@yovoice.performance.label')} width="100%" value={performanceId} isDisabled={editingBusy} options={[{ value: '', label: t('@yovoice.performance.default') }, ...(character.performances ?? []).map(p => ({ value: p.id, label: p.name }))]} onChange={id => { setPerformanceId(id); setTrack(null); }} />
-          <Button size="md" isIconOnly icon={<Plus />} label={t('@yovoice.performance.add')} isDisabled={editingBusy || (character.performances?.length ?? 0) >= 32} onClick={() => {
+          <Button size="md" isIconOnly icon={<Plus size={16} />} label={t('@yovoice.performance.add')} isDisabled={editingBusy || (character.performances?.length ?? 0) >= 32} onClick={() => {
             const id = crypto.randomUUID().replaceAll('-', '');
             let n = 1; while (character.performances?.some(p => p.name === t('@yovoice.performance.numbered', { n }))) n++;
             setCharacter(c => ({ ...c, performances: [...(c.performances ?? []), { id, name: t('@yovoice.performance.numbered', { n }), settings: activeSettings }] })); setPerformanceId(id); setTrack(null);
           }} />
-          {selectedPerformance ? <DropdownMenu hasChevron={false} alignment="end" button={{ size: 'md', isIconOnly: true, icon: <Ellipsis />, label: t('@yovoice.performance.more'), isDisabled: editingBusy }} items={[
-            { label: t('@yovoice.performance.rename'), icon: <Pencil />, onClick: () => setRename(selectedPerformance.name) },
-            { label: t('@yovoice.performance.delete'), icon: <Trash2 />, variant: 'destructive', onClick: () => { setCharacter(c => ({ ...c, performances: c.performances?.filter(p => p.id !== performanceId) })); setPerformanceId(''); setTrack(null); } },
+          {selectedPerformance ? <DropdownMenu hasChevron={false} alignment="end" button={{ size: 'md', isIconOnly: true, icon: <Ellipsis size={16} />, label: t('@yovoice.performance.more'), isDisabled: editingBusy }} items={[
+            { label: t('@yovoice.performance.rename'), icon: <Pencil size={16} strokeWidth={1.5} />, onClick: () => setRename(selectedPerformance.name) },
+            { label: t('@yovoice.performance.delete'), icon: <Trash2 size={16} strokeWidth={1.5} />, variant: 'destructive', onClick: () => { setCharacter(c => ({ ...c, performances: c.performances?.filter(p => p.id !== performanceId) })); setPerformanceId(''); setTrack(null); } },
           ]} /> : null}
         </HStack>
         {!state.models.some(m => m.id === activeSettings.modelId) ? <Button label={t('@yovoice.create.manageModels')} onClick={() => settings(draft.modelId)} /> : null}

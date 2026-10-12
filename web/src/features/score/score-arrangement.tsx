@@ -109,11 +109,16 @@ export function ScoreArrangement({ score, selected, select, label, updateTrack, 
     const lane = element.scrollWidth - head.offsetWidth, x = progress * lane;
     if (x < element.scrollLeft || x > element.scrollLeft + element.clientWidth - head.offsetWidth) element.scrollLeft = x;
   }, [progress, playhead?.playing]);
-  // 鼠标滚轮直接横向滚动时间轴；Ctrl/Cmd + 滚轮调节时间轴缩放。
+  // 鼠标滚轮直接横向滚动时间轴；Ctrl/Cmd + 滚轮调节时间轴缩放；下拉浮层和弹出菜单内部保留其自身垂直滚动。
   useEffect(() => {
     const element = scroller.current;
     if (!element) return;
     const wheel = (e: WheelEvent) => {
+      const target = e.target as HTMLElement | null;
+      // 位于下拉弹窗、菜单、列表框等弹出浮层内部时，保留其自身滚动，绝不拦截并误触发轨道横滚。
+      if (target?.closest('[popover], [role="listbox"], [role="menu"], .astryx-selector-popup, .astryx-popover, .astryx-dropdown-menu, .astryx-field')) {
+        return;
+      }
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
         setZoom(current => {
@@ -121,6 +126,19 @@ export function ScoreArrangement({ score, selected, select, label, updateTrack, 
           return Number(Math.min(8, Math.max(1, current * factor)).toFixed(2));
         });
         return;
+      }
+      // 若处于轨头内部且轨道区可纵向滚动，保留正常的垂直滚动浏览声部。
+      if (target?.closest('.score-track-head') && element.scrollHeight > element.clientHeight) {
+        return;
+      }
+      // 检查事件目标到滚动容器之间是否有自身的纵向滚动容器。
+      let node = target;
+      while (node && node !== element) {
+        if (node.scrollHeight > node.clientHeight) {
+          const overflowY = window.getComputedStyle(node).overflowY;
+          if (overflowY === 'auto' || overflowY === 'scroll') return;
+        }
+        node = node.parentElement;
       }
       if (element.scrollWidth > element.clientWidth && Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
         e.preventDefault();

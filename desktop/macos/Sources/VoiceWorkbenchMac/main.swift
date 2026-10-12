@@ -30,6 +30,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
         makeMenu()
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1280, height: 840), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         window.title = "yovoice"
+        window.titlebarSeparatorStyle = .none
+        window.titlebarAppearsTransparent = true
+        window.backgroundColor = NSColor(srgbRed: 247.0 / 255.0, green: 247.0 / 255.0, blue: 247.0 / 255.0, alpha: 1.0)
         let accessory = NSTitlebarAccessoryViewController()
         accessory.layoutAttribute = .left
         let sidebarButton = NSButton(image: NSImage(systemSymbolName: "sidebar.left", accessibilityDescription: HostL10n.t("sidebar.toggle"))!, target: self, action: #selector(toggleSidebar))
@@ -46,9 +49,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
         inspectorButton.frame = NSRect(x: 0, y: 0, width: 32, height: 28)
         rightAccessory.view = inspectorButton
         // 只有工作区有右侧面板，由前端在进入或离开工作区时通知显示。
-        rightAccessory.isHidden = true
         self.inspectorAccessory = rightAccessory
-        window.addTitlebarAccessoryViewController(rightAccessory)
         window.minSize = NSSize(width: 390, height: 600)
         window.isReleasedWhenClosed = false
         window.delegate = self
@@ -70,6 +71,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
     @objc private func toggleInspector() {
         // 检查器状态由前端统一管理，标题栏仅发送切换事件。
         web?.evaluateJavaScript("window.dispatchEvent(new Event('workbench-toggle-inspector'))", completionHandler: nil)
+    }
+
+    private func updateInspectorAccessory(visible: Bool) {
+        guard let accessory = inspectorAccessory else { return }
+        let isPresent = window.titlebarAccessoryViewControllers.contains(accessory)
+        if visible && !isPresent {
+            window.addTitlebarAccessoryViewController(accessory)
+        } else if !visible && isPresent {
+            if let index = window.titlebarAccessoryViewControllers.firstIndex(of: accessory) {
+                window.removeTitlebarAccessoryViewController(at: index)
+            }
+        }
     }
 
     @objc private func showAbout() {
@@ -201,6 +214,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
         web.navigationDelegate = self
         web.uiDelegate = self
         web.isInspectable = ProcessInfo.processInfo.environment["WORKBENCH_DEBUG"] == "1"
+        web.underPageBackgroundColor = window.backgroundColor
         let cookie = HTTPCookie(properties: [.name: cookieName, .value: token, .domain: "127.0.0.1", .path: "/", .init("HttpOnly"): "TRUE"])!
         configuration.websiteDataStore.httpCookieStore.setCookie(cookie) { [weak self] in
             Task { @MainActor in
@@ -286,7 +300,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
         let method = message["method"] as? String ?? ""
         if method == "inspector.available" {
             let available = data["available"] as? Bool == true
-            inspectorAccessory?.isHidden = !available
+            updateInspectorAccessory(visible: available)
             return ["id": message["id"]!, "result": true]
         }
         if method == "sidebar.save" {

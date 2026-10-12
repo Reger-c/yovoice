@@ -74,7 +74,7 @@ export function Inspector({ draft, state, catalog, change, chooseVoice, chooseEm
   const voiceModels = catalog.filter(model => isVoiceModel(model.id));
   return <VStack as="aside" className={embedded ? undefined : "inspector"} gap={0}>
     {!embedded ? <VStack className="generation-action" gap={3}>
-      {generationAction ?? (generating ? <Button label={t('@yovoice.create.cancelGenerate')} onClick={cancel} width="100%" /> : <Button label={t('@yovoice.create.generate')} variant="primary" width="100%" size="lg" aria-keyshortcuts="Control+Enter" isDisabled={busy || !(draft.subtitles ? draft.subtitles.cues.some(cue => cue.text.trim()) : draft.text.trim())} onClick={generate} />)}
+      {generationAction ?? (generating ? <Button label={t('@yovoice.create.cancelGenerate')} onClick={cancel} width="100%" /> : <Button label={t('@yovoice.create.generate')} variant="primary" width="100%" aria-keyshortcuts="Control+Enter" isDisabled={busy || !(draft.subtitles ? draft.subtitles.cues.some(cue => cue.text.trim()) : draft.text.trim())} onClick={generate} />)}
       {generating && !generationAction ? <HStack className="generation-status" gap={2} vAlign="center">
         <LoaderCircle size={14} className="generation-spinner" aria-hidden="true" />
         <small className="grow" role="status">{state.activity ? formatActivity(t, state.activity) : ''}</small>

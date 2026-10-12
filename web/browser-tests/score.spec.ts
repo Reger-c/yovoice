@@ -33,6 +33,20 @@ test('新建编曲作品：示例乐谱、音块总览、声部调整与持久�
   await expect(mute).toHaveAttribute('aria-pressed', 'true');
   await mute.click();
   await expect(mute).toHaveAttribute('aria-pressed', 'false');
+  // 音色选择器弹窗宽度充足（>=220px），乐器名称完整可读不被挤压。
+  await rows.first().locator('.score-instrument').click();
+  const popup = page.locator('.astryx-selector-popup:visible');
+  await expect(popup).toBeVisible();
+  const popupWidth = await popup.evaluate(el => el.clientWidth);
+  expect(popupWidth).toBeGreaterThanOrEqual(220);
+  await expect(page.getByRole('option', { name: 'Bright Acoustic Piano' })).toBeVisible();
+  // 在下拉弹窗内滚动滚轮时，不误触发外部轨道的横向滚动。
+  const beforeWheelScrollLeft = await page.locator('.score-scroll').evaluate(el => el.scrollLeft);
+  await popup.evaluate(el => { el.dispatchEvent(new WheelEvent('wheel', { deltaY: 80, bubbles: true, cancelable: true })); });
+  const afterWheelScrollLeft = await page.locator('.score-scroll').evaluate(el => el.scrollLeft);
+  expect(afterWheelScrollLeft).toBe(beforeWheelScrollLeft);
+  await page.keyboard.press('Escape');
+  await expect(popup).toBeHidden();
   // 角色收在色点菜单里：切换后行颜色随之变化。
   await page.getByRole('button', { name: '琶音 的角色' }).click();
   await page.getByRole('menuitem', { name: '钢琴' }).click();

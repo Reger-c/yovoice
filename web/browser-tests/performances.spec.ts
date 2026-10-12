@@ -21,6 +21,11 @@ test('角色多种演绎独立配置，逐句选择与修改互不影响并持�
   await editor.getByRole('button', { name: '新增演绎', exact: true }).click();
   await expect(editor.getByLabel('演绎名称', { exact: true })).toHaveCount(0);
   await editor.getByRole('button', { name: '演绎操作', exact: true }).click();
+  const renameItemIcon = page.getByRole('menuitem', { name: '重命名演绎', exact: true }).locator('svg');
+  await expect(renameItemIcon).toBeVisible();
+  const iconBox = (await renameItemIcon.boundingBox())!;
+  expect(Math.abs(iconBox.width - 16)).toBeLessThanOrEqual(1);
+  expect(Math.abs(iconBox.height - 16)).toBeLessThanOrEqual(1);
   await page.getByRole('menuitem', { name: '重命名演绎', exact: true }).click();
   await page.getByLabel('演绎名称', { exact: true }).fill('愤怒');
   await page.getByRole('button', { name: '重命名演绎', exact: true }).click();

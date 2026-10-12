@@ -136,3 +136,38 @@ test('弹窗关闭按钮与标题中线对齐', async ({ page }) => {
     })).toBeLessThan(1);
   }
 });
+
+test('桌面端内容卡片横向中线对齐且不超出视口底部', async ({ page }) => {
+  const state = emptyState();
+  state.drafts.push(createDraft());
+  await page.addInitScript(state => {
+    let receive: (event: { data: unknown }) => void;
+    Object.assign(window, {
+      chrome: { webview: {
+        addEventListener: (_name: string, listener: typeof receive) => { receive = listener; },
+        postMessage: (message: { id: string; method: string }) => {
+          queueMicrotask(() => receive({ data: { id: message.id, result: message.method === 'state.get' ? { state, catalog: [], desktop: true } : true } }));
+        },
+      } },
+    });
+  }, state);
+  await page.setViewportSize({ width: 1280, height: 840 });
+  await page.goto('/');
+  await expect(page.locator('.workbench.desktop')).toBeVisible();
+  const sheet = page.locator('.app-sheet');
+  await expect(sheet).toBeVisible();
+  const center = async (locator: import('@playwright/test').Locator) => {
+    const box = (await locator.boundingBox())!;
+    return box.y + box.height / 2;
+  };
+  const title = page.locator('.document-title');
+  await expect(title).toBeVisible();
+  const navNew = page.getByTestId('nav-new');
+  expect(Math.abs(await center(title) - await center(navNew))).toBeLessThan(1);
+  const generateBtn = page.locator('.generation-action button').first();
+  await expect(generateBtn).toBeVisible();
+  expect(Math.abs(await center(generateBtn) - await center(navNew))).toBeLessThan(1);
+  const sheetBox = (await sheet.boundingBox())!;
+  expect(sheetBox.y + sheetBox.height).toBeLessThanOrEqual(840);
+});
+

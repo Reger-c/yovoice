@@ -85,6 +85,12 @@ test('音乐版本一行一个，点选即试听，可复用参数', async ({ pa
   await page.getByRole('button', { name: '复用这一版的风格和歌词' }).nth(1).click();
   await expect(page.getByLabel('风格', { exact: true })).not.toHaveValue('lofi');
   await expect(page.getByRole('radio', { name: '纯音乐' })).toBeChecked();
+  // 无新增音轨的单轨播放器紧凑贴合单行音轨，不预留多余空白高度且无拉伸手柄
+  const player = page.locator('.player.player-single');
+  await expect(player).toBeVisible();
+  await expect(player.locator('.astryx-resize-handle')).toHaveCount(0);
+  const playerHeight = await player.evaluate(el => el.getBoundingClientRect().height);
+  expect(playerHeight).toBeLessThanOrEqual(120);
   await page.screenshot({ path: testInfo.outputPath('music-takes.png') });
 });
 
