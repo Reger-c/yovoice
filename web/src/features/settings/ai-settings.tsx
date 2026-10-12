@@ -9,6 +9,7 @@ import { useTranslator } from '@astryxdesign/core/i18n';
 import { ArrowUpRight, Check, Play, Plus, RefreshCw, Search, Trash2 } from 'lucide-react';
 import { ConfirmDelete } from '../../shared/ui/app-dialog';
 import { Selector } from '../../shared/selector';
+import { OrcaConnect } from '../../shared/ui/orca-connect';
 import { call, CallError } from '../../shared/lib/client';
 import { formatCallError } from '../../shared/i18n/format';
 import aiPresets from '../../shared/lib/ai-presets.json';
@@ -87,6 +88,8 @@ function ProviderDetail({ provider, preset, run, saved, removed }: {
 
     {preset.endpoint === 'custom' ? <TextInput size="sm" label={t('@yovoice.ai.name')} value={value.name} placeholder={presetName} onChange={name => patch({ name: name.slice(0, 60) })} /> : null}
 
+    {preset.key === 'orcarouter' ? <OrcaConnect variant={provider?.keyMask ? 'secondary' : 'primary'} hint /> : null}
+
     <VStack className="ai-field" gap={2}>
       {provider?.keyMask && !replacingKey ? <>
         <p className="ai-field-title">{t('@yovoice.ai.key')}</p>
@@ -144,7 +147,10 @@ export function AISettings({ state, run }: { state: State; run: (task: () => Pro
   // nonce 只在用户切换选中项时变化；保存新服务后选中项换成它的 ID，但编辑区不重建。
   const [selection, setSelection] = useState(() => ({ value: firstChoice(), nonce: 0 }));
   const select = (value: string) => setSelection(s => ({ value, nonce: s.nonce + 1 }));
-  const provider = providers.find(p => p.id === selection.value);
+  // 在 OrcaRouter 预设页一键授权完成后，直接切到新添加的服务。
+  const connected = selection.value === 'preset:orcarouter' ? providers.find(p => p.preset === 'orcarouter')?.id : undefined;
+  const selected = connected ?? selection.value;
+  const provider = providers.find(p => p.id === selected);
   const presetKey = provider?.preset ?? (selection.value.startsWith('preset:') ? selection.value.slice(7) : presets[0].key);
   const preset = presets.find(p => p.key === presetKey) ?? presets.at(-1)!;
   const addable = presets.filter(p => p.key === 'custom' || !providers.some(x => x.preset === p.key));
@@ -161,14 +167,14 @@ export function AISettings({ state, run }: { state: State; run: (task: () => Pro
     <HStack className="ai-split" gap={0}>
       <VStack className="ai-nav" gap={4}>
         {providers.length ? <List header={<small className="ai-nav-head">{t('@yovoice.ai.added')}</small>} density="compact">
-          {providers.map(p => <ListItem key={p.id} label={p.name} isSelected={p.id === selection.value} startContent={<ProviderIcon preset={presetOf(p)} name={p.name} active />}
+          {providers.map(p => <ListItem key={p.id} label={p.name} isSelected={p.id === selected} startContent={<ProviderIcon preset={presetOf(p)} name={p.name} active />}
             endContent={p.id === state.aiProviderID ? <StatusDot variant="success" label={t('@yovoice.ai.inUse')} tooltip={t('@yovoice.ai.inUse')} /> : null} onClick={() => select(p.id)} />)}
         </List> : null}
         {groups.map(group => <List key={group.key} header={<small className="ai-nav-head">{t(`@yovoice.ai.group.${group.key}`)}</small>} density="compact">
           {group.items.map(p => <ListItem key={p.key} label={presetName(p)} isSelected={selection.value === `preset:${p.key}`} startContent={<ProviderIcon preset={p} name={presetName(p)} />} onClick={() => select(`preset:${p.key}`)} />)}
         </List>)}
       </VStack>
-      <ProviderDetail key={selection.nonce} provider={provider} preset={preset} run={run}
+      <ProviderDetail key={connected ? `${selection.nonce}:connected` : selection.nonce} provider={provider} preset={preset} run={run}
         saved={id => setSelection(s => ({ ...s, value: id }))} removed={() => select(providers.find(p => p.id !== provider?.id)?.id ?? `preset:${preset.key}`)} />
     </HStack>
   </VStack>;

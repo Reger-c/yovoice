@@ -2394,7 +2394,7 @@
     "defaultMessage": "The AI service rejected the key (HTTP {status}). Check the API key."
   },
   "@yovoice.error.aiRateLimit": {
-    "defaultMessage": "The AI service is rate limiting or out of quota. Try again later."
+    "defaultMessage": "The AI service is busy or out of quota. Free models are often rate limited when many people use them; wait a minute and try again, or pick another model in the writing panel."
   },
   "@yovoice.error.aiNetwork": {
     "defaultMessage": "Could not reach the AI service: {detail}"
@@ -2752,5 +2752,14 @@
   },
   "@yovoice.update.sidebarReady": {
     "defaultMessage": "Version {version}"
+  },
+  "@yovoice.ai.orca.connect": {
+    "defaultMessage": "Connect OrcaRouter for free"
+  },
+  "@yovoice.ai.orca.waiting": {
+    "defaultMessage": "OrcaRouter is open in your browser. Sign in and approve, and yovoice connects automatically."
+  },
+  "@yovoice.ai.orca.hint": {
+    "defaultMessage": "No key to copy: sign in to OrcaRouter in your browser and approve, and it is added with a free model."
   }
 }

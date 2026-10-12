@@ -38,6 +38,8 @@ type aiState struct {
 	task    string
 	done    chan struct{}
 	secrets sync.Mutex
+	// connect 是进行中的 OrcaRouter 一键授权。
+	connect *connectSession
 }
 
 func (w *Workbench) secretsPath() string { return filepath.Join(w.Store.Root, "secrets.json") }
@@ -400,6 +402,12 @@ func (w *Workbench) CancelAI() {
 
 // stopAI 取消并等待后台 AI 任务结束，服务关闭时调用。
 func (w *Workbench) stopAI() {
+	w.ai.mu.Lock()
+	connect := w.ai.connect
+	w.ai.mu.Unlock()
+	if connect != nil {
+		w.closeConnect(connect)
+	}
 	w.ai.mu.Lock()
 	done := w.ai.done
 	if w.ai.cancel != nil {

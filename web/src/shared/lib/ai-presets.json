@@ -1,5 +1,14 @@
 [
   {
+    "key": "orcarouter",
+    "name": "OrcaRouter",
+    "format": "chat_completions",
+    "baseURL": "https://api.orcarouter.ai/v1",
+    "modelsPath": "/models",
+    "keyURL": "https://www.orcarouter.ai/ref/ref_6e57c0a95de534ec77da",
+    "endpoint": "fixed"
+  },
+  {
     "key": "deepseek",
     "name": "DeepSeek",
     "format": "chat_completions",
@@ -86,15 +95,6 @@
     "baseURL": "https://openrouter.ai/api/v1",
     "modelsPath": "/models",
     "keyURL": "https://openrouter.ai/keys",
-    "endpoint": "fixed"
-  },
-  {
-    "key": "orcarouter",
-    "name": "OrcaRouter",
-    "format": "chat_completions",
-    "baseURL": "https://api.orcarouter.ai/v1",
-    "modelsPath": "/models",
-    "keyURL": "https://www.orcarouter.ai/ref/ref_6e57c0a95de534ec77da",
     "endpoint": "fixed"
   },
   {

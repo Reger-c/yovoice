@@ -145,6 +145,9 @@ func Call(ctx context.Context, w *workbench.Workbench, method string, data json.
 		return w.AIModels(ctx, p.ID)
 	case "ai.test":
 		return w.TestAIProvider(ctx, p.ID)
+	case "ai.connect":
+		authURL, e := w.ConnectOrcaRouter()
+		return map[string]string{"url": authURL}, e
 	case "ai.score":
 		var input workbench.ScoreBrief
 		if e := json.Unmarshal(data, &input); e != nil {

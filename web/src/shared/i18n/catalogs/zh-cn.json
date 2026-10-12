@@ -2394,7 +2394,7 @@
     "defaultMessage": "AI 服务拒绝了密钥（HTTP {status}），请检查 API 密钥。"
   },
   "@yovoice.error.aiRateLimit": {
-    "defaultMessage": "AI 服务限流或额度不足，请稍后重试。"
+    "defaultMessage": "AI 服务暂时限流或额度不足。免费模型使用的人多时容易限流，请等一两分钟再试，或在写作栏换一个模型。"
   },
   "@yovoice.error.aiNetwork": {
     "defaultMessage": "无法连接 AI 服务：{detail}"
@@ -2752,5 +2752,14 @@
   },
   "@yovoice.update.sidebarReady": {
     "defaultMessage": "新版本 {version}"
+  },
+  "@yovoice.ai.orca.connect": {
+    "defaultMessage": "免费连接 OrcaRouter"
+  },
+  "@yovoice.ai.orca.waiting": {
+    "defaultMessage": "已在浏览器中打开 OrcaRouter，登录并点“同意授权”后会自动连接。"
+  },
+  "@yovoice.ai.orca.hint": {
+    "defaultMessage": "不用复制密钥：在浏览器登录 OrcaRouter 并同意授权后自动添加，默认使用免费模型。"
   }
 }

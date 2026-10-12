@@ -142,6 +142,17 @@ export async function previewCall<T>(method: string, data: unknown): Promise<T> 
     }
     publish(); return true as T;
   }
+  // 预览模拟 OrcaRouter 一键授权：不打开外部页面，稍后直接添加使用免费模型的服务并设为当前服务。
+  if (method === 'ai.connect') {
+    setTimeout(() => {
+      const providers = state.aiProviders ?? [];
+      const old = providers.find(p => p.preset === 'orcarouter');
+      const next: AIProvider = { id: old?.id ?? crypto.randomUUID().replaceAll('-', ''), preset: 'orcarouter', name: old?.name ?? 'OrcaRouter', format: 'chat_completions', baseURL: 'https://api.orcarouter.ai/v1', modelsPath: '/models', model: old?.model || 'orcarouter/free', models: old?.models, keyMask: '••••••••' };
+      state.aiProviders = old ? providers.map(p => p.id === next.id ? next : p) : [...providers, next];
+      state.aiProviderID = next.id; publish();
+    }, 300);
+    return { url: '' } as T;
+  }
   // 预览模拟 AI 后台任务的生命周期：开始后短暂运行，再以“仅桌面可用”结束，便于检查界面闭环。
   if (method === 'ai.score' || method === 'ai.lyrics') {
     const input = data as { projectId: string; brief: string };
