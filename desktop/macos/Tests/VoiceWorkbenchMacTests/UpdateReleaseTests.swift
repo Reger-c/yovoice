@@ -16,7 +16,7 @@ final class UpdateReleaseTests: XCTestCase {
     }
 
     func testReleaseNotesAreDecodedForDisplay() throws {
-        let json = #"{"tag_name":"v0.10.0","draft":false,"prerelease":false,"assets":[],"body":"### English\n- New","published_at":"2026-10-11T08:00:00Z"}"#
+        let json = ##"{"tag_name":"v0.10.0","draft":false,"prerelease":false,"assets":[],"body":"### English\n- New","published_at":"2026-10-11T08:00:00Z"}"##
         let release = try JSONDecoder().decode(UpdateRelease.self, from: Data(json.utf8))
         XCTAssertEqual(release.notes, "### English\n- New")
         XCTAssertEqual(release.published_at, "2026-10-11T08:00:00Z")
