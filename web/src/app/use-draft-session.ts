@@ -10,6 +10,9 @@ export function useDraftSession(ready: boolean, state: State, onError: (message:
   const [draft, setDraft] = useState<Draft>(() => createDraft(true));
   // 未保存过的新作品在用户首次编辑前不写入后端。
   const [draftPersisted, setDraftPersisted] = useState(true);
+  // 只有作品编辑页（含其版本记录）处于打开状态；设置、声音库和作品列表等页面不存在“当前作品”，
+  // 离开时立即保存未落盘的修改并关闭会话，原生宿主退出时也就无需补存作品。
+  const [active, setActive] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Draft | null>(null);
@@ -21,10 +24,10 @@ export function useDraftSession(ready: boolean, state: State, onError: (message:
   // 只有最后一次保存完成时才清除“保存中”。
   const saveSequence = useRef(0);
 
-  // window.__workbenchDraft 只在存在未落盘的修改时有值：原生宿主退出或迁移前据此补存最后的输入，
-  // 已保存时为空，避免在设置页等没有改动的场景下退出也去写作品（数据目录不可写时会挡住退出）。
+  // window.__workbenchDraft 只在作品打开且存在未落盘的修改时有值：原生宿主退出或迁移前据此补存最后的输入，
+  // 已保存或作品未打开时为空，避免在设置页等没有改动的场景下退出也去写作品（数据目录不可写时会挡住退出）。
   useEffect(() => {
-    if (!ready || deleting || !draftPersisted) return;
+    if (!ready || deleting || !draftPersisted || !active) return;
     window.__workbenchDraft = draft;
     localStorage.setItem('yovoice-active-project', draft.id);
     setSaving(true); setSaveFailed(false); const sequence = ++saveSequence.current;
@@ -33,7 +36,21 @@ export function useDraftSession(ready: boolean, state: State, onError: (message:
       void pendingSave.current.then(() => { if (sequence === saveSequence.current) { setSaving(false); if (window.__workbenchDraft === draft) window.__workbenchDraft = undefined; } }).catch(e => { setSaveFailed(true); setSaving(false); onError(noticeMessage(e)); });
     }, 350);
     return () => clearTimeout(timer);
-  }, [draft, ready, deleting, draftPersisted, onError]);
+  }, [draft, ready, deleting, draftPersisted, active, onError]);
+
+  // 离开编辑页：防抖中的自动保存已被取消，这里把尚未落盘的修改立即写入后关闭会话。
+  useEffect(() => {
+    if (active || !ready) return;
+    const pending = window.__workbenchDraft;
+    window.__workbenchDraft = undefined;
+    if (!pending) { setSaving(false); return; }
+    const sequence = ++saveSequence.current;
+    pendingSave.current = pendingSave.current.catch(() => {}).then(() => call('draft.save', pending));
+    void pendingSave.current.then(() => { if (sequence === saveSequence.current) setSaving(false); }).catch(e => {
+      // 保存失败时保留待保存内容，退出时宿主仍会补存或提供备份。
+      window.__workbenchDraft ??= pending; setSaveFailed(true); setSaving(false); onError(noticeMessage(e));
+    });
+  }, [active, ready, onError]);
 
   const change = (patch: Partial<Draft>) => { setDraftPersisted(true); setDraft(current => normalizeDraft({ ...current, ...patch })); };
 
@@ -70,7 +87,7 @@ export function useDraftSession(ready: boolean, state: State, onError: (message:
   }
 
   return {
-    draft, setDraft, draftPersisted, setDraftPersisted, saving, saveFailed, change, persistDraft,
+    draft, setDraft, draftPersisted, setDraftPersisted, saving, saveFailed, change, persistDraft, setActive,
     deleteTarget, setDeleteTarget, deleting, deleteError, deleteDraft,
   };
 }
