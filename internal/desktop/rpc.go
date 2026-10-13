@@ -186,6 +186,9 @@ func Call(ctx context.Context, w *workbench.Workbench, method string, data json.
 	case "operation.cancel":
 		w.Cancel()
 		return true, nil
+	case "model.cancel":
+		w.CancelModel()
+		return true, nil
 	}
 	return nil, msg.Err(msg.ErrMethodUnsupported, nil)
 }

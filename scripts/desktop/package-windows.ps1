@@ -74,4 +74,5 @@ try {
     if ($staging -and (Test-Path -LiteralPath $staging)) { Remove-Item -LiteralPath $staging -Recurse -Force }
 }
 if (!(Test-Path "$output/$name.exe")) { throw "未生成 Setup 安装包" }
+& "$PSScriptRoot/sign-windows.ps1" -Path "$output/$name.exe"
 Write-Host "已生成：artifacts/$name.exe"

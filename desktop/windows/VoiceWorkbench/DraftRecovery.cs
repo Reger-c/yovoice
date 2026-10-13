@@ -10,7 +10,7 @@ public static class DraftRecovery
     public static void Save(string path, string json)
     {
         using var document = JsonDocument.Parse(json);
-        if (document.RootElement.ValueKind != JsonValueKind.Object) throw new IOException("未读取到当前作品，无法备份。");
+        if (document.RootElement.ValueKind != JsonValueKind.Object) throw new IOException(HostL10n.T("未读取到当前作品，无法备份。", "Could not read the current work to back it up."));
         string temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {

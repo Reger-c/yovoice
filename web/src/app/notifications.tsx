@@ -30,14 +30,20 @@ function AITaskNotice({ task, title, open }: { task: AITask; title?: string; ope
 }
 
 // 全局错误提示与后台任务进度；关闭的失败任务按内容记忆，不再重复提示。
-export function Notifications({ error, clearError, activity, draftId, page, cancel, aiTask, aiTitle, openAITask, children }: { children?: ReactNode; error: string; clearError: () => void; activity: Activity | null; draftId: string; page: string; cancel: () => void; aiTask?: AITask; aiTitle?: string; openAITask: () => void }) {
+export function Notifications({ error, clearError, activity, modelActivity, draftId, page, cancel, cancelModel, aiTask, aiTitle, openAITask, children }: { children?: ReactNode; error: string; clearError: () => void; activity: Activity | null; modelActivity?: Activity | null; draftId: string; page: string; cancel: () => void; cancelModel: () => void; aiTask?: AITask; aiTitle?: string; openAITask: () => void }) {
   const t = useTranslator();
   const [dismissedActivity, setDismissedActivity] = useState(() => localStorage.getItem('yovoice-dismissed-task') ?? '');
   const activityKey = activity ? stableJSON(activity) : '';
   const busy = activity?.status === 'running';
+  // 模型下载与导入与生成并行：导入进度在这里展示，下载进度在模型列表中展示；失败在任何页面都提示一次。
+  const modelKey = modelActivity ? stableJSON(modelActivity) : '';
+  const modelFailed = modelActivity?.status === 'failed' && modelKey !== dismissedActivity;
+  const dismiss = (key: string) => { setDismissedActivity(key); localStorage.setItem('yovoice-dismissed-task', key); };
   return <VStack className="notifications" gap={2}>
+      {modelFailed && !error ? <HStack className="notice" role="alert" gap={3} hAlign="between" vAlign="center"><CircleAlert className="notice-icon" aria-hidden /><p className="grow"><NoticeText error="" activity={modelActivity} /></p><Button label={t('@yovoice.action.closeNotice')} size="sm" variant="ghost" isIconOnly icon={<X size={16} />} onClick={() => dismiss(modelKey)} /></HStack> : null}
       {error || (activity?.status === 'failed' && !activity.characterId && (!activity.projectId || activity.projectId === draftId) && page === 'create' && activityKey !== dismissedActivity) ? <HStack className="notice" role="alert" gap={3} hAlign="between" vAlign="center"><CircleAlert className="notice-icon" aria-hidden /><p className="grow"><NoticeText error={error} activity={activity} /></p><Button label={t('@yovoice.action.closeNotice')} size="sm" variant="ghost" isIconOnly icon={<X size={16} />} onClick={() => { clearError(); if (activity?.status === 'failed') { setDismissedActivity(activityKey); localStorage.setItem('yovoice-dismissed-task', activityKey); } }} /></HStack> : null}
       {busy && activity && !['download', 'generate'].includes(activity.kind) ? <HStack className="activity" role="status" gap={3} vAlign="center"><VStack className="grow" gap={2}><HStack hAlign="between"><ActivityLabel activity={activity} />{activity.total > 0 ? <small>{formatSize(activity.received)} / {formatSize(activity.total)}</small> : null}</HStack><progress value={activity.total > 0 ? activity.received : undefined} max={activity.total || 1} /></VStack><Button label={activity.kind === 'download' ? t('@yovoice.action.pause') : t('@yovoice.action.cancel')} size="sm" onClick={cancel} /></HStack> : null}
+      {modelActivity?.status === 'running' && modelActivity.kind === 'import' ? <HStack className="activity" role="status" gap={3} vAlign="center"><VStack className="grow" gap={2}><ActivityLabel activity={modelActivity} /><progress max={1} /></VStack><Button label={t('@yovoice.action.cancel')} size="sm" onClick={cancelModel} /></HStack> : null}
       {aiTask && aiTask.status !== 'cancelled' && (page !== 'create' || aiTask.projectId !== draftId) ? <AITaskNotice task={aiTask} title={aiTitle} open={openAITask} /> : null}
       {children}
   </VStack>;

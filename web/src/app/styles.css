@@ -327,6 +327,10 @@
   .activity { width: calc(var(--spacing-8) * 12); max-width: 100%; }
   progress { width: 100%; height: var(--spacing-1); accent-color: var(--app-ink); }
   .loading { padding: var(--spacing-10); color: var(--app-muted); }
+  /* 页面渲染出错时占满原区域，保留导航可用。 */
+  .page-error { flex: 1; min-height: 0; padding: var(--spacing-10); text-align: center; color: var(--app-muted); }
+  .page-error strong { color: var(--app-ink); }
+  .page-error p { max-width: calc(var(--spacing-8) * 12); }
   .recording { color: var(--color-text-red); }
   @media (hover: hover) {
     /* 仅加深组件自带的悬停层，避免与按钮背景叠加。 */

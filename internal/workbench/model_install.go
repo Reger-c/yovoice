@@ -31,6 +31,15 @@ func (w *Workbench) DownloadModel(id string) error {
 		return e
 	}
 	s := w.Store.Read()
+	// 重新下载已安装的模型会替换正在使用的文件，需等生成结束；未安装的模型可与生成同时下载。
+	if slices.ContainsFunc(s.Models, func(installed schema.InstalledModel) bool { return installed.ID == id }) {
+		w.mu.Lock()
+		busy := w.cancel != nil
+		w.mu.Unlock()
+		if busy {
+			return msg.Err(msg.ErrBusy, nil)
+		}
+	}
 	files := m.PackageFiles()
 	urls := make([]string, len(files))
 	for i, f := range files {
@@ -77,7 +86,7 @@ func (w *Workbench) DownloadModel(id string) error {
 				if done+r == m.Size {
 					code, params = msg.ActivityVerifying, nil
 				}
-				w.progress(code, params, done+r, m.Size)
+				w.progressOf("download", code, params, done+r, m.Size)
 			}); e != nil {
 				return e
 			}
@@ -138,13 +147,13 @@ func (w *Workbench) ImportModel(path string) error {
 }
 
 // ForgetModel 移除模型登记。应用自己下载的模型同时删除文件释放空间；用户导入的模型只解除登记，保留本地文件。
-// 下载其他模型不占用推理引擎，可同时移除。
+// 生成等主操作进行中不能移除（会停止推理引擎）；下载或导入其他模型时可同时移除。
 func (w *Workbench) ForgetModel(id string) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	state := w.Store.Read()
-	activity := state.Activity
-	if w.cancel != nil && (activity == nil || activity.Kind != "download" || activity.ModelID == nil || *activity.ModelID == id) {
+	activity := state.ModelActivity
+	if w.cancel != nil || (w.installCancel != nil && (activity == nil || activity.Kind != "download" || activity.ModelID == nil || *activity.ModelID == id)) {
 		return msg.Err(msg.ErrModelForgetBlocked, nil)
 	}
 	w.engine.Stop()

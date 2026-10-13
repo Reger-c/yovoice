@@ -26,11 +26,11 @@ public sealed class LocalService : IDisposable
     {
         while (!Directory.Exists(path))
         {
-            if (AppDialog.Show(null, "找不到数据目录", path + " 不存在。可能是外置磁盘未连接，或目录已被移动、删除。\n\n连接磁盘后点“重试”；确认不再需要原数据时，可以在原位置新建空的数据目录。", "重试", "更多选项")) continue;
-            if (!AppDialog.Show(null, "在原位置新建空的数据目录？", "将在 " + path + " 新建空的数据目录，原有作品、音色和模型不会出现在应用中。原目录恢复后可再次切换回去。", "新建空目录", "退出"))
-                throw new OperationCanceledException("用户取消启动。");
+            if (AppDialog.Show(null, HostL10n.T("找不到数据目录", "Data Folder Not Found"), HostL10n.T(path + " 不存在。可能是外置磁盘未连接，或目录已被移动、删除。\n\n连接磁盘后点“重试”；确认不再需要原数据时，可以在原位置新建空的数据目录。", path + " does not exist. The external drive may be disconnected, or the folder was moved or deleted.\n\nReconnect the drive and click Retry. If you no longer need the original data, you can create an empty data folder at the same location."), HostL10n.T("重试", "Retry"), HostL10n.T("更多选项", "More Options"))) continue;
+            if (!AppDialog.Show(null, HostL10n.T("在原位置新建空的数据目录？", "Create an Empty Data Folder?"), HostL10n.T("将在 " + path + " 新建空的数据目录，原有作品、音色和模型不会出现在应用中。原目录恢复后可再次切换回去。", "An empty data folder will be created at " + path + ". Your existing works, voices and models will not appear in the app. You can switch back once the original folder is available again."), HostL10n.T("新建空目录", "Create Empty Folder"), HostL10n.T("退出", "Quit")))
+                throw new OperationCanceledException("startup cancelled");
             try { Directory.CreateDirectory(path); }
-            catch (Exception error) when (error is IOException or UnauthorizedAccessException or NotSupportedException) { AppDialog.Show(null, "无法创建数据目录", error.Message); }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException or NotSupportedException) { AppDialog.Show(null, HostL10n.T("无法创建数据目录", "Could Not Create Data Folder"), error.Message); }
         }
         return path;
     }
@@ -91,13 +91,13 @@ public sealed class LocalService : IDisposable
         if (process is { HasExited: false }) return;
         HostLog.Write(Root, "service.start_requested");
         string executable = Path.Combine(AppContext.BaseDirectory, "service", "yovoice-service.exe");
-        if (!File.Exists(executable)) throw new IOException("本地服务缺失，请重新构建或安装应用。");
+        if (!File.Exists(executable)) throw new IOException(HostL10n.T("本地服务缺失，请重新构建或安装应用。", "The local service is missing. Rebuild or reinstall the app."));
         if (Environment.GetEnvironmentVariable("WORKBENCH_DATA") is null)
         {
             using var migration = Process.Start(new ProcessStartInfo(executable, "--prepare-data") { UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true })!;
             string error = await migration.StandardError.ReadToEndAsync();
             await migration.WaitForExitAsync();
-            if (migration.ExitCode != 0) throw new IOException("数据目录迁移失败：" + error);
+            if (migration.ExitCode != 0) throw new IOException(HostL10n.T("数据目录迁移失败：", "Data folder migration failed: ") + error);
         }
         Directory.CreateDirectory(Path.Combine(Root, "logs"));
         var start = new ProcessStartInfo(executable) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true };
@@ -105,12 +105,12 @@ public sealed class LocalService : IDisposable
         start.Environment["WORKBENCH_WEB"] = Path.Combine(AppContext.BaseDirectory, "web");
         start.Environment["WORKBENCH_TOKEN"] = Token;
         start.Environment["WORKBENCH_ENGINE"] = Path.Combine(AppContext.BaseDirectory, "engine", "audiocpp_server.exe");
-        process = Process.Start(start) ?? throw new IOException("无法启动本地服务。");
+        process = Process.Start(start) ?? throw new IOException(HostL10n.T("无法启动本地服务。", "Could not start the local service."));
         _ = PumpErrorsAsync(process);
         try
         {
             string? address = await process.StandardOutput.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(30));
-            if (!Uri.TryCreate(address, UriKind.Absolute, out var uri) || uri.Scheme != "http" || uri.Host != "127.0.0.1") throw new IOException("本地服务未返回有效地址，请检查日志。");
+            if (!Uri.TryCreate(address, UriKind.Absolute, out var uri) || uri.Scheme != "http" || uri.Host != "127.0.0.1") throw new IOException(HostL10n.T("本地服务未返回有效地址，请检查日志。", "The local service did not return a valid address. Check the logs."));
             Origin = uri.GetLeftPart(UriPartial.Authority);
         }
         catch
@@ -120,7 +120,8 @@ public sealed class LocalService : IDisposable
             throw;
         }
         HostLog.Write(Root, "service.ready");
-        events = ReadEventsAsync();
+        // 服务重启后沿用已有的事件循环，它会按新地址重新连接，避免重复推送状态。
+        if (events is null || events.IsCompleted) events = ReadEventsAsync();
     }
     private async Task PumpErrorsAsync(Process running)
     {
@@ -150,7 +151,7 @@ public sealed class LocalService : IDisposable
             finally { await log.DisposeAsync(); }
             await running.WaitForExitAsync();
             HostLog.Write(Root, "service.exited:" + running.ExitCode);
-            if (!stopped.IsCancellationRequested) Failed?.Invoke("本地服务已停止，请退出后重新打开应用。");
+            if (!stopped.IsCancellationRequested) Failed?.Invoke(HostL10n.T($"本地服务意外停止（{running.ExitCode}），诊断记录保存在日志目录。", $"The local service stopped unexpectedly ({running.ExitCode}). Diagnostics are in the logs folder."));
         }
         catch (Exception error) when (error is IOException or ObjectDisposedException or InvalidOperationException) { }
     }

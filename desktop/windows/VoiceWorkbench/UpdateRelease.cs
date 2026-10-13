@@ -21,19 +21,19 @@ public sealed record UpdateRelease(
         if (Draft || Prerelease) return null;
         if (!Regex.IsMatch(Tag, @"^v[0-9]+\.[0-9]+\.[0-9]+$") ||
             !System.Version.TryParse(Version, out var latest) || !System.Version.TryParse(current, out var running))
-            throw new IOException("更新版本号无效。");
+            throw new IOException(HostL10n.T("更新版本号无效。", "The update version number is invalid."));
         if (latest <= running) return null;
         return Asset($"yovoice-{Tag}-windows-x64-update.exe");
     }
     public UpdateAsset Asset(string name)
     {
         var matches = Assets.Where(asset => asset.Name == name).ToArray();
-        if (matches.Length != 1) throw new IOException("当前版本缺少更新包或校验文件。");
+        if (matches.Length != 1) throw new IOException(HostL10n.T("当前版本缺少更新包或校验文件。", "This release is missing the update package or checksum file."));
         var asset = matches[0];
         if (!asset.Url.IsAbsoluteUri || asset.Url.Scheme != "https" || asset.Url.Host != "github.com" ||
             !asset.Url.IsDefaultPort || asset.Url.UserInfo.Length != 0 ||
             asset.Url.AbsolutePath != $"/leemysw/yovoice/releases/download/{Tag}/{name}")
-            throw new IOException("更新文件地址无效。");
+            throw new IOException(HostL10n.T("更新文件地址无效。", "The update download address is invalid."));
         return asset;
     }
     public static string Checksum(string text, string name)
@@ -48,7 +48,7 @@ public sealed record UpdateRelease(
             if (filename == name) hashes.Add(fields[0]);
         }
         if (hashes.Count != 1 || !Regex.IsMatch(hashes[0], "^[0-9a-fA-F]{64}$"))
-            throw new IOException("更新包的 SHA-256 校验信息无效。");
+            throw new IOException(HostL10n.T("更新包的 SHA-256 校验信息无效。", "The SHA-256 checksum for the update package is invalid."));
         return hashes[0];
     }
 }
