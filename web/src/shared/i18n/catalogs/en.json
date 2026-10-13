@@ -2860,5 +2860,51 @@
   },
   "@yovoice.import.tooLarge": {
     "defaultMessage": "The file is larger than 2 MB. Split it before importing."
+  },
+  "@yovoice.error.storageInsideApp": {
+    "defaultMessage": "The data directory cannot be inside the application installation folder to prevent data loss during updates."
+  },
+  "@yovoice.error.storageTargetNotEmpty": {
+    "defaultMessage": "The destination directory already exists and is not empty. Please choose an empty folder."
+  },
+  "@yovoice.error.storageSame": {
+    "defaultMessage": "The selected directory is the same as the current data directory."
+  },
+  "@yovoice.settings.storageGroup": {
+    "defaultMessage": "Storage"
+  },
+  "@yovoice.settings.storageDirectory": {
+    "defaultMessage": "Data directory"
+  },
+  "@yovoice.settings.storageRelocateHint": {
+    "defaultMessage": "Moving data takes effect after quitting from the system tray and restarting the app. Renamed directly on the same drive, safely copied across drives."
+  },
+  "@yovoice.settings.storageRelocatePending": {
+    "defaultMessage": "Data has been migrated to the new location. Please fully quit yovoice from the system tray and restart the app to take effect."
+  },
+  "@yovoice.settings.storageBreakdown": {
+    "defaultMessage": "Usage: total {total} (models {models} · outputs {outputs} · voices {voices} · cache {downloads})"
+  },
+  "@yovoice.settings.cleanupResiduals": {
+    "defaultMessage": "Clean residuals"
+  },
+  "@yovoice.settings.cleanupResidualsHint": {
+    "defaultMessage": "Reclaim orphan files and leftover versions older than 24 hours."
+  },
+  "@yovoice.settings.cleanupSuccess": {
+    "defaultMessage": "Cleaned {count} files, freed {size} space."
+  },
+  "@yovoice.settings.cleanupEmpty": {
+    "defaultMessage": "No residual files older than 24 hours found."
+  },
+  "@yovoice.activity.relocate": {
+    "defaultMessage": "Migrating data storage directory"
+  },
+  "@yovoice.settings.relocatingTitle": {
+    "defaultMessage": "Migrating Data Storage Directory"
+  },
+  "@yovoice.settings.relocatingHint": {
+    "defaultMessage": "Copying data to the new location. Please do not close the app or disconnect storage devices..."
   }
 }
+

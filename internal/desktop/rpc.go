@@ -121,6 +121,12 @@ func Call(ctx context.Context, w *workbench.Workbench, method string, data json.
 			return nil, e
 		}
 		return true, w.SavePreferences(preferences)
+	case "storage.info":
+		return w.StorageInfo()
+	case "storage.relocate":
+		return true, w.RelocateStorage(p.Path)
+	case "storage.cleanup":
+		return w.CleanupResiduals()
 	case "model.directory":
 		return true, w.SetModelDirectory(p.Path)
 	case "model.download":

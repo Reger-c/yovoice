@@ -2,6 +2,7 @@ package workbench
 
 import (
 	"encoding/json"
+	"os"
 	"slices"
 	"time"
 	"yovoice/internal/diag"
@@ -72,7 +73,46 @@ func (w *Workbench) DeleteDraft(id string) error {
 	}
 	w.edit.Lock()
 	defer w.edit.Unlock()
-	return w.Store.Update(func(s *schema.State) {
+	s := w.Store.Read()
+	if s.Activity != nil && s.Activity.Kind == "generate" && s.Activity.Status == "running" && s.Activity.ProjectID == id {
+		return msg.Err(msg.ErrBusy, nil)
+	}
+	referenced := map[string]bool{}
+	for _, d := range s.Drafts {
+		if d.ID == id || d.Timeline == nil {
+			continue
+		}
+		for _, track := range d.Timeline.Tracks {
+			for _, clip := range track.Clips {
+				if clip.GenerationID != "" {
+					referenced[clip.GenerationID] = true
+				}
+			}
+		}
+	}
+	deleteIDs := map[string]bool{}
+	var filesToDelete []string
+	for _, g := range s.History {
+		if g.Settings.ID == id {
+			if !referenced[g.ID] {
+				deleteIDs[g.ID] = true
+				if p, err := w.Store.MediaPath("outputs", g.FileName); err == nil {
+					filesToDelete = append(filesToDelete, p)
+				}
+			}
+		}
+	}
+	err := w.Store.Update(func(s *schema.State) {
 		s.Drafts = slices.DeleteFunc(s.Drafts, func(d schema.Draft) bool { return d.ID == id })
+		if len(deleteIDs) > 0 {
+			s.History = slices.DeleteFunc(s.History, func(g schema.Generation) bool { return deleteIDs[g.ID] })
+		}
 	}, true)
+	if err != nil {
+		return err
+	}
+	for _, f := range filesToDelete {
+		_ = os.Remove(f)
+	}
+	return nil
 }

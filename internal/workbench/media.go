@@ -1,7 +1,6 @@
 package workbench
 
 import (
-	"fmt"
 	"os"
 	"slices"
 	"strings"
@@ -76,12 +75,25 @@ func (w *Workbench) RenameMedia(kind, id, name string) error {
 func (w *Workbench) DeleteMedia(kind, id string) error {
 	w.edit.Lock()
 	defer w.edit.Unlock()
-	path, e := w.MediaFile(kind, id)
-	if e != nil {
-		return e
-	}
 	s := w.Store.Read()
-	if kind == "outputs" && !slices.ContainsFunc(s.History, func(g schema.Generation) bool { return g.ID == id }) {
+	var file string
+	switch kind {
+	case "voices":
+		for _, v := range s.Voices {
+			if v.ID == id {
+				file = v.FileName
+			}
+		}
+	case "outputs":
+		for _, v := range s.History {
+			if v.ID == id {
+				file = v.FileName
+			}
+		}
+	default:
+		return msg.Err(msg.ErrAudioKindInvalid, nil)
+	}
+	if file == "" {
 		return msg.Err(msg.ErrAudioMissing, nil)
 	}
 	if kind == "voices" {
@@ -105,18 +117,23 @@ func (w *Workbench) DeleteMedia(kind, id string) error {
 			}
 		}
 	}
-	removed := path + ".deleted"
-	_, e = os.Stat(path)
-	exists := e == nil
-	if e != nil && !os.IsNotExist(e) {
-		return e
-	}
-	if exists {
-		if e = os.Rename(path, removed); e != nil {
-			return e
+	path, pathErr := w.Store.MediaPath(kind, file)
+	var removed string
+	exists := false
+	if pathErr == nil {
+		if _, statErr := os.Lstat(path); statErr == nil {
+			exists = true
+			removed = path + ".deleted"
+			if e := os.Rename(path, removed); e != nil {
+				if delErr := os.Remove(path); delErr == nil {
+					exists = false
+				} else {
+					return e
+				}
+			}
 		}
 	}
-	e = w.Store.Update(func(s *schema.State) {
+	e := w.Store.Update(func(s *schema.State) {
 		if kind == "outputs" {
 			s.History = slices.DeleteFunc(s.History, func(v schema.Generation) bool { return v.ID == id })
 		} else {
@@ -129,18 +146,24 @@ func (w *Workbench) DeleteMedia(kind, id string) error {
 					s.Drafts[i].EmotionVoiceID = nil
 				}
 			}
+			for i := range s.History {
+				if value(s.History[i].Settings.VoiceID) == id {
+					s.History[i].Settings.VoiceID = nil
+				}
+				if value(s.History[i].Settings.EmotionVoiceID) == id {
+					s.History[i].Settings.EmotionVoiceID = nil
+				}
+			}
 		}
 	}, true)
 	if e != nil {
-		if exists {
-			if restore := os.Rename(removed, path); restore != nil {
-				return msg.Err(msg.ErrUnknown, msg.Params{"detail": fmt.Sprintf("%v; restore failed: %v", e, restore)})
-			}
+		if exists && removed != "" {
+			_ = os.Rename(removed, path)
 		}
 		return e
 	}
-	if exists {
-		return os.Remove(removed)
+	if exists && removed != "" {
+		_ = os.Remove(removed)
 	}
 	return nil
 }

@@ -9,7 +9,7 @@ namespace VoiceWorkbench.Desktop;
 // 原生宿主只管理服务生命周期；业务状态由 Go 服务统一持有。
 public sealed class LocalService : IDisposable
 {
-    public string Root { get; } = Environment.GetEnvironmentVariable("WORKBENCH_DATA") ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".yovoice");
+    public string Root { get; } = DetermineDataRoot();
     public string Token { get; } = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N");
     public string CookieName => "vw-" + Token[..12];
     public string Origin { get; private set; } = "";
@@ -19,6 +19,48 @@ public sealed class LocalService : IDisposable
     private Task? events;
     public event Action<string>? StateChanged;
     public event Action<string>? Failed;
+
+    private static string DetermineDataRoot()
+    {
+        string? env = Environment.GetEnvironmentVariable("WORKBENCH_DATA");
+        if (!string.IsNullOrWhiteSpace(env)) return Path.GetFullPath(env);
+
+        string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        string configFile = Path.Combine(appData, "yovoice", "storage.json");
+        if (File.Exists(configFile))
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(File.ReadAllText(configFile));
+                if (doc.RootElement.TryGetProperty("dataPath", out var p) && p.GetString() is { Length: > 0 } customPath)
+                {
+                    return Path.GetFullPath(customPath);
+                }
+            }
+            catch { }
+        }
+
+        string defaultUserData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".yovoice");
+        if (Directory.Exists(defaultUserData))
+        {
+            return defaultUserData;
+        }
+
+        string installDir = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        string installRoot = Path.GetPathRoot(installDir) ?? "";
+        string userRoot = Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)) ?? "";
+        if (!string.IsNullOrEmpty(installRoot) && !string.IsNullOrEmpty(userRoot) &&
+            !installRoot.Equals(userRoot, StringComparison.OrdinalIgnoreCase))
+        {
+            string? parent = Path.GetDirectoryName(installDir);
+            if (!string.IsNullOrEmpty(parent))
+            {
+                return Path.Combine(parent, "yovoice-data");
+            }
+        }
+
+        return defaultUserData;
+    }
 
     public async Task StartAsync()
     {

@@ -30,6 +30,12 @@ func New(root string) (store *Store, err error) {
 			return nil, e
 		}
 	}
+	for _, d := range []string{"voices", "outputs"} {
+		files, _ := filepath.Glob(filepath.Join(root, d, "*.deleted"))
+		for _, file := range files {
+			_ = os.Remove(file)
+		}
+	}
 	s := &Store{Root: root, state: schema.DefaultState(), subscribers: map[chan struct{}]bool{}}
 	b, e := os.ReadFile(filepath.Join(root, "state.json"))
 	fromFile := false
@@ -251,4 +257,70 @@ func Migrate(legacy, target string) error {
 		}
 	}
 	return nil
+}
+
+// StorageConfig 存储全局重定向配置。
+type StorageConfig struct {
+	DataPath string `json:"dataPath"`
+}
+
+// ConfigFile 返回平台全局存储配置文件的路径。
+func ConfigFile() (string, error) {
+	var base string
+	if runtime.GOOS == "windows" {
+		base = os.Getenv("APPDATA")
+		if base == "" {
+			home, err := os.UserHomeDir()
+			if err != nil {
+				return "", err
+			}
+			base = filepath.Join(home, "AppData", "Roaming")
+		}
+	} else if runtime.GOOS == "darwin" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		base = filepath.Join(home, "Library", "Application Support")
+	} else {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		base = filepath.Join(home, ".config")
+	}
+	return filepath.Join(base, "yovoice", "storage.json"), nil
+}
+
+// ReadConfig 读取已保存的数据目录重定向配置。
+func ReadConfig() (string, error) {
+	cfgPath, err := ConfigFile()
+	if err != nil {
+		return "", err
+	}
+	b, err := os.ReadFile(cfgPath)
+	if err != nil {
+		return "", err
+	}
+	var cfg StorageConfig
+	if err := json.Unmarshal(b, &cfg); err != nil {
+		return "", err
+	}
+	return cfg.DataPath, nil
+}
+
+// WriteConfig 保存数据目录重定向配置。
+func WriteConfig(dataPath string) error {
+	cfgPath, err := ConfigFile()
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(cfgPath), 0700); err != nil {
+		return err
+	}
+	b, err := json.MarshalIndent(StorageConfig{DataPath: dataPath}, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(cfgPath, b, 0600)
 }

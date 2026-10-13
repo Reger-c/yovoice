@@ -60,8 +60,9 @@ func TestProjectMetadataAndReferenceSafety(t *testing.T) {
 		snapshot.SynthesisSettings = settings
 		s.History = append(s.History, schema.Generation{ID: schema.NewID(), Title: "旧版本", Settings: snapshot})
 	}, true))
-	if w.DeleteMedia("voices", id) == nil {
-		t.Fatal("删除了历史快照引用的录音")
+	must(t, w.DeleteMedia("voices", id))
+	if w.Store.Read().History[0].Settings.VoiceID != nil {
+		t.Fatal("删除音色后未清空历史快照中的音色引用")
 	}
 }
 

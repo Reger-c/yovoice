@@ -52,10 +52,62 @@ func (w *Workbench) Synthesize(ctx context.Context, d schema.Draft) (schema.Gene
 	}
 	for _, g := range state.History {
 		if g.Settings.ID == d.ID {
+			// 自动修剪无所属作品的 API 历史记录，最多保留 50 条
+			w.pruneOrphanHistory(50)
 			return g, nil
 		}
 	}
 	return schema.Generation{}, fmt.Errorf("生成结果未找到")
+}
+
+func (w *Workbench) pruneOrphanHistory(max int) {
+	w.edit.Lock()
+	defer w.edit.Unlock()
+	s := w.Store.Read()
+	aliveDraftIDs := map[string]bool{}
+	for _, d := range s.Drafts {
+		aliveDraftIDs[d.ID] = true
+	}
+	var orphanGens []schema.Generation
+	for _, g := range s.History {
+		if !aliveDraftIDs[g.Settings.ID] {
+			orphanGens = append(orphanGens, g)
+		}
+	}
+	if len(orphanGens) <= max {
+		return
+	}
+	toRemove := orphanGens[max:]
+	removeIDs := map[string]bool{}
+	for _, g := range toRemove {
+		removeIDs[g.ID] = true
+	}
+	_ = w.Store.Update(func(state *schema.State) {
+		state.History = slices.DeleteFunc(state.History, func(g schema.Generation) bool {
+			return removeIDs[g.ID]
+		})
+	}, true)
+
+	// 删除不再被任何记录引用的物理音频文件
+	remains := w.Store.Read()
+	activeFiles := map[string]bool{}
+	for _, g := range remains.History {
+		if g.FileName != "" {
+			activeFiles[g.FileName] = true
+		}
+	}
+	for _, v := range remains.Voices {
+		if v.FileName != "" {
+			activeFiles[v.FileName] = true
+		}
+	}
+	for _, g := range toRemove {
+		if !activeFiles[g.FileName] {
+			if path, err := w.Store.MediaPath("outputs", g.FileName); err == nil {
+				_ = os.Remove(path)
+			}
+		}
+	}
 }
 
 func errorText(code msg.Code, params msg.Params) string {

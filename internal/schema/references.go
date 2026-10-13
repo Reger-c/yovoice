@@ -1,6 +1,6 @@
 package schema
 
-// voiceUsers 检查素材的完整引用范围，避免删除后角色或历史版本无法重现。
+// VoiceUsers 检查素材的使用范围；已生成的历史版本为独立文件，不作为阻断。
 func (s State) VoiceUsers(id string) []string {
 	uses := func(settings SynthesisSettings) bool {
 		return value(settings.VoiceID) == id || value(settings.EmotionVoiceID) == id
@@ -29,11 +29,6 @@ func (s State) VoiceUsers(id string) []string {
 	for _, d := range s.Drafts {
 		if draftUses(d) {
 			names = append(names, d.Title)
-		}
-	}
-	for _, g := range s.History {
-		if draftUses(g.Settings) {
-			names = append(names, g.Title)
 		}
 	}
 	return names

@@ -378,9 +378,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
             NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
             return ["id": message["id"]!, "result": true]
         }
-        if ["voice.import", "model.import", "model.directory"].contains(method) {
+        if ["voice.import", "model.import", "model.directory", "storage.directory"].contains(method) {
             let panel = NSOpenPanel()
-            panel.canChooseDirectories = method == "model.directory" || (data["directory"] as? Bool == true)
+            panel.canChooseDirectories = ["model.directory", "storage.directory"].contains(method) || (data["directory"] as? Bool == true)
             panel.canChooseFiles = !panel.canChooseDirectories
             panel.allowsMultipleSelection = false
             if panel.canChooseFiles { panel.allowedContentTypes = method == "voice.import" ? [.audio] : [UTType(filenameExtension: "gguf") ?? .data] }
@@ -388,6 +388,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
             guard response == .OK, let url = panel.url else { return ["id": message["id"]!, "result": NSNull()] }
             data["path"] = url.path
             message["data"] = data
+            if method == "storage.directory" {
+                return try await request("api/call", body: ["id": message["id"]!, "method": "storage.relocate", "data": data])
+            }
+        }
+        if method == "storage.directory.open" {
+            try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+            guard NSWorkspace.shared.open(root) else { throw failure(HostL10n.t("err.modelDirOpen")) }
+            return ["id": message["id"]!, "result": true]
         }
         if method == "model.directory.open" {
             let response = try await request("api/call", body: ["id": "model-directory", "method": "state.get", "data": [:]])

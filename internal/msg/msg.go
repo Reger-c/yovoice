@@ -41,6 +41,7 @@ const (
 	ActivityPaused          Code = "@yovoice.activity.paused"
 	ActivityFailed          Code = "@yovoice.activity.failed"
 	ActivityInterrupted     Code = "@yovoice.activity.interrupted"
+	ActivityRelocate        Code = "@yovoice.activity.relocate"
 
 	ErrBusy                  Code = "@yovoice.error.busy"
 	ErrProxyURL              Code = "@yovoice.error.proxyURL"
@@ -132,6 +133,10 @@ const (
 	// 本机接口：端口超出范围、端口已被占用。
 	ErrLocalAPIPort      Code = "@yovoice.error.localApiPort"
 	ErrLocalAPIPortInUse Code = "@yovoice.error.localApiPortInUse"
+	// 存储迁移：不能在应用安装目录内、目标目录非空、不能与当前目录相同。
+	ErrStorageInsideApp      Code = "@yovoice.error.storageInsideApp"
+	ErrStorageTargetNotEmpty Code = "@yovoice.error.storageTargetNotEmpty"
+	ErrStorageSame           Code = "@yovoice.error.storageSame"
 	ErrUnknown           Code = "@yovoice.error.unknown"
 )
 
@@ -177,7 +182,7 @@ func All() []Code {
 		ActivityDownload, ActivityDownloading, ActivityVerifying, ActivityImport,
 		ActivityRuntimeDownload, ActivityRuntimeExtract, ActivityEngineStart,
 		ActivityGenerate, ActivitySynthesizing, ActivitySavingAudio, ActivityRendering,
-		ActivityCompleted, ActivityCancelled, ActivityPaused, ActivityFailed, ActivityInterrupted,
+		ActivityCompleted, ActivityCancelled, ActivityPaused, ActivityFailed, ActivityInterrupted, ActivityRelocate,
 		ErrBusy, ErrProxyURL, ErrModelDirAbsolute, ErrModelDirSpace,
 		ErrDownloadHTTP, ErrDownloadRange, ErrDownloadSize, ErrDownloadIncomplete,
 		ErrDownloadStale, ErrDownloadChecksum, ErrDownloadOversized,
@@ -198,6 +203,7 @@ func All() []Code {
 		ErrAIProviderInvalid, ErrAINotConfigured, ErrAIAuth, ErrAIRateLimit, ErrAINetwork, ErrAIResponse, ErrAIModelsPath, ErrAIResultInvalid, ErrAITimeout,
 		ErrAIFreeRate, ErrAIFreeBusy, ErrAIFreePromptCap, ErrAIFreeAccess,
 		ErrLocalAPIPort, ErrLocalAPIPortInUse,
+		ErrStorageInsideApp, ErrStorageTargetNotEmpty, ErrStorageSame,
 		ErrLegacyRestore, ErrUnknown,
 	}
 }
