@@ -52,10 +52,27 @@ func (w *Workbench) Synthesize(ctx context.Context, d schema.Draft) (schema.Gene
 	}
 	for _, g := range state.History {
 		if g.Settings.ID == d.ID {
+			// 自动修剪无所属作品的 API 历史记录，最多保留 50 条
+			w.pruneOrphanHistory(50)
 			return g, nil
 		}
 	}
 	return schema.Generation{}, fmt.Errorf("生成结果未找到")
+}
+
+// pruneOrphanHistory 只保留最新的 max 条孤儿历史（接口生成不建作品），时间线仍在使用的版本不计入也不删除。
+func (w *Workbench) pruneOrphanHistory(max int) {
+	w.edit.Lock()
+	defer w.edit.Unlock()
+	orphans := orphanGenerations(w.Store.Read())
+	if len(orphans) <= max {
+		return
+	}
+	ids := map[string]bool{}
+	for _, g := range orphans[max:] {
+		ids[g.ID] = true
+	}
+	_ = w.removeGenerations(ids, nil)
 }
 
 func errorText(code msg.Code, params msg.Params) string {

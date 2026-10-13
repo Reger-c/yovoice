@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -21,6 +22,8 @@ type Store struct {
 	mu          sync.Mutex
 	state       schema.State
 	subscribers map[chan struct{}]bool
+	// frozen 在数据目录迁移完成后置位：新目录已是重启后的数据源，旧目录不再接受持久化写入，避免重启前的修改静默丢失。
+	frozen bool
 }
 
 func New(root string) (store *Store, err error) {
@@ -28,6 +31,12 @@ func New(root string) (store *Store, err error) {
 	for _, d := range []string{"", "voices", "outputs", "downloads", "runtime", "models", "logs"} {
 		if e := os.MkdirAll(filepath.Join(root, d), 0700); e != nil {
 			return nil, e
+		}
+	}
+	for _, d := range []string{"voices", "outputs"} {
+		files, _ := filepath.Glob(filepath.Join(root, d, "*.deleted"))
+		for _, file := range files {
+			_ = os.Remove(file)
 		}
 	}
 	s := &Store{Root: root, state: schema.DefaultState(), subscribers: map[chan struct{}]bool{}}
@@ -46,6 +55,7 @@ func New(root string) (store *Store, err error) {
 				return nil, e
 			}
 			diag.Log(root, "state.recovered", "source", "state.backup.json")
+			pruneCorrupt(root, keepCorrupt)
 			s.state = recovered
 			if e = writeState(filepath.Join(root, "state.json"), recovered); e != nil {
 				return nil, e
@@ -131,6 +141,9 @@ func (s *Store) Update(change func(*schema.State), persist bool) (err error) {
 	}()
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if persist && s.frozen {
+		return msg.Err(msg.ErrStorageRestart, nil)
+	}
 	next := clone(s.state)
 	change(&next)
 	if persist {
@@ -152,6 +165,17 @@ func (s *Store) Update(change func(*schema.State), persist bool) (err error) {
 	}
 	return nil
 }
+
+// Freeze 拒绝之后的所有持久化写入；仅内存中的进度广播仍然可用。
+func (s *Store) Freeze() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.frozen = true
+}
+
+// WriteState 以原子替换方式写入状态文件，供数据目录迁移生成新目录的 state.json。
+func WriteState(path string, state schema.State) error { return writeState(path, state) }
+
 func (s *Store) Subscribe() (chan struct{}, func()) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -251,4 +275,173 @@ func Migrate(legacy, target string) error {
 		}
 	}
 	return nil
+}
+
+// StorageConfig 存储全局重定向配置。
+// PreviousPath 记录迁移前的旧目录：新目录成功启动后由 CleanupPrevious 删除，释放原磁盘空间。
+type StorageConfig struct {
+	DataPath     string `json:"dataPath"`
+	PreviousPath string `json:"previousPath,omitempty"`
+}
+
+// ConfigFile 返回平台全局存储配置文件的路径，需与 Windows / macOS 宿主读取的位置保持一致。
+func ConfigFile() (string, error) {
+	var base string
+	if runtime.GOOS == "windows" {
+		base = os.Getenv("APPDATA")
+		if base == "" {
+			home, err := os.UserHomeDir()
+			if err != nil {
+				return "", err
+			}
+			base = filepath.Join(home, "AppData", "Roaming")
+		}
+	} else if runtime.GOOS == "darwin" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		base = filepath.Join(home, "Library", "Application Support")
+	} else {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		base = filepath.Join(home, ".config")
+	}
+	return filepath.Join(base, "yovoice", "storage.json"), nil
+}
+
+// ReadConfig 读取已保存的数据目录重定向配置。
+func ReadConfig() (StorageConfig, error) {
+	var cfg StorageConfig
+	cfgPath, err := ConfigFile()
+	if err != nil {
+		return cfg, err
+	}
+	b, err := os.ReadFile(cfgPath)
+	if err != nil {
+		return cfg, err
+	}
+	err = json.Unmarshal(b, &cfg)
+	return cfg, err
+}
+
+// WriteConfig 原子保存数据目录重定向配置，避免写到一半时宿主读到损坏的配置。
+func WriteConfig(cfg StorageConfig) error {
+	cfgPath, err := ConfigFile()
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(cfgPath), 0700); err != nil {
+		return err
+	}
+	b, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return err
+	}
+	f, err := os.CreateTemp(filepath.Dir(cfgPath), ".storage-*")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(f.Name())
+	if _, err = f.Write(b); err == nil {
+		err = f.Sync()
+	}
+	if ce := f.Close(); err == nil {
+		err = ce
+	}
+	if err != nil {
+		return err
+	}
+	return os.Rename(f.Name(), cfgPath)
+}
+
+// SamePath 判断两个路径是否指向同一位置；Windows 与 macOS 默认文件系统不区分大小写。
+func SamePath(a, b string) bool {
+	a, b = filepath.Clean(a), filepath.Clean(b)
+	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
+		return strings.EqualFold(a, b)
+	}
+	return a == b
+}
+
+// Within 判断 child 是否位于 parent 内部（含相同路径）。
+func Within(parent, child string) bool {
+	parent, child = filepath.Clean(parent), filepath.Clean(child)
+	if SamePath(parent, child) {
+		return true
+	}
+	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
+		parent, child = strings.ToLower(parent), strings.ToLower(child)
+	}
+	rel, err := filepath.Rel(parent, child)
+	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && !filepath.IsAbs(rel)
+}
+
+// CleanupPrevious 在新数据目录成功启动后删除迁移前的旧目录。
+// 只有配置确认当前目录就是迁移目标、旧目录确实是数据目录且没有其他进程占用时才删除；
+// 宿主未切换到新目录（例如旧版宿主）时保持旧目录不动，绝不删除正在使用的数据。
+func CleanupPrevious(root string) (removed string, err error) {
+	cfg, err := ReadConfig()
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil
+		}
+		return "", err
+	}
+	previous := cfg.PreviousPath
+	if previous == "" || cfg.DataPath == "" || !SamePath(cfg.DataPath, root) {
+		return "", nil
+	}
+	forget := func() error {
+		cfg.PreviousPath = ""
+		return WriteConfig(cfg)
+	}
+	if Within(previous, root) || Within(root, previous) {
+		return "", forget()
+	}
+	if _, e := os.Stat(previous); os.IsNotExist(e) {
+		return "", forget()
+	}
+	if _, e := os.Stat(filepath.Join(previous, "state.json")); e != nil {
+		// 不是可识别的数据目录，不冒险删除。
+		return "", forget()
+	}
+	lock, e := platform.Lock(filepath.Join(previous, "service.lock"))
+	if e != nil {
+		// 旧目录仍被其他进程使用，下次启动再试。
+		return "", e
+	}
+	lock.Close()
+	// state.json 最后删除：中途退出时下次启动仍能识别这是旧数据目录并继续清理。
+	entries, e := os.ReadDir(previous)
+	if e != nil {
+		return "", e
+	}
+	for _, entry := range entries {
+		if entry.Name() == "state.json" {
+			continue
+		}
+		if e = os.RemoveAll(filepath.Join(previous, entry.Name())); e != nil {
+			return "", e
+		}
+	}
+	if e = os.RemoveAll(previous); e != nil {
+		return "", e
+	}
+	return previous, forget()
+}
+
+// keepCorrupt 限制损坏状态快照数量：保留最近几份用于排查，避免反复损坏时无限占用空间。
+const keepCorrupt = 3
+
+func pruneCorrupt(root string, keep int) {
+	files, _ := filepath.Glob(filepath.Join(root, "state.corrupt-*.json"))
+	// 文件名带纳秒时间戳，字典序即时间序。
+	slices.Sort(files)
+	for len(files) > keep {
+		_ = os.Remove(files[0])
+		files = files[1:]
+	}
 }

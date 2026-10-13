@@ -4,7 +4,7 @@ import { SubtitleParser } from '../src/features/create/subtitle-parser';
 import { Timeline } from '../src/features/media/timeline';
 import { CallError, noticeMessage, parseCallError } from '../src/shared/lib/call-error';
 import { formatCallError, formatNotice } from '../src/shared/i18n/format';
-import { createDraft, previewStale, projectKind, requiresVoice, synthesisSettings, normalizeDraft, type Character, type Draft } from '../src/shared/workbench';
+import { createDraft, previewStale, projectKind, requiresVoice, synthesisSettings, normalizeDraft, formatBytes, type Character, type Draft } from '../src/shared/workbench';
 
 // 不打开页面，直接校验界面依赖的纯逻辑。
 
@@ -104,4 +104,13 @@ test('字幕拒绝未知格式与缺少列定义的 ASS，按开始时间排序�
   // 未标注人名的台词归入同一个匿名说话人。
   expect(parsed.speakers).toEqual([{ id: '1', sourceName: '' }]);
   expect(new Set(parsed.cues.map(c => c.id)).size).toBe(2);
+});
+
+test('存储容量格式化正确支持字节单位换算', () => {
+  expect(formatBytes(0)).toBe('0 B');
+  expect(formatBytes(-100)).toBe('0 B');
+  expect(formatBytes(512)).toBe('512 B');
+  expect(formatBytes(1024)).toBe('1.00 KB');
+  expect(formatBytes(1024 * 1024 * 5)).toBe('5.00 MB');
+  expect(formatBytes(1024 * 1024 * 1024 * 2.5)).toBe('2.50 GB');
 });

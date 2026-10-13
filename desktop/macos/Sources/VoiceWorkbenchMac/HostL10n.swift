@@ -42,8 +42,7 @@ enum HostL10n {
     }
 
     nonisolated private static func readStoredUiLocale() -> HostUiLocale? {
-        let root = ProcessInfo.processInfo.environment["WORKBENCH_DATA"].map { URL(fileURLWithPath: $0, isDirectory: true) }
-            ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".yovoice", isDirectory: true)
+        let root = DataRoot.resolve()
         let stateURL = root.appendingPathComponent("state.json")
         guard let data = try? Data(contentsOf: stateURL),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],

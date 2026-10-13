@@ -9,7 +9,7 @@ namespace VoiceWorkbench.Desktop;
 // 原生宿主只管理服务生命周期；业务状态由 Go 服务统一持有。
 public sealed class LocalService : IDisposable
 {
-    public string Root { get; } = Environment.GetEnvironmentVariable("WORKBENCH_DATA") ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".yovoice");
+    public string Root { get; } = DetermineDataRoot();
     public string Token { get; } = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N");
     public string CookieName => "vw-" + Token[..12];
     public string Origin { get; private set; } = "";
@@ -19,6 +19,58 @@ public sealed class LocalService : IDisposable
     private Task? events;
     public event Action<string>? StateChanged;
     public event Action<string>? Failed;
+
+    private static string DetermineDataRoot()
+    {
+        string? env = Environment.GetEnvironmentVariable("WORKBENCH_DATA");
+        if (!string.IsNullOrWhiteSpace(env)) return Path.GetFullPath(env);
+
+        string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        string configFile = Path.Combine(appData, "yovoice", "storage.json");
+        if (File.Exists(configFile))
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(File.ReadAllText(configFile));
+                if (doc.RootElement.TryGetProperty("dataPath", out var p) && p.GetString() is { Length: > 0 } customPath)
+                {
+                    return Path.GetFullPath(customPath);
+                }
+            }
+            catch { }
+        }
+
+        string defaultUserData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".yovoice");
+        // 旧版 VoiceWorkbench 数据会由 --prepare-data 迁移到 ~/.yovoice，此时必须沿用默认目录。
+        string legacyData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VoiceWorkbench");
+        if (Directory.Exists(defaultUserData) || Directory.Exists(legacyData))
+        {
+            return defaultUserData;
+        }
+
+        string installDir = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        string installRoot = Path.GetPathRoot(installDir) ?? "";
+        string userRoot = Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)) ?? "";
+        if (!string.IsNullOrEmpty(installRoot) && !string.IsNullOrEmpty(userRoot) &&
+            !installRoot.Equals(userRoot, StringComparison.OrdinalIgnoreCase))
+        {
+            string? parent = Path.GetDirectoryName(installDir);
+            if (!string.IsNullOrEmpty(parent))
+            {
+                string chosen = Path.Combine(parent, "yovoice-data");
+                // 记录自动选择的目录：之后即使 ~/.yovoice 被命令行等工具创建，桌面应用也不会悄悄切回系统盘。
+                try
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(configFile)!);
+                    File.WriteAllText(configFile, JsonSerializer.Serialize(new { dataPath = chosen }));
+                }
+                catch { }
+                return chosen;
+            }
+        }
+
+        return defaultUserData;
+    }
 
     public async Task StartAsync()
     {
@@ -60,13 +112,40 @@ public sealed class LocalService : IDisposable
     {
         try
         {
-            using var log = new StreamWriter(Path.Combine(Root, "logs", "host-service.log"), true);
-            while (await running.StandardError.ReadLineAsync() is { } line) { await log.WriteLineAsync(line); await log.FlushAsync(); }
+            // 与 macOS 一致：每次启动保留上一轮日志为 .1，单轮超过 5MB 时轮转，避免日志无限增长。
+            const long limit = 5 * 1024 * 1024;
+            string path = Path.Combine(Root, "logs", "host-service.log");
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            var log = OpenServiceLog(path);
+            long size = log.BaseStream.Length;
+            try
+            {
+                while (await running.StandardError.ReadLineAsync() is { } line)
+                {
+                    if (size >= limit)
+                    {
+                        await log.DisposeAsync();
+                        log = OpenServiceLog(path);
+                        size = 0;
+                    }
+                    await log.WriteLineAsync(line);
+                    await log.FlushAsync();
+                    size += Encoding.UTF8.GetByteCount(line) + Environment.NewLine.Length;
+                }
+            }
+            finally { await log.DisposeAsync(); }
             await running.WaitForExitAsync();
             HostLog.Write(Root, "service.exited:" + running.ExitCode);
             if (!stopped.IsCancellationRequested) Failed?.Invoke("本地服务已停止，请退出后重新打开应用。");
         }
         catch (Exception error) when (error is IOException or ObjectDisposedException or InvalidOperationException) { }
+    }
+    // 轮转失败（例如日志正被外部程序占用）时退回追加写入，不能因此停止读取 stderr，否则服务会被管道阻塞。
+    private static StreamWriter OpenServiceLog(string path)
+    {
+        try { if (File.Exists(path)) File.Move(path, path + ".1", true); }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { Debug.WriteLine(error); }
+        return new StreamWriter(path, true);
     }
     private HttpRequestMessage Request(HttpMethod method, string path)
     {
