@@ -43,6 +43,12 @@ func (w *Workbench) saveDraft(d schema.Draft) (err error) {
 	if !schema.ValidID(d.ID) || schema.TextLen(d.Text) > 12000 || schema.TextLen(d.Title) > 120 || schema.TextLen(d.EmotionText) > 500 || schema.TextLen(d.VoiceDescription) > 500 || schema.TextLen(d.ReferenceText) > 2000 || schema.TextLen(d.Lyrics) > 4000 || !schema.ScoreWithinLimits(d.Score) {
 		return msg.Err(msg.ErrDraftLimits, nil)
 	}
+	// 内容未变化时直接返回、不写盘：打开作品或界面补存都会触发保存，
+	// 若仍改写状态文件，数据目录不可写时连“没有任何修改”的退出都会失败。
+	if sameDraft(w.Store.Read().Drafts, d) {
+		stage = "unchanged"
+		return nil
+	}
 	stage = "persist"
 	return w.Store.Update(func(s *schema.State) {
 		i := slices.IndexFunc(s.Drafts, func(v schema.Draft) bool { return v.ID == d.ID })
@@ -50,9 +56,7 @@ func (w *Workbench) saveDraft(d schema.Draft) (err error) {
 		if i >= 0 {
 			d.CreatedAt = s.Drafts[i].CreatedAt
 			d.UpdatedAt = s.Drafts[i].UpdatedAt
-			before, _ := json.Marshal(s.Drafts[i])
-			after, _ := json.Marshal(d)
-			if string(before) == string(after) {
+			if sameDraft(s.Drafts, d) {
 				return
 			}
 		}
@@ -65,6 +69,18 @@ func (w *Workbench) saveDraft(d schema.Draft) (err error) {
 			s.Drafts[i] = d
 		}
 	}, true)
+}
+
+// sameDraft 判断作品内容与已保存版本一致；时间戳由服务端维护，不参与比较。
+func sameDraft(drafts []schema.Draft, d schema.Draft) bool {
+	i := slices.IndexFunc(drafts, func(v schema.Draft) bool { return v.ID == d.ID })
+	if i < 0 {
+		return false
+	}
+	d.CreatedAt, d.UpdatedAt = drafts[i].CreatedAt, drafts[i].UpdatedAt
+	before, _ := json.Marshal(drafts[i])
+	after, _ := json.Marshal(d)
+	return string(before) == string(after)
 }
 
 func (w *Workbench) DeleteDraft(id string) error {

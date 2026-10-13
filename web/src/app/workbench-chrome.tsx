@@ -42,7 +42,7 @@ const VoicePicker = lazy(() => import('../features/media/voice-picker').then(mod
 export function WorkbenchChrome({ state, catalog, engine, ready, session, error, setError }: { state: State; catalog: ModelPackage[]; engine: EngineInfo; ready: boolean; session: DraftSession; error: string; setError: (message: string) => void }) {
   const t = useTranslator();
   const locale = useLocale();
-  const { draft, setDraft, draftPersisted, setDraftPersisted, saving, saveFailed, change, persistDraft, deleteTarget, setDeleteTarget, deleting, deleteError, deleteDraft } = session;
+  const { draft, setDraft, draftPersisted, setDraftPersisted, saving, saveFailed, change, persistDraft, setActive, deleteTarget, setDeleteTarget, deleting, deleteError, deleteDraft } = session;
   const navigation = useResizable({ defaultSize: 224, minSize: 180, maxSize: 360, collapsible: true, autoSaveId: 'workbench-sidebar' });
   const { isCollapsed, expand, collapse } = navigation;
   const toggleSidebar = useCallback(() => { if (isCollapsed) expand(); else collapse(); }, [isCollapsed, expand, collapse]);
@@ -66,6 +66,8 @@ export function WorkbenchChrome({ state, catalog, engine, ready, session, error,
   useEffect(() => {
     try { localStorage.setItem('yovoice-active-page', page); } catch { /* 存储不可用时忽略 */ }
   }, [page]);
+  // 作品只在编辑页和版本记录页处于打开状态。
+  useEffect(() => setActive(page === 'create' || page === 'history'), [page, setActive]);
   const [settingsFocus, setSettingsFocus] = useState<{ tab: string; modelId: string; request: number } | undefined>();
   // 缺的是音色库时打开独立的音色库页，其余模型在“模型”页。
   const openSettings = (modelId = draft.modelId, requested = 'models') => { const tab = requested === 'models' && catalog.find(m => m.id === modelId)?.family === 'soundfont' ? 'soundfonts' : requested; setSettingsFocus({ tab, modelId, request: performance.now() }); setPage('settings'); };

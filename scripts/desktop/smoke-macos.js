@@ -40,8 +40,10 @@ if (decoded.duration !== 2) throw new Error('音频长度不正确');
 const editor = document.querySelector('textarea[aria-label="正文"]');
 Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(editor, '这是 macOS 原生窗口中的yovoice。');
 editor.dispatchEvent(new Event('input', {bubbles:true}));
-await wait(() => window.__workbenchDraft?.text === '这是 macOS 原生窗口中的yovoice。');
-await rpc('draft.save', {...window.__workbenchDraft, voiceId: voice.id});
+// __workbenchDraft 只在存在未保存修改时有值，自动保存完成后会清空，先取出快照再使用。
+let edited;
+await wait(() => (edited = window.__workbenchDraft)?.text === '这是 macOS 原生窗口中的yovoice。');
+await rpc('draft.save', {...edited, voiceId: voice.id});
 const final = await rpc('state.get');
 if (final.state.voices.length !== 1) throw new Error('音色持久化失败');
 return {desktop: initial.desktop, platform: window.__workbenchPlatform, backend: final.state.preferences.backend, audioSeconds: decoded.duration, playback: player.currentTime > 0, draft: final.state.drafts[0].text, pageTitle: document.title};

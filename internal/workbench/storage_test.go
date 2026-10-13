@@ -543,3 +543,19 @@ func TestCharacterDeletionAndReconcileDetachLinks(t *testing.T) {
 		t.Fatal("悬空引用未清理", report)
 	}
 }
+
+func TestUnchangedDraftSaveDoesNotWrite(t *testing.T) {
+	w, err := New(t.TempDir())
+	must(t, err)
+	defer w.Close()
+	d := schema.DefaultDraft()
+	must(t, w.SaveDraft(d))
+	saved := w.Store.Read().Drafts[0]
+	// 冻结后任何写盘都会失败；内容未变的保存（打开作品、退出补存）必须直接成功。
+	w.Store.Freeze()
+	must(t, w.SaveDraft(saved))
+	saved.Title = "改过"
+	if err = w.SaveDraft(saved); err == nil {
+		t.Fatal("冻结后有改动的保存应失败")
+	}
+}
