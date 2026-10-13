@@ -902,6 +902,9 @@
   "@yovoice.settings.removeTooltip": {
     "defaultMessage": "Unregister the model; keep local files"
   },
+  "@yovoice.settings.removeManagedTooltip": {
+    "defaultMessage": "Remove the model and delete its downloaded files to free up disk space"
+  },
   "@yovoice.settings.resumeDownload": {
     "defaultMessage": "Resume download"
   },

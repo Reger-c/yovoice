@@ -44,11 +44,20 @@ func run() error {
 		return e
 	}
 	defer wb.Close()
-	// 数据目录迁移后首次在新目录启动：后台删除旧目录释放空间，失败时下次启动重试。
+	// 修复悬空引用，避免作品因源音频缺失而永久无法保存。
+	if _, e := wb.Reconcile(); e != nil {
+		diag.Log(root, "state.reconcile_failed", "error", diag.Error(e))
+	}
 	go func() {
+		// 数据目录迁移后首次在新目录启动：删除旧目录释放空间，失败时下次启动重试。
 		removed, e := store.CleanupPrevious(root)
 		if removed != "" || e != nil {
 			diag.Log(root, "storage.previous_cleanup", "path", removed, "error", diag.Error(e))
+		}
+		// 每次启动自动回收残留，生成数据不必依赖用户手动点“清理残留”才能闭环。
+		report, e := wb.CleanupResiduals()
+		if report.CleanedCount > 0 || e != nil {
+			diag.Log(root, "storage.residuals_cleaned", "count", report.CleanedCount, "bytes", report.FreedBytes, "error", diag.Error(e))
 		}
 	}()
 	bundled := os.Getenv("WORKBENCH_ENGINE")

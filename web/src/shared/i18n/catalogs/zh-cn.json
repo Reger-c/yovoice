@@ -902,6 +902,9 @@
   "@yovoice.settings.removeTooltip": {
     "defaultMessage": "解除模型登记，保留本地文件"
   },
+  "@yovoice.settings.removeManagedTooltip": {
+    "defaultMessage": "移除模型并删除已下载的文件，释放磁盘空间"
+  },
   "@yovoice.settings.resumeDownload": {
     "defaultMessage": "继续下载"
   },

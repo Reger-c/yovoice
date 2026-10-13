@@ -75,7 +75,8 @@ type CleanupReport struct {
 // orphanHistoryGrace 是孤儿历史的保留期：接口生成不建作品，远程客户端可能稍后才下载音频。
 const orphanHistoryGrace = 24 * time.Hour
 
-// timelineGenerations 返回各作品时间线仍在使用的生成版本，skipDraft 对应的作品不计入。
+// timelineGenerations 返回各作品时间线片段仍在使用的生成版本，skipDraft 对应的作品不计入。
+// 已采纳记录（AcceptedGenerations）只表示版本曾被放上时间线，不算使用。
 func timelineGenerations(s schema.State, skipDraft string) map[string]bool {
 	ids := map[string]bool{}
 	for _, d := range s.Drafts {
@@ -88,9 +89,6 @@ func timelineGenerations(s schema.State, skipDraft string) map[string]bool {
 					ids[clip.GenerationID] = true
 				}
 			}
-		}
-		for _, id := range d.Timeline.AcceptedGenerations {
-			ids[id] = true
 		}
 	}
 	return ids
@@ -192,6 +190,32 @@ func removeStaleFiles(dir string, cutoff time.Time, keep func(name string) bool,
 	}
 }
 
+// supersededTakes 返回故事作品中已采纳、但已不在任何时间线上的逐句版本；作品需在 cutoff 之前就没有再编辑。
+func supersededTakes(s schema.State, cutoff time.Time) []schema.Generation {
+	used := timelineGenerations(s, "")
+	idle := map[string]map[string]bool{}
+	for _, d := range s.Drafts {
+		if d.Timeline == nil || (d.UpdatedAt != nil && !d.UpdatedAt.Before(cutoff)) {
+			continue
+		}
+		accepted := map[string]bool{}
+		for _, id := range d.Timeline.AcceptedGenerations {
+			accepted[id] = true
+		}
+		idle[d.ID] = accepted
+	}
+	var takes []schema.Generation
+	for _, g := range s.History {
+		if g.Segment == nil || used[g.ID] || !g.CreatedAt.Before(cutoff) {
+			continue
+		}
+		if accepted, ok := idle[g.Settings.ID]; ok && accepted[g.ID] {
+			takes = append(takes, g)
+		}
+	}
+	return takes
+}
+
 // CleanupResiduals 回收超过 24 小时的孤儿历史版本与未引用的磁盘文件。
 func (w *Workbench) CleanupResiduals() (CleanupReport, error) {
 	w.edit.Lock()
@@ -207,11 +231,27 @@ func (w *Workbench) CleanupResiduals() (CleanupReport, error) {
 			stale[g.ID] = true
 		}
 	}
+	// 2. 故事作品中已被替换的旧句子版本：已放上时间线（已采纳）但现在没有任何片段使用。
+	// 历史列表不展示逐句版本，用户无法手动删除；只处理 24 小时内未编辑的作品，避免撤销操作找不回刚替换的版本。
+	for _, g := range supersededTakes(w.Store.Read(), cutoff) {
+		stale[g.ID] = true
+	}
 	if err := w.removeGenerations(stale, &report); err != nil {
 		return report, err
 	}
+	if len(stale) > 0 {
+		if err := w.Store.Update(func(state *schema.State) {
+			for i := range state.Drafts {
+				if t := state.Drafts[i].Timeline; t != nil {
+					t.AcceptedGenerations = slices.DeleteFunc(t.AcceptedGenerations, func(id string) bool { return stale[id] })
+				}
+			}
+		}, true); err != nil {
+			return report, err
+		}
+	}
 
-	// 2. 未被引用的磁盘文件：只清理超过 24 小时的，避免误删正在写入的结果。
+	// 3. 未被引用的磁盘文件：只清理超过 24 小时的，避免误删正在写入的结果。
 	s := w.Store.Read()
 	outputs := referencedOutputs(s)
 	voices := map[string]bool{}
@@ -221,10 +261,8 @@ func (w *Workbench) CleanupResiduals() (CleanupReport, error) {
 	removeStaleFiles(filepath.Join(w.Store.Root, "outputs"), cutoff, func(name string) bool { return outputs[name] }, &report)
 	removeStaleFiles(filepath.Join(w.Store.Root, "voices"), cutoff, func(name string) bool { return voices[name] }, &report)
 
-	// 3. downloads/ 下超过 24 小时的临时或残留分片。
-	removeStaleFiles(filepath.Join(w.Store.Root, "downloads"), cutoff, func(name string) bool {
-		return !strings.HasSuffix(name, ".part") && !strings.HasPrefix(name, "upload-") && !strings.HasPrefix(name, "audio-")
-	}, &report)
+	// 4. downloads/ 只存放临时文件与内核安装包缓存，超过 24 小时的全部回收（内核已解压到 runtime/）。
+	removeStaleFiles(filepath.Join(w.Store.Root, "downloads"), cutoff, func(string) bool { return false }, &report)
 
 	return report, nil
 }

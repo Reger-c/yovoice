@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 	"yovoice/internal/msg"
@@ -346,5 +347,137 @@ func TestDeleteDraftRemovesImportedAssets(t *testing.T) {
 	must(t, w.DeleteDraft(d.ID))
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Fatal("删除作品后导入的时间线素材未删除")
+	}
+}
+
+func TestReconcileRepairsDanglingTimelineReferences(t *testing.T) {
+	root := t.TempDir()
+	w, err := New(root)
+	must(t, err)
+	defer w.Close()
+
+	d := schema.DefaultDraft()
+	d.ID = schema.NewID()
+	g := schema.Generation{ID: schema.NewID(), FileName: "gone.wav", Duration: 2, CreatedAt: time.Now(), Settings: d}
+	must(t, os.WriteFile(filepath.Join(root, "outputs", g.FileName), testkit.WAV(), 0600))
+	assetID := schema.NewID()
+	asset := schema.AudioAsset{ID: assetID, Name: "配乐", FileName: "import-" + assetID + ".wav", Duration: 1}
+	must(t, os.WriteFile(filepath.Join(root, "outputs", asset.FileName), testkit.WAV(), 0600))
+	must(t, w.Store.Update(func(s *schema.State) { s.History = append([]schema.Generation{g}, s.History...) }, true))
+	d.Timeline = &schema.AudioTimeline{
+		Assets:              []schema.AudioAsset{asset},
+		AcceptedGenerations: []string{g.ID},
+		Tracks: []schema.AudioLane{{ID: "track", Name: "人声", Clips: []schema.AudioClip{
+			{ID: "voice", GenerationID: g.ID, Duration: 1},
+			{ID: "music", AssetID: assetID, Duration: 1},
+		}}},
+	}
+	must(t, w.SaveDraft(d))
+
+	// 模拟旧版本或外部操作造成的数据缺失：版本记录与素材文件都不见了。
+	must(t, w.Store.Update(func(s *schema.State) { s.History = nil }, true))
+	must(t, os.Remove(filepath.Join(root, "outputs", asset.FileName)))
+	stuck := w.Store.Read().Drafts[0]
+	if err := w.SaveDraft(stuck); err == nil {
+		t.Fatal("前置条件：悬空引用应导致作品无法保存")
+	}
+
+	report, err := w.Reconcile()
+	must(t, err)
+	if report.Clips != 2 || report.Assets != 1 || report.Accepted != 1 {
+		t.Fatalf("修复统计不正确: %+v", report)
+	}
+	healed := w.Store.Read().Drafts[0]
+	if err := w.SaveDraft(healed); err != nil {
+		t.Fatal("修复后作品应可以正常保存", err)
+	}
+	if again, err := w.Reconcile(); err != nil || again.changed() {
+		t.Fatalf("没有悬空引用时不应再改动: %+v %v", again, err)
+	}
+}
+
+func TestCleanupRemovesSupersededStoryTakes(t *testing.T) {
+	root := t.TempDir()
+	w, err := New(root)
+	must(t, err)
+	defer w.Close()
+
+	old := time.Now().Add(-48 * time.Hour)
+	d := schema.DefaultDraft()
+	d.ID = schema.NewID()
+	take := func(name string) schema.Generation {
+		g := schema.Generation{ID: schema.NewID(), FileName: name, Duration: 2, CreatedAt: old, Settings: d, Segment: &schema.GenerationSegment{CueID: "cue"}}
+		must(t, os.WriteFile(filepath.Join(root, "outputs", name), testkit.WAV(), 0600))
+		return g
+	}
+	replaced, current, pending := take("replaced.wav"), take("current.wav"), take("pending.wav")
+	must(t, w.Store.Update(func(s *schema.State) {
+		s.History = append([]schema.Generation{pending, current, replaced}, s.History...)
+	}, true))
+	d.Timeline = &schema.AudioTimeline{
+		AcceptedGenerations: []string{replaced.ID, current.ID},
+		Tracks:              []schema.AudioLane{{ID: "track", Name: "人声", Clips: []schema.AudioClip{{ID: "clip", GenerationID: current.ID, Duration: 1}}}},
+	}
+	must(t, w.SaveDraft(d))
+
+	// 刚编辑过的作品不清理，撤销仍可能找回被替换的版本。
+	_, err = w.CleanupResiduals()
+	must(t, err)
+	if len(w.Store.Read().History) != 3 {
+		t.Fatal("24 小时内编辑过的作品不应清理逐句版本")
+	}
+
+	must(t, w.Store.Update(func(s *schema.State) { s.Drafts[0].UpdatedAt = &old }, true))
+	_, err = w.CleanupResiduals()
+	must(t, err)
+	s := w.Store.Read()
+	ids := map[string]bool{}
+	for _, g := range s.History {
+		ids[g.ID] = true
+	}
+	if ids[replaced.ID] || !ids[current.ID] || !ids[pending.ID] {
+		t.Fatal("应只删除已被替换的版本，保留时间线上的版本与待放置的新版本")
+	}
+	if _, err := os.Stat(filepath.Join(root, "outputs", "replaced.wav")); !os.IsNotExist(err) {
+		t.Fatal("被替换版本的音频未删除")
+	}
+	if slices.Contains(s.Drafts[0].Timeline.AcceptedGenerations, replaced.ID) {
+		t.Fatal("已采纳记录中残留已删除的版本")
+	}
+	if err := w.SaveDraft(s.Drafts[0]); err != nil {
+		t.Fatal("清理后作品应仍可保存", err)
+	}
+}
+
+func TestForgetModelDeletesOnlyDownloadedFiles(t *testing.T) {
+	root := t.TempDir()
+	w, err := New(root)
+	must(t, err)
+	defer w.Close()
+
+	downloaded := filepath.Join(root, "models", "pack")
+	must(t, os.MkdirAll(downloaded, 0700))
+	must(t, os.WriteFile(filepath.Join(downloaded, "weights.gguf"), []byte("w"), 0600))
+	imported := filepath.Join(t.TempDir(), "mine.gguf")
+	must(t, os.WriteFile(imported, []byte("w"), 0600))
+	must(t, w.Store.Update(func(s *schema.State) {
+		s.Models = append(s.Models,
+			schema.InstalledModel{ID: "downloaded", Path: downloaded, Managed: true},
+			schema.InstalledModel{ID: "imported", Path: imported, Managed: false},
+			schema.InstalledModel{ID: "root", Path: filepath.Join(root, "models"), Managed: true})
+	}, true))
+
+	// 与其他已登记模型位置重叠时只解除登记。
+	must(t, w.ForgetModel("root"))
+	if _, err := os.Stat(filepath.Join(root, "models")); err != nil {
+		t.Fatal("模型目录本身绝不能被删除", err)
+	}
+	must(t, w.ForgetModel("downloaded"))
+	if _, err := os.Stat(downloaded); !os.IsNotExist(err) {
+		t.Fatal("应用下载的模型文件应随移除一起删除")
+	}
+	must(t, w.ForgetModel("imported"))
+	if _, err := os.Stat(imported); err != nil {
+		t.Fatal("用户导入的模型文件必须保留", err)
 	}
 }
