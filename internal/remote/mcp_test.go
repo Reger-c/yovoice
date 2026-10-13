@@ -198,3 +198,77 @@ func (t tokenTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	r.Header.Set("Authorization", "Bearer "+t.token)
 	return http.DefaultTransport.RoundTrip(r)
 }
+
+// stdio 模式：参考音频按本机路径导入，生成与异步任务都直接返回 WAV 路径；远程模式拒绝路径。
+func TestMCPLocalPaths(t *testing.T) {
+	wb, err := workbench.New(t.TempDir())
+	must(t, err)
+	defer wb.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	connect := func(api *API) *mcp.ClientSession {
+		t.Helper()
+		serverSide, clientSide := mcp.NewInMemoryTransports()
+		go func() { _ = api.RunMCP(ctx, serverSide) }()
+		session, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "1"}, nil).Connect(ctx, clientSide, nil)
+		must(t, err)
+		t.Cleanup(func() { session.Close() })
+		return session
+	}
+	reference := filepath.Join(t.TempDir(), "参考.wav")
+	must(t, os.WriteFile(reference, wav(), 0600))
+
+	remoteSession := connect(&API{Workbench: wb})
+	result, err := remoteSession.CallTool(ctx, &mcp.CallToolParams{Name: "upload_voice", Arguments: map[string]any{"path": reference}})
+	must(t, err)
+	if !result.IsError {
+		t.Fatal("远程模式读取了本机路径")
+	}
+
+	session := connect(&API{Workbench: wb, Local: true})
+	call := func(name string, args any, out any) {
+		t.Helper()
+		result, err := session.CallTool(ctx, &mcp.CallToolParams{Name: name, Arguments: args})
+		must(t, err)
+		if result.IsError {
+			t.Fatalf("%s: %+v", name, result.Content)
+		}
+		b, err := json.Marshal(result.StructuredContent)
+		must(t, err)
+		must(t, json.Unmarshal(b, out))
+	}
+	var voice schema.Voice
+	call("upload_voice", map[string]any{"path": reference, "name": "旁白"}, &voice)
+	if voice.ID == "" || voice.Name != "旁白" {
+		t.Fatalf("导入音色异常：%+v", voice)
+	}
+	executable, err := os.Executable()
+	must(t, err)
+	model := filepath.Join(wb.Store.Root, "models", "fake.gguf")
+	must(t, os.WriteFile(model, []byte("test"), 0600))
+	must(t, wb.Store.Update(func(s *schema.State) {
+		s.Models = []schema.InstalledModel{{ID: "index-2.5-q8", Path: model}}
+		s.RuntimePath = &executable
+		s.RuntimeBackend = ptr("cpu")
+		s.RuntimeVersion = ptr(catalog.EngineVersion)
+		s.Preferences.Backend = "cpu"
+	}, true))
+	var output struct {
+		Path         string `json:"path"`
+		DownloadPath string `json:"downloadPath"`
+	}
+	call("generate", map[string]any{"text": "本机生成", "settings": map[string]any{"voiceId": voice.ID}}, &output)
+	if audio, err := os.ReadFile(output.Path); err != nil || !bytes.Equal(audio, wav()) || output.DownloadPath != "" {
+		t.Fatalf("本机路径不正确：%+v %v", output, err)
+	}
+	id := schema.NewID()
+	var job GenerationJob
+	call("submit_generation", map[string]any{"requestId": id, "text": "异步生成", "settings": map[string]any{"voiceId": voice.ID}}, &job)
+	for job.Status == "running" {
+		time.Sleep(20 * time.Millisecond)
+		call("get_generation", map[string]any{"requestId": id}, &job)
+	}
+	if _, err := os.Stat(job.Path); job.Status != "completed" || err != nil || job.DownloadPath != "" {
+		t.Fatalf("异步任务路径不正确：%+v %v", job, err)
+	}
+}

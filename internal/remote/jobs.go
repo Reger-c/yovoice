@@ -19,7 +19,9 @@ type GenerationJob struct {
 	ID           string  `json:"id,omitempty"`
 	Duration     float64 `json:"duration,omitempty"`
 	DownloadPath string  `json:"downloadPath,omitempty"`
-	Error        string  `json:"error,omitempty"`
+	// Path 只在本机 stdio 模式返回，为生成音频的绝对路径。
+	Path  string `json:"path,omitempty"`
+	Error string `json:"error,omitempty"`
 }
 type generationJob struct {
 	GenerationJob
@@ -99,7 +101,12 @@ func (a *API) submitJob(id string, d schema.Draft) (GenerationJob, error) {
 				job.Status = "cancelled"
 			}
 		} else {
-			job.ID, job.Duration, job.DownloadPath = g.ID, g.Duration, "/v1/audio/"+g.ID
+			job.ID, job.Duration = g.ID, g.Duration
+			if path, e := a.Workbench.MediaFile("outputs", g.ID); a.Local && e == nil {
+				job.Path = path
+			} else {
+				job.DownloadPath = "/v1/audio/" + g.ID
+			}
 		}
 		a.busy.Unlock()
 	}()

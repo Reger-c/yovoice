@@ -8,6 +8,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"yovoice/internal/workbench"
+
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 func TestServeCommand(t *testing.T) {
@@ -57,5 +60,39 @@ func TestServeCommand(t *testing.T) {
 	t.Setenv("YOVOICE_API_TOKEN", "")
 	if err := run(context.Background(), []string{"serve", "--data-dir", t.TempDir()}, io.Discard, io.Discard); err == nil {
 		t.Fatal("缺少凭证仍启动服务")
+	}
+}
+
+func TestMCPCommand(t *testing.T) {
+	wb, err := workbench.New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer wb.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	serverSide, clientSide := mcp.NewInMemoryTransports()
+	result := make(chan error, 1)
+	go func() { result <- serveMCP(ctx, wb, time.Minute, serverSide) }()
+	session, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "1"}, nil).Connect(ctx, clientSide, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	status, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "status", Arguments: map[string]any{}})
+	if err != nil || status.IsError {
+		t.Fatal(err, status)
+	}
+	// 客户端断开后命令结束，不残留进程。
+	session.Close()
+	select {
+	case err := <-result:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("MCP 未随客户端断开退出")
+	}
+	if err := run(context.Background(), []string{"mcp", "--generation-timeout", "0s", "--data-dir", t.TempDir()}, io.Discard, io.Discard); err == nil {
+		t.Fatal("无效生成超时未拒绝")
 	}
 }

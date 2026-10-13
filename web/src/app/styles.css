@@ -440,6 +440,7 @@
   .settings-row-title { font-size: var(--font-size-base); font-weight: var(--font-weight-medium); color: var(--app-ink); line-height: 1.4; }
   .settings-row-label small,.model-row small { color: var(--app-muted); font-size: var(--font-size-sm); line-height: 1.5; }
   .settings-row-control { flex-shrink: 0; }
+  .local-api-example .settings-row-control { flex-basis: 100%; }
   .settings-row-control .astryx-button { flex-shrink: 0; }
   .settings-directory .model-path { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--app-mono); font-size: var(--font-size-xs); }
   .settings-directory .settings-row-label { flex-basis: 0; min-width: 0; }

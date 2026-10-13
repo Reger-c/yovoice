@@ -2773,5 +2773,74 @@
   },
   "@yovoice.error.aiFreeAccess": {
     "defaultMessage": "OrcaRouter only offers free models to accounts linked to an established GitHub account. Link GitHub in your OrcaRouter profile settings, or top up first."
+  },
+  "@yovoice.settings.localApi": {
+    "defaultMessage": "Local API"
+  },
+  "@yovoice.settings.localApiIntro": {
+    "defaultMessage": "Let other apps on this computer generate speech with yovoice through HTTP or MCP. It listens only on 127.0.0.1, so other devices on your network cannot reach it."
+  },
+  "@yovoice.settings.localApiEnabled": {
+    "defaultMessage": "Enable local API"
+  },
+  "@yovoice.settings.localApiOff": {
+    "defaultMessage": "Off. No port is in use."
+  },
+  "@yovoice.settings.localApiRunning": {
+    "defaultMessage": "Running at {url}"
+  },
+  "@yovoice.settings.localApiRunningShort": {
+    "defaultMessage": "Running"
+  },
+  "@yovoice.settings.localApiFailed": {
+    "defaultMessage": "Not started"
+  },
+  "@yovoice.settings.localApiPort": {
+    "defaultMessage": "Port"
+  },
+  "@yovoice.settings.localApiPortHint": {
+    "defaultMessage": "1024–65535. Default 8080."
+  },
+  "@yovoice.settings.localApiToken": {
+    "defaultMessage": "Access token"
+  },
+  "@yovoice.settings.localApiTokenHint": {
+    "defaultMessage": "Send it as Authorization: Bearer followed by this token. Resetting it revokes the old token immediately."
+  },
+  "@yovoice.settings.localApiCopy": {
+    "defaultMessage": "Copy"
+  },
+  "@yovoice.settings.localApiCopied": {
+    "defaultMessage": "Copied"
+  },
+  "@yovoice.settings.localApiReset": {
+    "defaultMessage": "Reset"
+  },
+  "@yovoice.settings.localApiExample": {
+    "defaultMessage": "Example"
+  },
+  "@yovoice.settings.localApiExampleHint": {
+    "defaultMessage": "HTTP endpoints are under {url}/v1 and MCP is at {url}/mcp. Replace YOUR_TOKEN with the token copied above."
+  },
+  "@yovoice.error.localApiPort": {
+    "defaultMessage": "Use a port between 1024 and 65535."
+  },
+  "@yovoice.error.localApiPortInUse": {
+    "defaultMessage": "Port {port} is already used by another program. Choose a different port."
+  },
+  "@yovoice.import.file": {
+    "defaultMessage": "Import a file to voice"
+  },
+  "@yovoice.import.unsupported": {
+    "defaultMessage": "Import a TXT or Markdown text file, or an SRT, VTT or ASS subtitle file."
+  },
+  "@yovoice.import.empty": {
+    "defaultMessage": "The file has no text to read aloud."
+  },
+  "@yovoice.import.tooLong": {
+    "defaultMessage": "The text is longer than 12,000 characters. Split it into several files and import them separately."
+  },
+  "@yovoice.import.tooLarge": {
+    "defaultMessage": "The file is larger than 2 MB. Split it before importing."
   }
 }

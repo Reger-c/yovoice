@@ -89,6 +89,20 @@ yovoice score from-midi song.mid --output score.json
 
 See [Score](score.md) for the format, mixing defaults and MIDI import rules.
 
+## MCP over stdio
+
+Local MCP clients such as Claude Desktop, Cursor or Claude Code can start yovoice as a subprocess. No token or port is needed:
+
+```json
+{
+  "mcpServers": {
+    "yovoice": {"command": "yovoice", "args": ["mcp"]}
+  }
+}
+```
+
+Use the full path to the executable if it is not on the client's PATH, and add `"--data-dir", "DIR"` to `args` to use a separate directory. The tools are the same as the [remote MCP](api.md#connect-an-mcp-client) tools, with two differences: results return the generated WAV's local `path` instead of a `downloadPath`, and `upload_voice` also accepts a local audio file `path`. Like other commands, `yovoice mcp` uses the data directory exclusively; while the desktop app is open, connect to its [local API](api.md#use-the-desktop-app-on-the-same-computer) at `http://127.0.0.1:8080/mcp` instead.
+
 ## Data directory
 
 The default directory is `~/.yovoice`. Only one app, CLI command, or server can use a directory at a time. Quit the app, or use a separate directory with `--data-dir DIR` on every command:

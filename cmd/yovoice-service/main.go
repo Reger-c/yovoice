@@ -75,7 +75,10 @@ func run() error {
 	defer cancel()
 	var once sync.Once
 	stop := func() { once.Do(cancel) }
-	handler := &desktop.Server{Workbench: wb, Assets: assets, Secret: secret, Shutdown: stop}
+	// 本机接口启动失败（如端口被占用）不影响桌面应用，错误在设置页展示。
+	localAPI := &desktop.LocalAPI{Workbench: wb, Context: ctx}
+	_ = localAPI.Apply()
+	handler := &desktop.Server{Workbench: wb, Assets: assets, Secret: secret, Shutdown: stop, LocalAPI: localAPI}
 	server := &http.Server{Handler: handler, ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second, BaseContext: func(net.Listener) context.Context { return ctx }}
 	go func() { _, _ = bufio.NewReader(os.Stdin).ReadString('\n'); stop() }()
 	signals := make(chan os.Signal, 1)
@@ -92,6 +95,7 @@ func run() error {
 	go func() {
 		defer close(shutdownDone)
 		<-ctx.Done()
+		localAPI.Close()
 		wb.Close()
 		shutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()

@@ -10,7 +10,22 @@ import (
 	"time"
 	"yovoice/internal/remote"
 	"yovoice/internal/workbench"
+
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
+
+// serveMCP 在 stdio 等传输上提供 MCP，客户端以子进程启动并在断开时结束；stdout 只用于协议消息。
+func serveMCP(ctx context.Context, wb *workbench.Workbench, generationTimeout time.Duration, transport mcp.Transport) error {
+	if generationTimeout <= 0 {
+		return fmt.Errorf("--generation-timeout 必须大于 0")
+	}
+	api := &remote.API{Workbench: wb, Context: ctx, GenerationTimeout: generationTimeout, Local: true}
+	err := api.RunMCP(ctx, transport)
+	if ctx.Err() != nil {
+		return nil
+	}
+	return err
+}
 
 // serveAPI 的生命周期由信号控制，不依赖桌面窗口或标准输入。
 func serveAPI(ctx context.Context, wb *workbench.Workbench, address, token, cert, key string, generationTimeout time.Duration, out io.Writer) error {

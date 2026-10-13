@@ -82,6 +82,8 @@ export interface Activity {
   errorCode: MessageCode | null;
   errorParams: MessageParams | null;
 }
+// 本机接口的设置与运行状态，由 localApi.* 调用返回，不属于作品状态。
+export interface LocalAPIStatus { enabled: boolean; port: number; token: string; running: boolean; url?: string; error?: { code: MessageCode; params?: MessageParams } }
 export interface Preferences { downloadSource: string; backend: string; modelDirectory: string | null; uiLocale: UiLocale; proxyURL?: string; proxyEnabled?: boolean; aiTimeout?: number }
 export interface State {
   characters: Character[]; previews: CharacterPreview[]; drafts: Draft[]; voices: Voice[]; models: InstalledModel[]; history: Generation[];

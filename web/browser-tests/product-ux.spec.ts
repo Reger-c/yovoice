@@ -4,7 +4,7 @@ test('新建四种作品、取消导入、卡片菜单与重命名独立保存',
   await page.goto('/');
   await page.getByTestId('nav-new').click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.getByRole('menuitem')).toHaveCount(4);
+  await expect(page.getByRole('menuitem')).toHaveCount(5);
   await page.screenshot({ path: testInfo.outputPath('new-project-menu.png'), animations: 'disabled' });
   await page.keyboard.press('Escape');
   await expect(page.getByRole('menu')).toHaveCount(0);
@@ -51,4 +51,50 @@ test('新建四种作品、取消导入、卡片菜单与重命名独立保存',
   await page.getByTestId('nav-story').click();
   await page.getByRole('button', { name: '雨夜', exact: true }).last().click();
   await expect(page.getByLabel('第 1 句台词')).toHaveValue('第一句。');
+});
+
+test('本机接口：开关、端口与令牌在设置 › 通用中管理', async ({ page }, testInfo) => {
+  await page.goto('/');
+  await page.getByTestId('nav-settings').click();
+  const status = page.getByTestId('local-api-status');
+  await expect(status).toHaveText('未开启，不占用端口。');
+  await page.getByRole('switch', { name: '启用本机接口' }).click();
+  await expect(status).toHaveText('运行中：http://127.0.0.1:8080');
+  await page.getByRole('textbox', { name: '端口' }).fill('80');
+  await page.getByRole('textbox', { name: '端口' }).press('Enter');
+  await expect(page.getByText('端口需在 1024–65535 之间。')).toBeVisible();
+  await expect(page.getByRole('textbox', { name: '端口' })).toHaveValue('8080');
+  await page.getByRole('textbox', { name: '端口' }).fill('18080');
+  await page.getByRole('textbox', { name: '端口' }).press('Enter');
+  await expect(status).toHaveText('运行中：http://127.0.0.1:18080');
+  await expect(page.getByText('curl -H "Authorization: Bearer YOUR_TOKEN" http://127.0.0.1:18080/v1/status')).toBeVisible();
+  const token = page.getByLabel('访问令牌', { exact: true });
+  const before = await token.inputValue();
+  await page.getByRole('button', { name: '重置' }).click();
+  await expect(token).not.toHaveValue(before);
+  await page.getByTestId('local-api-status').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath('local-api-settings.png'), animations: 'disabled' });
+});
+
+test('导入文件配音：文本、Markdown 与 GBK 编码进入语音作品，字幕进入故事作品', async ({ page }) => {
+  await page.goto('/');
+  const input = page.locator('input[type=file][aria-label="导入文件配音"]');
+  const editor = page.getByLabel('正文', { exact: true });
+  await page.getByTestId('nav-new').click();
+  await expect(page.getByRole('menuitem', { name: '导入文件配音' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await input.setInputFiles({ name: '开场白.txt', mimeType: 'text/plain', buffer: Buffer.from('第一段。\r\n\r\n\r\n第二段。  \r\n') });
+  await expect(editor).toHaveValue('第一段。\n\n第二段。');
+  await expect(page.getByLabel('作品名称')).toHaveValue('开场白');
+  // Windows 记事本常见的 GBK 编码：“你好”。
+  await input.setInputFiles({ name: '问候.txt', mimeType: 'text/plain', buffer: Buffer.from([0xc4, 0xe3, 0xba, 0xc3]) });
+  await expect(editor).toHaveValue('你好');
+  await input.setInputFiles({ name: '讲稿.md', mimeType: 'text/markdown', buffer: Buffer.from('# 标题\n\n- 第**一**点，见[文档](https://example.com)\n\n```js\ncode()\n```\n') });
+  await expect(editor).toHaveValue('标题\n\n第一点，见文档');
+  await input.setInputFiles({ name: '对白.srt', mimeType: 'text/plain', buffer: Buffer.from('1\n00:00:00,000 --> 00:00:01,000\n你好\n\n2\n00:00:01,000 --> 00:00:02,000\n再见\n') });
+  await expect(page.getByLabel('第 2 句台词', { exact: true })).toHaveValue('再见');
+  await input.setInputFiles({ name: '空白.txt', mimeType: 'text/plain', buffer: Buffer.from('   \n') });
+  await expect(page.getByText('文件里没有可朗读的文字。')).toBeVisible();
+  await input.setInputFiles({ name: '超长.txt', mimeType: 'text/plain', buffer: Buffer.from('字'.repeat(12001)) });
+  await expect(page.getByText('文本超过 12000 字，请拆分成几个文件后分别导入。')).toBeVisible();
 });

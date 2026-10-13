@@ -4,6 +4,12 @@ English · [简体中文](api_zh.md)
 
 Run yovoice on one machine and generate speech from other machines through HTTP or MCP. Clients do not need local models or the desktop app.
 
+## Use the desktop app on the same computer
+
+To let other apps on the computer running yovoice call it (for example a slide narration tool or a local script), open **Settings › General › Local API** in the desktop app and turn it on. It serves the same HTTP and MCP endpoints described below at `http://127.0.0.1:8080` (the port can be changed), uses the models and voices already in the app, and is only reachable from the same computer. Copy the access token shown there and send it as `Authorization: Bearer TOKEN`; resetting the token revokes the old one. The setting is remembered and the API starts with the app. Generation shares the engine with the app, so a generation request made while the app is generating or downloading is rejected as busy.
+
+MCP clients on the same computer can also start the CLI as a subprocess with `yovoice mcp`; see [MCP over stdio](cli.md#mcp-over-stdio). To serve other machines, run the CLI server instead.
+
 ## Start the server
 
 [Install the CLI](cli.md#installation), keeping `tools/` beside the executable. Prepare an engine and model in a dedicated data directory:
