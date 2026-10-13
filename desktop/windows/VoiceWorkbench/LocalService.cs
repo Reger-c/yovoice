@@ -127,17 +127,18 @@ public sealed class LocalService : IDisposable
     {
         try
         {
-            // 与 macOS 一致：每次启动保留上一轮日志为 .1，单轮超过 5MB 时轮转，避免日志无限增长。
-            const long limit = 5 * 1024 * 1024;
+            // 与 macOS 一致：追加写入同一文件，超过 5MB 才滚动为 .1，避免日志无限增长；
+            // 服务崩溃后重新启动时，上一轮的出错原因仍保留在文件中。
             string path = Path.Combine(Root, "logs", "host-service.log");
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             var log = OpenServiceLog(path);
+            await log.WriteLineAsync($"{Environment.NewLine}===== {DateTimeOffset.Now:O} service =====");
             long size = log.BaseStream.Length;
             try
             {
                 while (await running.StandardError.ReadLineAsync() is { } line)
                 {
-                    if (size >= limit)
+                    if (size >= ServiceLogLimit)
                     {
                         await log.DisposeAsync();
                         log = OpenServiceLog(path);
@@ -155,10 +156,11 @@ public sealed class LocalService : IDisposable
         }
         catch (Exception error) when (error is IOException or ObjectDisposedException or InvalidOperationException) { }
     }
+    private const long ServiceLogLimit = 5 * 1024 * 1024;
     // 轮转失败（例如日志正被外部程序占用）时退回追加写入，不能因此停止读取 stderr，否则服务会被管道阻塞。
     private static StreamWriter OpenServiceLog(string path)
     {
-        try { if (File.Exists(path)) File.Move(path, path + ".1", true); }
+        try { if (File.Exists(path) && new FileInfo(path).Length >= ServiceLogLimit) File.Move(path, path + ".1", true); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException) { Debug.WriteLine(error); }
         return new StreamWriter(path, true);
     }

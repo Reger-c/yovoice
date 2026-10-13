@@ -58,7 +58,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
         rightAccessory.view = inspectorButton
         // 只有工作区有右侧面板，由前端在进入或离开工作区时通知显示。
         self.inspectorAccessory = rightAccessory
-        window.minSize = NSSize(width: 390, height: 600)
+        window.minSize = NSSize(width: 960, height: 600)
         window.isReleasedWhenClosed = false
         window.delegate = self
         window.center()
@@ -174,12 +174,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
         let output = Pipe()
         service.standardOutput = output
         let log = root.appendingPathComponent("logs/host-service.log")
-        // 保留上一轮服务日志：服务崩溃后重新启动时，崩溃原因仍在 host-service.log.1 中。
-        let previous = root.appendingPathComponent("logs/host-service.log.1")
-        try? FileManager.default.removeItem(at: previous)
-        try? FileManager.default.moveItem(at: log, to: previous)
-        FileManager.default.createFile(atPath: log.path, contents: nil)
-        service.standardError = try FileHandle(forWritingTo: log)
+        // 服务日志追加写入同一文件，超过 5MB 才滚动为 .1；崩溃后重启时上一轮的出错原因仍在文件中。
+        let size = (try? FileManager.default.attributesOfItem(atPath: log.path)[.size] as? NSNumber)?.int64Value ?? 0
+        if size >= 5 * 1024 * 1024 {
+            let previous = root.appendingPathComponent("logs/host-service.log.1")
+            try? FileManager.default.removeItem(at: previous)
+            try? FileManager.default.moveItem(at: log, to: previous)
+        }
+        if !FileManager.default.fileExists(atPath: log.path) { FileManager.default.createFile(atPath: log.path, contents: nil) }
+        let handle = try FileHandle(forWritingTo: log)
+        handle.seekToEndOfFile()
+        handle.write("\n===== \(ISO8601DateFormatter().string(from: Date())) service =====\n".data(using: .utf8)!)
+        service.standardError = handle
         service.terminationHandler = { [weak self] process in
             Task { @MainActor in
                 guard let self, !self.closing, process === self.service else { return }

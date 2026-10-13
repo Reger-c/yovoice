@@ -154,19 +154,13 @@ func (e *Engine) start(ctx context.Context, executable, model string, definition
 		}
 	}
 	platform.ConfigureProcess(c)
-	// 保留上一次推理进程的日志：崩溃后用户重试会重新启动引擎，否则出错原因随之被覆盖。
-	for _, name := range []string{"engine.log", "engine.log.out"} {
-		path := filepath.Join(e.root, "logs", name)
-		if info, statErr := os.Stat(path); statErr == nil && info.Size() > 0 {
-			_ = os.Rename(path, path+".1")
-		}
-	}
-	out, err := os.Create(filepath.Join(e.root, "logs", "engine.log.out"))
+	// 推理日志追加写入，崩溃后重试重新启动引擎时，上一轮的出错原因仍保留在同一文件中。
+	out, err := diag.OpenProcessLog(filepath.Join(e.root, "logs", "engine.log.out"), "engine "+family)
 	if err != nil {
 		return err
 	}
 	defer out.Close()
-	stderr, err := os.Create(filepath.Join(e.root, "logs", "engine.log"))
+	stderr, err := diag.OpenProcessLog(filepath.Join(e.root, "logs", "engine.log"), "engine "+family)
 	if err != nil {
 		return err
 	}

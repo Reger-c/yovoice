@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 	"yovoice/internal/msg"
 )
 
@@ -31,6 +32,23 @@ func Log(root, event string, fields ...any) {
 	}
 	defer f.Close()
 	slog.New(slog.NewJSONHandler(f, nil)).Info(event, fields...)
+}
+
+// 子进程输出日志统一追加到同一文件：超过 5MB 时滚动为 .1，每轮启动写一行分隔，
+// 既能看到崩溃前后的连续记录，也不会每次启动都切出新文件。
+const processLogLimit = 5 << 20
+
+func OpenProcessLog(path, title string) (*os.File, error) {
+	if info, err := os.Stat(path); err == nil && info.Size() >= processLogLimit {
+		_ = os.Remove(path + ".1")
+		_ = os.Rename(path, path+".1")
+	}
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	if err != nil {
+		return nil, err
+	}
+	_, _ = fmt.Fprintf(f, "\n===== %s %s =====\n", time.Now().Format(time.RFC3339), title)
+	return f, nil
 }
 
 // 业务错误保留稳定错误码及参数，普通错误保留底层系统原因。

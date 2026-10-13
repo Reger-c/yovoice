@@ -264,7 +264,7 @@ public partial class MainWindow : Window
         var screen = Forms.Screen.FromHandle(handle);
         var area = screen.WorkingArea;
         double scale = GetDpiForWindow(handle) / 96.0;
-        MinWidth = Math.Min(840, area.Width / scale);
+        MinWidth = Math.Min(960, area.Width / scale);
         MinHeight = Math.Min(640, area.Height / scale);
         var placement = WindowPlacement.Capture(handle);
         // 工作区坐标扣除了屏幕顶部、左侧任务栏的偏移。

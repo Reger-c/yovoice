@@ -383,3 +383,45 @@ func TestPackageRoot(t *testing.T) {
 		t.Fatal("文件齐全时应返回模型目录")
 	}
 }
+
+// 更换到已有模型的目录时，按下载布局自动登记完整的模型，不完整的忽略。
+func TestSetModelDirectoryAdoptsModels(t *testing.T) {
+	w, err := New(t.TempDir())
+	must(t, err)
+	defer w.Close()
+	dir := t.TempDir()
+	var single, multi *catalog.ModelPackage
+	for i := range catalog.Models {
+		m := &catalog.Models[i]
+		if len(m.Files) == 0 && single == nil {
+			single = m
+		} else if len(m.Files) > 0 && multi == nil {
+			multi = m
+		}
+	}
+	if single == nil || multi == nil {
+		t.Skip("目录清单缺少单文件或多文件模型")
+	}
+	sparse := func(path string, size int64) {
+		must(t, os.MkdirAll(filepath.Dir(path), 0700))
+		f, err := os.Create(path)
+		must(t, err)
+		must(t, f.Truncate(size))
+		must(t, f.Close())
+	}
+	sparse(filepath.Join(dir, filepath.Base(single.RemotePath)), single.Size)
+	// 多文件模型缺一个文件，不应登记。
+	for _, f := range multi.Files[1:] {
+		sparse(filepath.Join(dir, multi.Directory, filepath.FromSlash(f.Path)), f.Size)
+	}
+	must(t, w.SetModelDirectory(dir))
+	models := w.Store.Read().Models
+	if len(models) != 1 || models[0].ID != single.ID || !models[0].Managed {
+		t.Fatalf("应只登记完整的单文件模型: %+v", models)
+	}
+	sparse(filepath.Join(dir, multi.Directory, filepath.FromSlash(multi.Files[0].Path)), multi.Files[0].Size)
+	must(t, w.SetModelDirectory(dir))
+	if len(w.Store.Read().Models) != 2 {
+		t.Fatalf("文件齐全的多文件模型应登记: %+v", w.Store.Read().Models)
+	}
+}
