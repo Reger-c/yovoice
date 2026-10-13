@@ -3,7 +3,7 @@ import { Button } from '@astryxdesign/core/Button';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { useTranslator } from '@astryxdesign/core/i18n';
-import { ArrowUpRight, Check, CircleAlert, LoaderCircle, Settings2, WandSparkles } from 'lucide-react';
+import { ArrowUpRight, Check, CircleAlert, LoaderCircle, PenLine, Settings2 } from 'lucide-react';
 import { call, isDesktop } from '../lib/client';
 import { formatCallError } from '../i18n/format';
 import { Selector } from '../selector';
@@ -62,7 +62,7 @@ export function AIComposer({ kind, projectId, state, placeholder, submitLabel, e
   }
   const status = task?.status === 'cancelled' ? undefined : task?.status;
   if (!provider?.model && !task) return <HStack className="ai-composer" data-status="setup" gap={3} vAlign="center" wrap="wrap">
-    <WandSparkles className="ai-composer-mark" size={16} aria-hidden />
+    <PenLine className="ai-composer-mark" size={16} aria-hidden />
     <small className="grow">{t(`@yovoice.ai.setup.${kind}`)}</small>
     <OrcaConnect />
     <Button size="sm" variant="secondary" icon={<Settings2 />} label={t('@yovoice.ai.configure')} onClick={configure} />
@@ -103,7 +103,7 @@ export function AIComposer({ kind, projectId, state, placeholder, submitLabel, e
       </> : <>
         {elsewhere ? <small className="grow ai-composer-via">{t('@yovoice.ai.busyElsewhere')}</small>
           : <HStack className="grow ai-composer-via" gap={0}><Selector label={t('@yovoice.ai.model')} isLabelHidden size="sm" variant="ghost" className="ai-composer-model" value={provider?.model ? choice(provider.id, provider.model) : undefined} options={modelOptions} hasSearch={modelOptions.reduce((n, s) => n + s.options.length, 0) > 12} searchPlaceholder={t('@yovoice.ai.searchModels')}
-            renderValue={option => <HStack gap={2} vAlign="center"><WandSparkles size={14} aria-hidden />{provider?.name} · {option.label}</HStack>} onChange={pick} /></HStack>}
+            renderValue={option => <HStack gap={2} vAlign="center"><PenLine size={14} aria-hidden />{provider?.name} · {option.label}</HStack>} onChange={pick} /></HStack>}
         {extra}
         <Button size="sm" variant="primary" label={submitLabel} isLoading={starting} isDisabled={!brief.trim() || elsewhere} onClick={() => void run()} />
       </>}

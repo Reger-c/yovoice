@@ -3,7 +3,7 @@ import { Button } from '@astryxdesign/core/Button';
 import { DropdownMenu } from '@astryxdesign/core/DropdownMenu';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { useTranslator } from '@astryxdesign/core/i18n';
-import { Download, FileMusic, Sparkles, Upload } from 'lucide-react';
+import { Download, FileMusic, Lightbulb, Upload } from 'lucide-react';
 import { Selector } from '../../shared/selector';
 import { AIComposer } from '../../shared/ui/ai-composer';
 import { call, isDesktop } from '../../shared/lib/client';
@@ -77,7 +77,7 @@ export function ScoreEditor({ draft, state, change, locale, onError, configureAI
       : <VStack className="score-empty" gap={3} hAlign="center">
         <p>{t('@yovoice.score.empty')}</p>
         <HStack gap={2} wrap="wrap" hAlign="center">
-          <Button variant="secondary" icon={<Sparkles />} label={t('@yovoice.score.example')} onClick={() => replace(exampleScore(locale))} />
+          <Button variant="secondary" icon={<Lightbulb />} label={t('@yovoice.score.example')} onClick={() => replace(exampleScore(locale))} />
           <Button variant="secondary" icon={<FileMusic />} label={t('@yovoice.score.import')} onClick={() => void importScore()} />
         </HStack>
       </VStack>}
