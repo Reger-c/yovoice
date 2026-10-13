@@ -96,6 +96,34 @@ func TestCompleteProtocols(t *testing.T) {
 	}
 }
 
+// OrcaRouter 免费模型的四种拒绝按 metadata.reason 区分，窗口已满时带回等待秒数。
+func TestFreeTierRejections(t *testing.T) {
+	cases := []struct {
+		status int
+		body   string
+		code   msg.Code
+		params msg.Params
+	}{
+		{429, `{"error":{"code":"free_rate_limited","metadata":{"reason":"err_free_rate","retry_after_seconds":37}}}`, msg.ErrAIFreeRate, msg.Params{"seconds": 37}},
+		{429, `{"error":{"code":"free_rate_limited","metadata":{"reason":"err_free_rate"}}}`, msg.ErrAIFreeBusy, nil},
+		{400, `{"error":{"code":"free_rate_limited","type":"invalid_request_error","metadata":{"reason":"err_free_prompt_cap","retryable":false}}}`, msg.ErrAIFreePromptCap, nil},
+		{429, `{"error":{"code":"free_rate_limited","metadata":{"reason":"err_free_access_denied","retryable":false}}}`, msg.ErrAIFreeAccess, nil},
+		{429, `{"error":{"message":"slow down"}}`, msg.ErrAIRateLimit, nil},
+	}
+	for _, c := range cases {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(c.status)
+			_, _ = w.Write([]byte(c.body))
+		}))
+		_, err := Complete(context.Background(), server.Client(), Config{Format: FormatChat, BaseURL: server.URL, Key: "k", Model: "orcarouter/free"}, Request{Messages: []Message{{Role: "user", Content: "hi"}}})
+		server.Close()
+		var ce *msg.CallError
+		if !errors.As(err, &ce) || ce.Code != c.code || (c.params != nil && ce.Params["seconds"] != c.params["seconds"]) {
+			t.Errorf("%s：%v", c.body, err)
+		}
+	}
+}
+
 // HTTP 状态映射为界面错误码，错误详情中不出现密钥。
 func TestErrorsAreClassifiedAndSanitized(t *testing.T) {
 	key := "sk-secret-value-123456"

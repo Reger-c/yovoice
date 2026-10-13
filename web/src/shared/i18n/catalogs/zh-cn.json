@@ -2761,5 +2761,17 @@
   },
   "@yovoice.ai.orca.hint": {
     "defaultMessage": "不用复制密钥：在浏览器登录 OrcaRouter 并同意授权后自动添加，默认使用免费模型。"
+  },
+  "@yovoice.error.aiFreeRate": {
+    "defaultMessage": "免费模型的使用次数暂时用完了，约 {seconds} 秒后会恢复，到时再试一次即可。"
+  },
+  "@yovoice.error.aiFreeBusy": {
+    "defaultMessage": "免费模型现在用的人太多，请稍等片刻再试，或在写作栏换一个模型。"
+  },
+  "@yovoice.error.aiFreePromptCap": {
+    "defaultMessage": "这次内容超过了免费模型单次请求的长度上限，重试也不会成功。可以缩短描述，或在 OrcaRouter 领取额度（orcarouter.ai/offers）或充值后换用付费模型。"
+  },
+  "@yovoice.error.aiFreeAccess": {
+    "defaultMessage": "OrcaRouter 需要账号绑定一个注册较久的 GitHub 账号才能使用免费模型。请在 OrcaRouter 个人设置中绑定 GitHub，或充值后再用。"
   }
 }

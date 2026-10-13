@@ -123,7 +123,12 @@ const (
 	ErrAIModelsPath      Code = "@yovoice.error.aiModelsPath"
 	ErrAIResultInvalid   Code = "@yovoice.error.aiResultInvalid"
 	ErrAITimeout         Code = "@yovoice.error.aiTimeout"
-	ErrUnknown           Code = "@yovoice.error.unknown"
+	// OrcaRouter 免费模型的四种拒绝：窗口已满、通道繁忙、单次提示超长、账号未满足免费条件。
+	ErrAIFreeRate      Code = "@yovoice.error.aiFreeRate"
+	ErrAIFreeBusy      Code = "@yovoice.error.aiFreeBusy"
+	ErrAIFreePromptCap Code = "@yovoice.error.aiFreePromptCap"
+	ErrAIFreeAccess    Code = "@yovoice.error.aiFreeAccess"
+	ErrUnknown         Code = "@yovoice.error.unknown"
 )
 
 // Params carries ICU values. Keys match catalog placeholders.
@@ -187,6 +192,7 @@ func All() []Code {
 		ErrVoxModeInvalid, ErrVoxTextLimits, ErrVoxReferenceRequired, ErrVoxParams,
 		ErrMusicStyle, ErrMusicLyrics, ErrMusicParams, ErrMusicLyricsRequired, ErrEngineUpgradeRequired, ErrScoreInvalid, ErrMidiInvalid,
 		ErrAIProviderInvalid, ErrAINotConfigured, ErrAIAuth, ErrAIRateLimit, ErrAINetwork, ErrAIResponse, ErrAIModelsPath, ErrAIResultInvalid, ErrAITimeout,
+		ErrAIFreeRate, ErrAIFreeBusy, ErrAIFreePromptCap, ErrAIFreeAccess,
 		ErrLegacyRestore, ErrUnknown,
 	}
 }
