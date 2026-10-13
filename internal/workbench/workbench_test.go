@@ -292,9 +292,20 @@ func TestOperationCancellation(t *testing.T) {
 }
 
 // 子进程模拟真实 audio.cpp 协议，验证启动、复用和取消时的进程清理。
+// 整个包的用户目录指向临时目录：存储迁移会写全局 storage.json，
+// 绝不能改动开发者本机配置，否则真实应用会把数据目录指向测试临时目录。
 func TestMain(m *testing.M) {
 	testkit.RunFakeEngine()
-	os.Exit(m.Run())
+	home, err := os.MkdirTemp("", "yovoice-home-*")
+	if err != nil {
+		panic(err)
+	}
+	os.Setenv("HOME", home)
+	os.Setenv("USERPROFILE", home)
+	os.Setenv("APPDATA", filepath.Join(home, "AppData", "Roaming"))
+	code := m.Run()
+	os.RemoveAll(home)
+	os.Exit(code)
 }
 
 func TestForgetModelDuringDownload(t *testing.T) {

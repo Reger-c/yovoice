@@ -21,6 +21,9 @@ public partial class MainWindow : Window
     private bool shuttingDown;
     private bool shutdownComplete;
     private bool exitRequested;
+    // 数据目录迁移完成后旧目录已冻结写入，退出时不再保存正文，并在退出后自动重新打开应用。
+    private bool storageRelocated;
+    private bool restartRequested;
     private readonly Forms.NotifyIcon tray;
     private readonly Forms.ContextMenuStrip trayMenu;
     private readonly System.Drawing.Icon trayIcon;
@@ -66,12 +69,14 @@ public partial class MainWindow : Window
             {
                 if (web?.CoreWebView2 is not null && await IsOperationRunningAsync() && !AppDialog.Show(this, "退出 yovoice？", "当前操作尚未结束。退出将取消操作，已下载的部分文件和正文会保留。", "退出", "继续使用")) { shuttingDown = false; updater.CancelInstall(); return; }
                 // 关闭前读取最新正文，避免自动保存的防抖窗口丢字。
-                if (web?.CoreWebView2 is not null)
+                if (web?.CoreWebView2 is not null && !storageRelocated)
                 {
                     string json = await web.CoreWebView2.ExecuteScriptAsync("window.__workbenchDraft ?? null");
                     if (json != "null")
                     {
                         try { HostLog.Write(service.Root, "exit.save_started"); await service.CallAsync("draft.save", JsonSerializer.Deserialize<JsonElement>(json)); HostLog.Write(service.Root, "exit.save_completed"); }
+                        // 迁移完成后旧目录冻结写入，此时保存必然失败且没有意义，不能因此挡住退出。
+                        catch (ServiceCallException error) when (error.Code == ServiceCallException.StorageRestartRequired) { HostLog.Write(service.Root, "exit.save_skipped"); }
                         catch (Exception error)
                         {
                             HostLog.Write(service.Root, "exit.save_failed", error);
@@ -89,6 +94,7 @@ public partial class MainWindow : Window
                 await service.ShutdownAsync();
                 updater.CommitInstall();
                 HostLog.Write(service.Root, "exit.completed");
+                if (restartRequested) Relaunch();
                 shutdownComplete = true; Close();
             }
             catch (Exception error)
@@ -99,6 +105,7 @@ public partial class MainWindow : Window
                 if (!AppDialog.Show(this, "未能安全退出", error.Message + "\n\n可以稍后重试，或直接结束本地服务后退出；未保存的编辑可能丢失。", "仍要退出", "返回")) { shuttingDown = false; return; }
                 service.Stop();
                 HostLog.Write(service.Root, "exit.forced");
+                if (restartRequested) Relaunch();
                 shutdownComplete = true; Close();
             }
         };
@@ -156,6 +163,22 @@ public partial class MainWindow : Window
     }
     [DllImport("user32.dll")]
     private static extern uint GetDpiForWindow(IntPtr handle);
+    // 新实例带 --relaunch 启动，会等待当前实例释放单实例锁后再打开。
+    private void Relaunch()
+    {
+        try
+        {
+            var start = new ProcessStartInfo(Environment.ProcessPath ?? throw new InvalidOperationException("无法定位应用程序。")) { UseShellExecute = false };
+            start.ArgumentList.Add(App.RelaunchArgument);
+            Process.Start(start);
+            HostLog.Write(service.Root, "restart.launched");
+        }
+        catch (Exception error) when (error is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            HostLog.Write(service.Root, "restart.failed", error);
+            AppDialog.Show(this, "未能自动重新打开", "数据已迁移完成，请手动打开 yovoice。");
+        }
+    }
     public void RequestExit()
     {
         if (shuttingDown) return;
@@ -337,7 +360,17 @@ public partial class MainWindow : Window
                 case "storage.directory":
                     var storageFolder = new OpenFolderDialog { Title = "选择数据存储目录" };
                     string? chosenStorage = storageFolder.ShowDialog(this) == true ? storageFolder.FolderName : null;
-                    result = chosenStorage is null ? null : await service.CallAsync("storage.relocate", new { path = chosenStorage }); break;
+                    if (chosenStorage is null) { result = null; break; }
+                    // 迁移以服务端当前状态为准，先保存界面里尚在防抖窗口内的正文，避免迁移后丢字。
+                    if (web?.CoreWebView2 is not null)
+                    {
+                        string draftJson = await web.CoreWebView2.ExecuteScriptAsync("window.__workbenchDraft ?? null");
+                        if (draftJson != "null") await service.CallAsync("draft.save", JsonSerializer.Deserialize<JsonElement>(draftJson));
+                    }
+                    result = await service.CallAsync("storage.relocate", new { path = chosenStorage });
+                    storageRelocated = true;
+                    HostLog.Write(service.Root, "storage.relocated");
+                    break;
                 case "storage.directory.open":
                     Directory.CreateDirectory(service.Root);
                     Process.Start(new ProcessStartInfo(service.Root) { UseShellExecute = true }); result = true; break;
@@ -352,6 +385,12 @@ public partial class MainWindow : Window
                 default: result = await service.CallAsync(method, data); break;
             }
             Post(new { id, result });
+            if (method == "storage.directory" && storageRelocated && !shuttingDown)
+            {
+                AppDialog.Show(this, "数据迁移完成", "数据已复制到新目录，yovoice 将自动重启以使用新目录；旧目录会在重启后自动删除。", "立即重启");
+                restartRequested = true;
+                RequestExit();
+            }
         }
         catch (ServiceCallException error) { HostLog.Write(service.Root, "rpc.failed:" + method, error); Post(new { id, error = error.Wire }); }
         catch (Exception error) { HostLog.Write(service.Root, "bridge.failed:" + method, error); Post(new { id, error = error.Message }); }
