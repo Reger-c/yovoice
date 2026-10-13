@@ -137,7 +137,7 @@ const (
 	ErrStorageInsideApp      Code = "@yovoice.error.storageInsideApp"
 	ErrStorageTargetNotEmpty Code = "@yovoice.error.storageTargetNotEmpty"
 	ErrStorageSame           Code = "@yovoice.error.storageSame"
-	ErrUnknown           Code = "@yovoice.error.unknown"
+	ErrUnknown               Code = "@yovoice.error.unknown"
 )
 
 // Params carries ICU values. Keys match catalog placeholders.

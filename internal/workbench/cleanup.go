@@ -229,4 +229,3 @@ func (w *Workbench) CleanupResiduals() (CleanupReport, error) {
 
 	return report, nil
 }
-
