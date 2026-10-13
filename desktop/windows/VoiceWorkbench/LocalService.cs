@@ -20,6 +20,20 @@ public sealed class LocalService : IDisposable
     public event Action<string>? StateChanged;
     public event Action<string>? Failed;
 
+    // 自定义的数据目录不存在时（外置盘未连接、目录被移动或删除）不能静默新建空目录：
+    // 用户会以为数据全丢了；让用户选择重试、退出，或明确在原位置新建空的数据目录。
+    private static string ConfirmAvailable(string path)
+    {
+        while (!Directory.Exists(path))
+        {
+            if (AppDialog.Show(null, "找不到数据目录", path + " 不存在。可能是外置磁盘未连接，或目录已被移动、删除。\n\n连接磁盘后点“重试”；确认不再需要原数据时，可以在原位置新建空的数据目录。", "重试", "更多选项")) continue;
+            if (!AppDialog.Show(null, "在原位置新建空的数据目录？", "将在 " + path + " 新建空的数据目录，原有作品、音色和模型不会出现在应用中。原目录恢复后可再次切换回去。", "新建空目录", "退出"))
+                throw new OperationCanceledException("用户取消启动。");
+            try { Directory.CreateDirectory(path); }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException or NotSupportedException) { AppDialog.Show(null, "无法创建数据目录", error.Message); }
+        }
+        return path;
+    }
     private static string DetermineDataRoot()
     {
         string? env = Environment.GetEnvironmentVariable("WORKBENCH_DATA");
@@ -34,10 +48,10 @@ public sealed class LocalService : IDisposable
                 using var doc = JsonDocument.Parse(File.ReadAllText(configFile));
                 if (doc.RootElement.TryGetProperty("dataPath", out var p) && p.GetString() is { Length: > 0 } customPath)
                 {
-                    return Path.GetFullPath(customPath);
+                    return ConfirmAvailable(Path.GetFullPath(customPath));
                 }
             }
-            catch { }
+            catch (Exception error) when (error is IOException or JsonException or UnauthorizedAccessException or ArgumentException or NotSupportedException) { }
         }
 
         string defaultUserData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".yovoice");

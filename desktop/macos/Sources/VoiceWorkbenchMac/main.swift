@@ -18,7 +18,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
     private var storageRelocated = false
     private var relaunchOnExit = false
     private var updater: AppUpdater?
-    private let root = DataRoot.resolve()
+    // 延迟到单实例检查之后解析，数据目录缺失时才弹出处理选项。
+    private lazy var root: URL = DataRoot.confirmAvailable(DataRoot.resolve())
     private var cookieName: String { "vw-" + token.prefix(12) }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -467,6 +468,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
     private static func hostErrorMessage(_ error: Any?) -> String? {
         if let text = error as? String { return text }
         if let object = error as? [String: Any], let code = object["code"] as? String {
+            if code == "@yovoice.error.dataRootMissing", let path = (object["params"] as? [String: Any])?["path"] as? String { return HostL10n.t("err.dataRootMissing", path) }
             if let detail = (object["params"] as? [String: Any])?["detail"] as? String, !detail.isEmpty { return code + "\n" + detail }
             return code
         }

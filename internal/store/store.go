@@ -149,11 +149,11 @@ func (s *Store) Update(change func(*schema.State), persist bool) (err error) {
 	if persist {
 		stage = "state.backup.json"
 		if e := writeState(filepath.Join(s.Root, "state.backup.json"), s.state); e != nil {
-			return e
+			return s.writeError(e)
 		}
 		stage = "state.json"
 		if e := writeState(filepath.Join(s.Root, "state.json"), next); e != nil {
-			return e
+			return s.writeError(e)
 		}
 	}
 	s.state = next
@@ -164,6 +164,16 @@ func (s *Store) Update(change func(*schema.State), persist bool) (err error) {
 		}
 	}
 	return nil
+}
+
+// writeError 把“数据目录已不存在”翻译成可读的提示，而不是底层的文件系统错误；
+// 运行中删除数据目录或拔出外置盘时，用户需要知道原因和处理方式。
+// 这里不重新创建目录：外置盘未挂载时在原路径新建会把数据写到系统盘。
+func (s *Store) writeError(e error) error {
+	if _, err := os.Stat(s.Root); os.IsNotExist(err) {
+		return msg.Err(msg.ErrDataRootMissing, msg.Params{"path": s.Root})
+	}
+	return e
 }
 
 // Freeze 拒绝之后的所有持久化写入；仅内存中的进度广播仍然可用。

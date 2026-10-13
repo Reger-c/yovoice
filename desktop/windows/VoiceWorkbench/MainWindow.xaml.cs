@@ -80,11 +80,25 @@ public partial class MainWindow : Window
                         catch (Exception error)
                         {
                             HostLog.Write(service.Root, "exit.save_failed", error);
-                            if (!AppDialog.Show(this, "作品保存失败", error.Message + "\n\n可以备份当前作品后退出，或返回继续编辑。", "备份后退出", "返回编辑")) { shuttingDown = false; updater.CancelInstall(); return; }
-                            var backup = new SaveFileDialog { Filter = "作品恢复备份|*.json", DefaultExt = ".json", FileName = "yovoice-recovery-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".json", OverwritePrompt = true };
-                            if (backup.ShowDialog(this) != true) { shuttingDown = false; updater.CancelInstall(); return; }
-                            DraftRecovery.Save(backup.FileName, json);
-                            HostLog.Write(service.Root, "exit.backup_completed");
+                            // 保存失败时必须同时提供备份、直接退出和返回编辑，避免数据目录不可用时无法退出。
+                            while (true)
+                            {
+                                if (AppDialog.Show(this, "作品保存失败", error.Message + "\n\n可以备份当前作品后退出；也可以选择更多选项直接退出或返回编辑。", "备份后退出", "更多选项"))
+                                {
+                                    var backup = new SaveFileDialog { Filter = "作品恢复备份|*.json", DefaultExt = ".json", FileName = "yovoice-recovery-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".json", OverwritePrompt = true };
+                                    // 取消选择备份位置时回到上一步，而不是直接留在编辑页。
+                                    if (backup.ShowDialog(this) != true) continue;
+                                    DraftRecovery.Save(backup.FileName, json);
+                                    HostLog.Write(service.Root, "exit.backup_completed");
+                                    break;
+                                }
+                                if (AppDialog.Show(this, "不保存直接退出？", "未保存的修改将丢失，且无法恢复。", "直接退出", "返回编辑"))
+                                {
+                                    HostLog.Write(service.Root, "exit.save_discarded");
+                                    break;
+                                }
+                                shuttingDown = false; updater.CancelInstall(); return;
+                            }
                             // 保存失败时仅退出，不继续执行更新安装。
                             updater.CancelInstall();
                         }
