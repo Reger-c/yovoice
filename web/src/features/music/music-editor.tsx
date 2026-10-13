@@ -6,7 +6,7 @@ import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/Segme
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { Token } from '@astryxdesign/core/Token';
 import { useTranslator } from '@astryxdesign/core/i18n';
-import { AudioLines, Check, ChevronDown, ChevronUp, Play, RotateCcw, Sparkles } from 'lucide-react';
+import { AudioLines, Check, ChevronDown, ChevronUp, Lightbulb, Play, RotateCcw } from 'lucide-react';
 import { call } from '../../shared/lib/client';
 import { AIComposer } from '../../shared/ui/ai-composer';
 import { formatTime, isYuE, type Draft, type Generation, type State, type UiLocale } from '../../shared/workbench';
@@ -69,7 +69,7 @@ export function MusicEditor({ draft, state, change, locale, takes, current, sele
       <HStack hAlign="between" vAlign="center" gap={2} wrap="wrap">
         <h2>{t('@yovoice.music.style')}</h2>
         <HStack gap={2} vAlign="center" wrap="wrap">
-        {empty ? <Button size="sm" variant="secondary" icon={<Sparkles />} label={t('@yovoice.music.example')} onClick={() => { const example = createMusicDraft(locale); change({ text: example.text, lyrics: example.lyrics, synthesisLanguage: example.synthesisLanguage, ...(draft.title === createMusicDraft(locale, false).title ? { title: example.title } : {}) }); }} /> : null}
+        {empty ? <Button size="sm" variant="secondary" icon={<Lightbulb />} label={t('@yovoice.music.example')} onClick={() => { const example = createMusicDraft(locale); change({ text: example.text, lyrics: example.lyrics, synthesisLanguage: example.synthesisLanguage, ...(draft.title === createMusicDraft(locale, false).title ? { title: example.title } : {}) }); }} /> : null}
         </HStack>
       </HStack>
       <TextArea className="music-style" label={t('@yovoice.music.style')} isLabelHidden value={draft.text} maxLength={512} rows={2} hasSpellCheck={false} placeholder={t('@yovoice.music.stylePlaceholder')} onChange={text => change({ text: text.slice(0, 512) })} />

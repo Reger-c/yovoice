@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '@astryxdesign/core/Button';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { useTranslator } from '@astryxdesign/core/i18n';
-import { Sparkles } from 'lucide-react';
+import { Link2 } from 'lucide-react';
 import { call } from '../lib/client';
 import { formatCallError } from '../i18n/format';
 
@@ -23,7 +23,7 @@ export function OrcaConnect({ variant = 'primary', hint = false }: { variant?: '
     finally { setBusy(false); }
   }
   return <VStack gap={1}>
-    <HStack gap={0}><Button size="sm" variant={variant} icon={<Sparkles />} label={t('@yovoice.ai.orca.connect')} isLoading={busy} onClick={() => void connect()} /></HStack>
+    <HStack gap={0}><Button size="sm" variant={variant} icon={<Link2 />} label={t('@yovoice.ai.orca.connect')} isLoading={busy} onClick={() => void connect()} /></HStack>
     {waiting ? <small role="status">{t('@yovoice.ai.orca.waiting')}</small> : hint ? <small>{t('@yovoice.ai.orca.hint')}</small> : null}
     {error ? <small className="ai-composer-error" role="alert">{error}</small> : null}
   </VStack>;
