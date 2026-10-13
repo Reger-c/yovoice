@@ -115,8 +115,14 @@ public sealed class LocalService : IDisposable
         }
         catch
         {
-            process.StandardInput.Close();
-            await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10));
+            // 服务没在限时内给出地址：结束它再报告原始错误，避免残留进程让重试误判为已启动。
+            try
+            {
+                process.StandardInput.Close();
+                try { await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10)); }
+                catch (TimeoutException) { process.Kill(true); }
+            }
+            catch (Exception error) when (error is InvalidOperationException or IOException or System.ComponentModel.Win32Exception) { HostLog.Write(Root, "service.start_cleanup_failed", error); }
             throw;
         }
         HostLog.Write(Root, "service.ready");
@@ -208,9 +214,16 @@ public sealed class LocalService : IDisposable
         using var request = Request(HttpMethod.Post, "shutdown");
         using var response = await client.SendAsync(request).WaitAsync(TimeSpan.FromSeconds(30));
         response.EnsureSuccessStatusCode();
+        // 服务已接受关停并完成保存，此后不能再让退出失败：事件循环与调用通道已取消，返回编辑会留下无法使用的窗口。
         stopped.Cancel();
         process.StandardInput.Close();
-        await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10));
+        try { await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10)); }
+        catch (TimeoutException)
+        {
+            HostLog.Write(Root, "service.shutdown_timeout");
+            try { process.Kill(true); }
+            catch (Exception error) when (error is InvalidOperationException or System.ComponentModel.Win32Exception) { HostLog.Write(Root, "service.stop_failed", error); }
+        }
         HostLog.Write(Root, "service.shutdown_completed");
     }
     // 正常关停失败时使用：先关闭标准输入让服务自行退出，超时则结束进程。

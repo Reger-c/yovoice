@@ -38,6 +38,8 @@ public partial class MainWindow : Window
         HostL10n.LoadFrom(service.Root);
         InitializeComponent();
         StateChanged += (_, _) => { ApplyMaximizeLabel(); SyncWebVisibility(); };
+        // 关闭到托盘（Hide）与最小化一样会留下浏览器的输入窗口，显示状态变化时同样同步。
+        IsVisibleChanged += (_, _) => SyncWebVisibility();
         using (var stream = System.Windows.Application.GetResourceStream(new Uri("Resources/AppIcon.ico", UriKind.Relative)).Stream)
             trayIcon = new System.Drawing.Icon(stream);
         trayMenu = new Forms.ContextMenuStrip();
@@ -163,11 +165,11 @@ public partial class MainWindow : Window
         trayExit.Text = HostL10n.T("退出 yovoice", "Quit yovoice");
         updater.ApplyLocale();
     }
-    // WebView2CompositionControl 另有一个跟随窗口的输入窗口，WPF 最小化时不会隐藏它，
-    // 会留在原位置拦截鼠标（如桌面右键菜单无法弹出）；最小化时隐藏控件，让它随之隐藏，还原后再显示。
+    // WebView2CompositionControl 另有一个跟随窗口的输入窗口，WPF 最小化或隐藏窗口时不会隐藏它，
+    // 会留在原位置拦截鼠标（如桌面右键菜单无法弹出）；最小化或关到托盘时隐藏控件，让它随之隐藏，还原后再显示。
     private void SyncWebVisibility()
     {
-        if (web is not null) web.Visibility = WindowState == WindowState.Minimized ? Visibility.Hidden : Visibility.Visible;
+        if (web is not null) web.Visibility = WindowState == WindowState.Minimized || !IsVisible ? Visibility.Hidden : Visibility.Visible;
     }
     private void ApplyMaximizeLabel()
     {

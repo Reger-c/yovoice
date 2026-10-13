@@ -13,7 +13,7 @@ import { aiTimeoutDefault, runtimeStatus, type EngineInfo, type ModelPackage, ty
 import { CallError } from '../../shared/lib/call-error';
 import { AISettings } from './ai-settings';
 import { ModelGroups } from './model-list';
-import { SettingsGroup, SettingsRow } from './settings-group';
+import { SettingsGroup, SettingsRow } from '../../shared/ui/settings-group';
 import { overflowTitle } from '../../shared/ui/overflow-title';
 import { UpdateSettings } from '../update/update-settings';
 import { LocalAPISettings } from './local-api-settings';

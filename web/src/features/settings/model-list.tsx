@@ -7,7 +7,7 @@ import { useTranslator } from '@astryxdesign/core/i18n';
 import { Download, FilePlus, Pause, Search, Trash2 } from 'lucide-react';
 import { call } from '../../shared/lib/client';
 import { formatSize, type Draft, type ModelPackage, type State } from '../../shared/workbench';
-import { SettingsGroup } from './settings-group';
+import { SettingsGroup } from '../../shared/ui/settings-group';
 
 function downloadStatusLabel(t: (key: string) => string, downloading: boolean, received: number, size: number, status: string) {
   if (downloading) return received >= size ? t('@yovoice.settings.download.verifying') : t('@yovoice.settings.download.running');

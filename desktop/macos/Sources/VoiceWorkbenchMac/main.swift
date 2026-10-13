@@ -193,6 +193,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
             }
         }
         try service.run()
+        // 子进程已继承日志文件，宿主侧的句柄随即关闭，避免每次重启服务都泄漏一个。
+        try? handle.close()
         Task {
             try? await Task.sleep(for: .seconds(30))
             if origin == nil && service.isRunning && service === self.service && !closing {
@@ -674,10 +676,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
                 shutdownComplete = true
                 NSApp.terminate(nil)
             } catch {
-                closing = false
                 updater?.cancelInstall()
-                showError(error)
-
+                try? error.localizedDescription.write(to: root.appendingPathComponent("logs/last-host-error.txt"), atomically: true, encoding: .utf8)
+                // 服务无响应或更新准备失败时必须留出退出路径，否则只能强制结束应用。
+                let alert = NSAlert()
+                alert.alertStyle = .warning
+                alert.messageText = HostL10n.t("alert.quitFailed.title")
+                alert.informativeText = HostL10n.t("alert.quitFailed.body", error.localizedDescription)
+                alert.addButton(withTitle: HostL10n.t("alert.quitFailed.force"))
+                alert.addButton(withTitle: HostL10n.t("alert.quitFailed.back"))
+                guard alert.runModal() == .alertFirstButtonReturn else { closing = false; return }
+                try? input.fileHandleForWriting.close()
+                if service.isRunning { service.terminate() }
+                if relaunchOnExit { scheduleRelaunch() }
+                shutdownComplete = true
+                NSApp.terminate(nil)
             }
         }
         // 先返回事件循环，异步保存完成后再次退出，避免 AppKit 终止循环阻塞 Swift 任务。
