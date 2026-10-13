@@ -167,8 +167,8 @@ func TestStorageInfoAndRelocate(t *testing.T) {
 		t.Fatalf("PendingPath 应更新为 %s，实际为 %s", target, infoAfter.PendingPath)
 	}
 
-	if _, err := os.Stat(filepath.Join(target, "state.json")); err != nil {
-		t.Fatal("新目录缺少 state.json", err)
+	if _, err := os.Stat(filepath.Join(target, "yovoice.db")); err != nil {
+		t.Fatal("新目录缺少状态库", err)
 	}
 }
 
@@ -199,12 +199,12 @@ func TestRelocateCopiesWithoutTouchingSourceAndFreezes(t *testing.T) {
 	must(t, w.RelocateStorage(target))
 
 	// 旧目录保持完整，重启前仍可回退使用。
-	for _, p := range []string{voice, model, filepath.Join(root, "state.json")} {
+	for _, p := range []string{voice, model, filepath.Join(root, "yovoice.db")} {
 		if _, err := os.Stat(p); err != nil {
 			t.Fatalf("迁移后旧目录文件被改动: %s %v", p, err)
 		}
 	}
-	for _, rel := range []string{"voices/keep.wav", "models/m/weights.gguf", "state.json"} {
+	for _, rel := range []string{"voices/keep.wav", "models/m/weights.gguf", "yovoice.db"} {
 		if _, err := os.Stat(filepath.Join(target, filepath.FromSlash(rel))); err != nil {
 			t.Fatalf("新目录缺少 %s: %v", rel, err)
 		}

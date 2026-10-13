@@ -160,7 +160,7 @@ func (w *Workbench) RelocateStorage(targetPath string) error {
 		return fmt.Errorf("复制数据失败: %w", err)
 	}
 
-	// 新目录的 state.json 由内存快照生成，指向旧目录的绝对路径全部改写到新目录。
+	// 新目录的状态库由内存快照生成，指向旧目录的绝对路径全部改写到新目录。
 	rebase := func(p string) string {
 		if p != "" && store.Within(currentRoot, p) {
 			if rel, err := filepath.Rel(currentRoot, p); err == nil {
@@ -187,7 +187,7 @@ func (w *Workbench) RelocateStorage(targetPath string) error {
 	}
 	snapshot.Activity = nil
 	snapshot.ModelActivity = nil
-	if err := store.WriteState(filepath.Join(targetPath, "state.json"), snapshot); err != nil {
+	if err := store.WriteSnapshot(targetPath, snapshot); err != nil {
 		cleanupTarget()
 		return fmt.Errorf("写入新目录状态失败: %w", err)
 	}
@@ -222,10 +222,11 @@ func detectInstallDir() string {
 // 待删除标记与未保存试听在重启时本就会被清理。
 func skipRelocate(rel string, info os.FileInfo) bool {
 	name := info.Name()
-	if rel == "service.lock" || rel == "state.json" || rel == "state.backup.json" {
+	switch rel {
+	case "service.lock", store.DatabaseFile, store.DatabaseFile + "-journal", "yovoice.backup.db", "state.json", "state.backup.json":
 		return true
 	}
-	if strings.HasSuffix(name, ".deleted") || strings.HasPrefix(name, ".state-") {
+	if strings.HasSuffix(name, ".deleted") || strings.HasPrefix(name, ".yovoice-") || strings.HasPrefix(name, ".tmp-") {
 		return true
 	}
 	return info.Mode()&os.ModeSymlink != 0

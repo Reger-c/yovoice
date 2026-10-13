@@ -64,16 +64,18 @@ func TestProjectArchiveAndRecovery(t *testing.T) {
 	if _, err = os.Stat(file); err != nil {
 		t.Fatal(err)
 	}
-	// 备份保留上一次成功保存的工程，主文件损坏后仍可打开。
+	// 每次打开都会刷新备份，状态库损坏后从备份恢复工程。
 	copy.Title = "第二次保存"
 	must(t, w.SaveDraft(copy))
-	must(t, os.WriteFile(filepath.Join(w.Store.Root, "state.json"), []byte("broken"), 0600))
+	_, err = store.New(w.Store.Root)
+	must(t, err)
+	must(t, os.WriteFile(filepath.Join(w.Store.Root, store.DatabaseFile), []byte("broken"), 0600))
 	recovered, err := store.New(w.Store.Root)
 	must(t, err)
 	if len(recovered.Read().Drafts) < 3 {
 		t.Fatal("备份未恢复工程")
 	}
-	corrupt, _ := filepath.Glob(filepath.Join(w.Store.Root, "state.corrupt-*.json"))
+	corrupt, _ := filepath.Glob(filepath.Join(w.Store.Root, "yovoice.corrupt-*.db"))
 	if len(corrupt) != 1 {
 		t.Fatal("损坏原件未保留")
 	}

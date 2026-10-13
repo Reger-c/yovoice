@@ -17,7 +17,7 @@ enum HostUiLocale: String {
     }
 }
 
-/// Native string table keyed by stable ids. Follows preferences.uiLocale from state.json / SSE.
+/// Native string table keyed by stable ids. Follows preferences.uiLocale from host-preferences.json / SSE.
 enum HostL10n {
     // Updated from MainActor when preferences change; read from host error paths too.
     nonisolated(unsafe) private(set) static var locale: HostUiLocale = {
@@ -43,8 +43,9 @@ enum HostL10n {
 
     nonisolated private static func readStoredUiLocale() -> HostUiLocale? {
         let root = DataRoot.resolve()
-        let stateURL = root.appendingPathComponent("state.json")
-        guard let data = try? Data(contentsOf: stateURL),
+        // 服务把界面语言写在 host-preferences.json；尚未被新版服务打开过的数据目录仍读旧版 state.json。
+        let candidates = ["host-preferences.json", "state.json"].map { root.appendingPathComponent($0) }
+        guard let data = candidates.lazy.compactMap({ try? Data(contentsOf: $0) }).first,
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let preferences = json["preferences"] as? [String: Any],
               let raw = preferences["uiLocale"] as? String else { return nil }

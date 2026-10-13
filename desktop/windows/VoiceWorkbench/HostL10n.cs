@@ -14,12 +14,14 @@ public static class HostL10n
 
     public static string T(string zh, string en) => English ? en : zh;
 
-    // 读取数据目录中保存的界面语言；旧版状态没有该字段时与服务端一致视为中文。
+    // 读取数据目录中保存的界面语言：服务把它写在 host-preferences.json；
+    // 尚未被新版服务打开过的数据目录仍读旧版 state.json，没有该字段时与服务端一致视为中文。
     public static void LoadFrom(string root)
     {
         try
         {
-            string path = Path.Combine(root, "state.json");
+            string path = Path.Combine(root, "host-preferences.json");
+            if (!File.Exists(path)) path = Path.Combine(root, "state.json");
             if (!File.Exists(path)) return;
             using var document = JsonDocument.Parse(File.ReadAllText(path));
             if (!document.RootElement.TryGetProperty("preferences", out var preferences) || preferences.ValueKind != JsonValueKind.Object) return;

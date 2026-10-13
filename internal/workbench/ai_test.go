@@ -32,10 +32,10 @@ func TestAIProviderKeysStayOutOfState(t *testing.T) {
 	if w.Store.Read().AIProviderID != p.ID {
 		t.Fatal("第一个服务应成为当前服务")
 	}
-	state, err := os.ReadFile(filepath.Join(w.Store.Root, "state.json"))
+	state, err := os.ReadFile(filepath.Join(w.Store.Root, "yovoice.db"))
 	must(t, err)
 	if strings.Contains(string(state), key) {
-		t.Fatal("密钥不应写入 state.json")
+		t.Fatal("密钥不应写入状态库")
 	}
 	info, err := os.Stat(filepath.Join(w.Store.Root, "secrets.json"))
 	must(t, err)
