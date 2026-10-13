@@ -1,7 +1,7 @@
 name: Check and Package
 on:
   push:
-    branches: ["**"]
+    branches: [main]
   pull_request:
   workflow_dispatch:
   workflow_call:
@@ -17,7 +17,7 @@ permissions:
 env:
   PYTHONUTF8: "1"
 concurrency:
-  group: build-${{ github.workflow }}-${{ inputs.tag || github.ref }}
+  group: build-${{ github.workflow }}-${{ inputs.tag || github.head_ref || github.ref_name }}
   cancel-in-progress: ${{ !inputs.release }}
 jobs:
   package:
@@ -112,7 +112,12 @@ jobs:
       - name: Package Windows
         if: runner.os == 'Windows'
         shell: pwsh
-        run: ./scripts/desktop/build-windows.ps1 -Package -Cuda
+        run: |
+          if ('${{ inputs.release }}' -eq 'true') {
+            ./scripts/desktop/build-windows.ps1 -Package -Cuda
+          } else {
+            ./scripts/desktop/build-windows.ps1 -Package
+          }
       - name: Verify Windows service errors and recovery
         if: runner.os == 'Windows'
         shell: pwsh
@@ -197,8 +202,7 @@ jobs:
             artifacts/yovoice-macos-arm64.dmg
             artifacts/yovoice-windows-x64-setup.exe
             artifacts/yovoice-windows-x64-update.exe
-            artifacts/yovoice-windows-x64-cuda12.4-setup.exe
-            artifacts/yovoice-windows-x64-cuda13.3-setup.exe
+            artifacts/yovoice-windows-x64-cuda*.exe
           if-no-files-found: error
           retention-days: 14
       - uses: actions/upload-artifact@v4
