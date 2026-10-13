@@ -2880,7 +2880,7 @@
     "defaultMessage": "数据存储目录"
   },
   "@yovoice.settings.storageRelocateHint": {
-    "defaultMessage": "更改位置会把数据完整复制到新目录，完全退出 yovoice（Windows 请从系统托盘退出）并重新打开后生效，旧目录随后自动删除以释放空间。"
+    "defaultMessage": "更改位置会把数据完整复制到新目录，完成后 yovoice 会提示并自动重启生效，旧目录随后自动删除以释放空间。"
   },
   "@yovoice.settings.storageRelocatePending": {
     "defaultMessage": "数据已复制到新目录。请完全退出 yovoice 并重新打开应用生效；重启前无法保存新的修改，旧目录会在重启后自动删除。"

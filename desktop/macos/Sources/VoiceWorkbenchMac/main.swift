@@ -14,6 +14,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
     private let token = UUID().uuidString + UUID().uuidString
     private var closing = false
     private var shutdownComplete = false
+    // 数据目录迁移完成后旧目录已冻结写入：退出时不再保存正文，并在退出后自动重新打开应用。
+    private var storageRelocated = false
+    private var relaunchOnExit = false
     private var updater: AppUpdater?
     private let root = DataRoot.resolve()
     private var cookieName: String { "vw-" + token.prefix(12) }
@@ -300,7 +303,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard message.frameInfo.isMainFrame, Self.trusted(message.frameInfo.securityOrigin, localOrigin: origin), let body = message.body as? [String: Any], let id = body["id"] as? String else { return }
         Task {
-            do { post(try await handle(body)) }
+            do {
+                post(try await handle(body))
+                if body["method"] as? String == "storage.directory", storageRelocated, !closing { promptRelaunch() }
+            }
             catch { post(["id": id, "error": error.localizedDescription]) }
         }
     }
@@ -389,8 +395,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
             data["path"] = url.path
             message["data"] = data
             if method == "storage.directory" {
+                // 迁移以服务端当前状态为准，先保存界面里尚在防抖窗口内的正文，避免迁移后丢字。
+                if let draft = try await web.evaluateJavaScript("window.__workbenchDraft ?? null") as? [String: Any] {
+                    let saved = try await request("api/call", body: ["id": "relocate-save", "method": "draft.save", "data": draft])
+                    if saved["error"] != nil { return ["id": message["id"]!, "error": saved["error"]!] }
+                }
                 // 跨盘复制模型可能远超普通请求的 120 秒上限，进度通过状态推送展示。
-                return try await request("api/call", body: ["id": message["id"]!, "method": "storage.relocate", "data": data], timeout: 24 * 60 * 60)
+                let relocated = try await request("api/call", body: ["id": message["id"]!, "method": "storage.relocate", "data": data], timeout: 24 * 60 * 60)
+                if relocated["error"] == nil { storageRelocated = true }
+                return relocated
             }
         }
         if method == "storage.directory.open" {
@@ -472,6 +485,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
         alert.informativeText = error.localizedDescription
         alert.beginSheetModal(for: window)
     }
+    // 迁移完成后提示并自动重启，让新数据目录立即生效。
+    private func promptRelaunch() {
+        let alert = NSAlert()
+        alert.messageText = HostL10n.t("alert.relocated.title")
+        alert.informativeText = HostL10n.t("alert.relocated.body")
+        alert.addButton(withTitle: HostL10n.t("alert.relocated.restart"))
+        alert.runModal()
+        relaunchOnExit = true
+        NSApp.terminate(nil)
+    }
+    // 由独立的 shell 等待当前进程退出后再打开应用，避免 LaunchServices 只激活正在退出的旧实例。
+    private func scheduleRelaunch() {
+        let relauncher = Process()
+        relauncher.executableURL = URL(fileURLWithPath: "/bin/sh")
+        relauncher.arguments = ["-c", "while kill -0 \"$1\" 2>/dev/null; do sleep 0.2; done; exec /usr/bin/open \"$2\"", "yovoice-relaunch", String(ProcessInfo.processInfo.processIdentifier), Bundle.main.bundleURL.path]
+        do { try relauncher.run() } catch {
+            let alert = NSAlert()
+            alert.messageText = HostL10n.t("err.relaunch")
+            alert.runModal()
+        }
+    }
     // 关闭窗口后保留应用和后台任务，退出仍由菜单或 Command-Q 触发。
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { window.makeKeyAndOrderFront(nil); return true }
@@ -494,7 +528,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
                         if alert.runModal() != .alertFirstButtonReturn { closing = false; updater?.cancelInstall(); return }
                     }
                     // 读取最新编辑内容，避免自动保存的防抖窗口丢失最后输入。
-                    if let draft = try await web.evaluateJavaScript("window.__workbenchDraft ?? null") as? [String: Any] {
+                    if !storageRelocated, let draft = try await web.evaluateJavaScript("window.__workbenchDraft ?? null") as? [String: Any] {
                         let saved = try await request("api/call", body: ["id": "exit-save", "method": "draft.save", "data": draft])
                         if let error = Self.hostErrorMessage(saved["error"]) { throw failure(HostL10n.t("err.exitSave", error)) }
                     }
@@ -503,6 +537,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
                 try updater?.installBeforeTermination()
                 if service.isRunning { _ = try await request("shutdown", body: [:]) }
                 try? input.fileHandleForWriting.close()
+                if relaunchOnExit { scheduleRelaunch() }
                 shutdownComplete = true
                 NSApp.terminate(nil)
             } catch {
