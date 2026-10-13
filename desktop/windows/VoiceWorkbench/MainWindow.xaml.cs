@@ -485,7 +485,8 @@ public partial class MainWindow : Window
                         string draftJson = await web.CoreWebView2.ExecuteScriptAsync("window.__workbenchDraft ?? null");
                         if (draftJson != "null") await service.CallAsync("draft.save", JsonSerializer.Deserialize<JsonElement>(draftJson));
                     }
-                    result = await service.CallAsync("storage.relocate", new { path = chosenStorage });
+                    // 跨盘复制模型可能远超 120 秒；超时后服务端仍会完成迁移并冻结旧目录，宿主却不会提示重启。
+                    result = await service.CallAsync("storage.relocate", new { path = chosenStorage }, TimeSpan.FromHours(24));
                     storageRelocated = true;
                     HostLog.Write(service.Root, "storage.relocated");
                     break;

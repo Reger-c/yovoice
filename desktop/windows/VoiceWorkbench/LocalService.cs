@@ -170,12 +170,13 @@ public sealed class LocalService : IDisposable
         request.Headers.Add("Cookie", CookieName + "=" + Token);
         return request;
     }
-    public async Task<JsonElement> CallAsync(string method, object data)
+    // 默认 120 秒超时；迁移数据目录等同步复制大量文件的调用需由调用方放宽，与 macOS 宿主保持一致。
+    public async Task<JsonElement> CallAsync(string method, object data, TimeSpan? limit = null)
     {
         using var request = Request(HttpMethod.Post, "api/call");
         request.Content = new StringContent(ServiceWire.Request(method, data), Encoding.UTF8, "application/json");
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(stopped.Token);
-        timeout.CancelAfter(TimeSpan.FromSeconds(120));
+        timeout.CancelAfter(limit ?? TimeSpan.FromSeconds(120));
         using var response = await client.SendAsync(request, timeout.Token);
         response.EnsureSuccessStatusCode();
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(timeout.Token));

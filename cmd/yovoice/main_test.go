@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 	"yovoice/internal/audio"
@@ -203,5 +204,25 @@ func TestModelSpecificFlags(t *testing.T) {
 		if err := run(context.Background(), args, &out, &out); err == nil {
 			t.Fatal("应在访问文件或启动引擎前拒绝不匹配的参数", flags)
 		}
+	}
+}
+
+// 桌面应用迁移过数据目录后，命令行默认跟随新位置，而不是迁移后会被删除的 ~/.yovoice。
+func TestDefaultDataDirFollowsRelocation(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows 配置位于 APPDATA")
+	}
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	got, err := defaultDataDir()
+	if err != nil || got != filepath.Join(home, ".yovoice") {
+		t.Fatalf("未迁移时应为 ~/.yovoice: %q %v", got, err)
+	}
+	moved := filepath.Join(t.TempDir(), "data")
+	if err = store.WriteConfig(store.StorageConfig{DataPath: moved}); err != nil {
+		t.Fatal(err)
+	}
+	if got, err = defaultDataDir(); err != nil || got != moved {
+		t.Fatalf("迁移后应使用新目录: %q %v", got, err)
 	}
 }
