@@ -463,6 +463,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
         guard let data = try? JSONSerialization.data(withJSONObject: message), let json = String(data: data, encoding: .utf8) else { return }
         web.evaluateJavaScript("window.__workbenchReceive(\(json))", completionHandler: nil)
     }
+    private static let storageRestartRequired = "@yovoice.error.storageRestartRequired"
     private static func hostErrorMessage(_ error: Any?) -> String? {
         if let text = error as? String { return text }
         if let object = error as? [String: Any], let code = object["code"] as? String { return code }
@@ -530,7 +531,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
                     // 读取最新编辑内容，避免自动保存的防抖窗口丢失最后输入。
                     if !storageRelocated, let draft = try await web.evaluateJavaScript("window.__workbenchDraft ?? null") as? [String: Any] {
                         let saved = try await request("api/call", body: ["id": "exit-save", "method": "draft.save", "data": draft])
-                        if let error = Self.hostErrorMessage(saved["error"]) { throw failure(HostL10n.t("err.exitSave", error)) }
+                        // 迁移完成后旧目录冻结写入，此时保存必然失败且没有意义，不能因此挡住退出。
+                        if let error = Self.hostErrorMessage(saved["error"]), error != Self.storageRestartRequired { throw failure(HostL10n.t("err.exitSave", error)) }
                     }
                 }
                 // 先确认更新助手可启动，再关闭服务；失败时仍可继续使用应用。

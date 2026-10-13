@@ -75,6 +75,8 @@ public partial class MainWindow : Window
                     if (json != "null")
                     {
                         try { HostLog.Write(service.Root, "exit.save_started"); await service.CallAsync("draft.save", JsonSerializer.Deserialize<JsonElement>(json)); HostLog.Write(service.Root, "exit.save_completed"); }
+                        // 迁移完成后旧目录冻结写入，此时保存必然失败且没有意义，不能因此挡住退出。
+                        catch (ServiceCallException error) when (error.Code == ServiceCallException.StorageRestartRequired) { HostLog.Write(service.Root, "exit.save_skipped"); }
                         catch (Exception error)
                         {
                             HostLog.Write(service.Root, "exit.save_failed", error);
