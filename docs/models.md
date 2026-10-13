@@ -12,6 +12,7 @@ Choose a model based on whether you have a reference recording or want a built-i
 | Qwen3-TTS Base · 0.6B / 1.7B | Voice cloning | Reference audio; transcript optional |
 | Qwen3-TTS CustomVoice · 1.7B | Built-in voices with style instructions | Speaker ID; optional style description |
 | Qwen3-TTS VoiceDesign · 1.7B | Voice design | A voice description |
+| Breeze TTS 2 | Chinese and English voice design, cloning, and voice direction | A description is optional for designed voices; cloning requires reference audio and its full transcript; a GPU is recommended |
 | Kokoro | Lightweight built-in voices | Speaker ID; no reference audio |
 
 Use `yovoice models list --json` for model IDs, available precisions, file sizes, voices, and advanced parameter definitions. The app lists models in Settings. See the [CLI guide](cli.md) to download an engine and model.
@@ -23,9 +24,10 @@ yovoice generate --model index-2.5-q8 --text-file narration.txt --reference voic
 yovoice generate --model voxcpm2-q8 --text-file narration.txt --reference voice.wav --reference-text "The exact words spoken in the recording." --output vox.wav
 yovoice generate --model omnivoice-q8 --text-file narration.txt --reference voice.wav --reference-text "The exact words spoken in the recording." --output omni.wav
 yovoice generate --model qwen3-tts-base-0.6b-q8 --text-file narration.txt --reference voice.wav --output qwen.wav
+yovoice generate --model breeze-tts-2-q8 --text-file narration.txt --reference voice.wav --reference-text "The exact words spoken in the recording." --voice-description "Slightly faster, relaxed tone" --output breeze.wav
 ```
 
-For VoxCPM2, omit `--reference-text` for ordinary cloning. For Qwen3-TTS Base, adding an accurate transcript enables transcript-guided cloning. OmniVoice cloning always requires a matching transcript.
+For VoxCPM2, omit `--reference-text` for ordinary cloning. For Qwen3-TTS Base, adding an accurate transcript enables transcript-guided cloning. OmniVoice and Breeze TTS 2 cloning always require a matching transcript. For Breeze, `--voice-description` acts as voice direction when cloning: it keeps the voice and steers pace, emotion and tone.
 
 Use a clear recording with one speaker and little background noise. Reference audio must be 1–60 seconds and no larger than 20 MB.
 
@@ -34,6 +36,7 @@ Use a clear recording with one speaker and little background noise. Reference au
 ```sh
 yovoice generate --model voxcpm2-q8 --voice-description "A warm, calm adult narrator" --text-file narration.txt --output vox-design.wav
 yovoice generate --model omnivoice-q8 --voice-description "female, young adult, moderate pitch" --text-file narration.txt --output omni-design.wav
+yovoice generate --model breeze-tts-2-q8 --voice-description "A warm female voice, steady pace, clear diction" --text-file narration.txt --output breeze-design.wav
 yovoice generate --model qwen3-tts-voicedesign-q8 --voice-description "A deep, resonant adult narrator" --text-file narration.txt --output qwen-design.wav
 yovoice generate --model qwen3-tts-customvoice-q8 --speaker Ryan --voice-description "Speak softly and slowly" --language en --text-file narration.txt --output custom.wav
 ```
@@ -56,6 +59,17 @@ IndexTTS supports `--emotion-text`, `--emotion-reference`, or `--emotion-vector`
 VoxCPM2 uses voice descriptions for speed, emotion, and dialect. `--guidance-scale`, `--inference-steps`, and `--seed` provide additional control. Transcript-assisted cloning follows the reference performance instead of adding a design description.
 
 OmniVoice supports `--speed`, `--language`, `--guidance-scale`, and `--inference-steps`. Sound tags such as `[laughter]` and `[sigh]` can be inserted into the text. Qwen3-TTS supports `--language auto|zh|en|ja|ko|de|fr|ru|pt|es|it`.
+
+### Breeze TTS 2 and dragging speech
+
+Breeze TTS 2 sounds very natural, but its autoregressive decoder tends to drag, repeat, or trail off into long silence in the cases below. YoVoice adjusts its defaults accordingly:
+
+- **Chunks that are too long.** The model generates 12.5 frames per second with a 2048-frame official context. audio.cpp defaults to 600-character chunks and a 1500-frame (120 s) cap, so long Chinese chunks exceed the training length. YoVoice defaults to 160-character chunks and a 900-frame (about 72 s) cap per chunk; adjust `text_chunk_size` and `max_tokens` under Advanced settings.
+- **Non-bf16 inference.** The official implementation runs in bf16; fp32 activations drift into mispronunciation and repetition. YoVoice turns on the bf16 reference path on CUDA, Vulkan and Metal (about 20% slower on Metal). The CPU backend cannot use it and drags more often on long text, so a GPU is recommended.
+- **Reference audio and transcript.** Use 5–15 seconds of clean, non-looping speech without background noise, and a word-for-word transcript, including any repeats.
+- **Tuning order.** If it still drags, shorten chunks first (for example 80–120 characters), then lower `temperature` to 0.6–0.8. Raise `guidance_scale` to 3–4 to follow the description more closely (roughly doubles generation time). Describe pace and emotion in the same language as the text, for example "slightly faster, relaxed tone".
+
+For long text without reference audio, the v0.9.1 engine picks a voice for each chunk separately, so the voice may change between chunks. For a stable voice, design one on a short line, save it as a voice, and clone from it.
 
 The app shows supported options under Advanced settings. The CLI accepts repeated `--option KEY=JSON` values; query `models list --json` for each model's supported keys and limits:
 
@@ -108,4 +122,4 @@ Score projects and `yovoice score render` use the MuseScore General sound font (
 
 ## Licenses
 
-OmniVoice weights are licensed under CC-BY-NC for non-commercial use. IndexTTS has a separate [model license](../web/public/model-license.txt). Check the model publisher's license before using generated speech commercially.
+OmniVoice weights are licensed under CC-BY-NC for non-commercial use. Breeze TTS 2 weights use the [BreezeBlue Research and Non-Commercial License](https://huggingface.co/BreezeBlue/Breeze-TTS-2), and generated speech is not licensed for commercial use either. IndexTTS has a separate [model license](../web/public/model-license.txt). Check the model publisher's license before using generated speech commercially.

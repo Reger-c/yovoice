@@ -290,6 +290,75 @@
       "step": 0.01
     }
   ],
+  "breeze_tts": [
+    {
+      "key": "text_chunk_size",
+      "type": "number",
+      "default": 160,
+      "min": 20,
+      "max": 600,
+      "step": 1
+    },
+    {
+      "key": "text_chunk_mode",
+      "type": "select",
+      "default": "default",
+      "values": [
+        "default",
+        "tag_aware",
+        "japanese",
+        "endline"
+      ]
+    },
+    {
+      "key": "max_tokens",
+      "type": "number",
+      "default": 900,
+      "min": 50,
+      "max": 1500,
+      "step": 1
+    },
+    {
+      "key": "guidance_scale",
+      "type": "number",
+      "default": 1,
+      "min": 1,
+      "max": 5,
+      "step": 0.1
+    },
+    {
+      "key": "temperature",
+      "type": "number",
+      "default": 0.9,
+      "min": 0.05,
+      "max": 2,
+      "step": 0.05
+    },
+    {
+      "key": "depth_temperature",
+      "type": "number",
+      "default": 0.9,
+      "min": 0.05,
+      "max": 2,
+      "step": 0.05
+    },
+    {
+      "key": "top_k",
+      "type": "number",
+      "default": 50,
+      "min": 1,
+      "max": 200,
+      "step": 1
+    },
+    {
+      "key": "top_p",
+      "type": "number",
+      "default": 1,
+      "min": 0.01,
+      "max": 1,
+      "step": 0.01
+    }
+  ],
   "kokoro_tts": [
     {
       "key": "text_chunk_size",

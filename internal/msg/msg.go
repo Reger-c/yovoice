@@ -18,6 +18,7 @@ const (
 
 	ErrModelImportRequired      Code = "@yovoice.error.modelImportRequired"
 	ErrOmniReferenceRequired    Code = "@yovoice.error.omniReferenceRequired"
+	ErrBreezeReferenceRequired  Code = "@yovoice.error.breezeReferenceRequired"
 	ErrVoiceDescriptionRequired Code = "@yovoice.error.voiceDescriptionRequired"
 	ErrOmniAttributes           Code = "@yovoice.error.omniAttributes"
 	ErrSpeakerInvalid           Code = "@yovoice.error.speakerInvalid"
@@ -171,7 +172,7 @@ func All() []Code {
 	return []Code{ErrProjectPackage, ErrProjectPackageLimit, ErrTimelineImportDuration, ErrTimelineInvalid, ErrTimelineInUse, ErrSubtitleInvalid, ActivitySubtitle,
 		ErrVoiceInUse, ErrVoiceReferenced, ErrCharacterInvalid,
 		ErrModelImportRequired,
-		ErrOmniReferenceRequired,
+		ErrOmniReferenceRequired, ErrBreezeReferenceRequired,
 		ErrVoiceDescriptionRequired, ErrOmniAttributes, ErrSpeakerInvalid,
 		ActivityDownload, ActivityDownloading, ActivityVerifying, ActivityImport,
 		ActivityRuntimeDownload, ActivityRuntimeExtract, ActivityEngineStart,

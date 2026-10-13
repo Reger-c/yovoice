@@ -80,6 +80,22 @@ func Validate(d Draft) error {
 		}
 		return nil
 	}
+	if m.Family == "breeze_tts" {
+		if d.VoiceMode != "" && d.VoiceMode != "design" && d.VoiceMode != "clone" {
+			return msg.Err(msg.ErrModeInvalid, nil)
+		}
+		if TextLen(d.VoiceDescription) > 500 || TextLen(d.ReferenceText) > 2000 {
+			return msg.Err(msg.ErrDraftLimits, nil)
+		}
+		// 官方克隆模板要求参考音频的完整原文；原文缺失或不符时容易把参考内容续进正文、拖音或串词。
+		if d.VoiceMode == "clone" && strings.TrimSpace(d.ReferenceText) == "" {
+			return msg.Err(msg.ErrBreezeReferenceRequired, nil)
+		}
+		if d.Seed != nil && (*d.Seed < 0 || *d.Seed > 2147483647) {
+			return msg.Err(msg.ErrParamsOutOfRange, nil)
+		}
+		return nil
+	}
 	if m.Family == "voxcpm2" {
 		if d.VoxMode != "" && d.VoxMode != "design" && d.VoxMode != "clone" && d.VoxMode != "continuation" {
 			return msg.Err(msg.ErrVoxModeInvalid, nil)
@@ -182,7 +198,7 @@ func (d Draft) RequiresVoice() bool {
 	if err == nil && (m.Family == "kokoro_tts" || catalog.IsMusic(m.Family)) {
 		return false
 	}
-	if err == nil && m.Family == "omnivoice" {
+	if err == nil && (m.Family == "omnivoice" || m.Family == "breeze_tts") {
 		return d.VoiceMode == "clone"
 	}
 	if err == nil && m.Family == "qwen3_tts" {

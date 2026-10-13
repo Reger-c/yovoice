@@ -91,6 +91,33 @@ func BuildRequest(d schema.Draft, voice, emotion string) (map[string]any, error)
 		// 使用各引擎原生默认值，不透传 IndexTTS 的采样、情绪或语速参数。
 		return map[string]any{"model": "index", "request": r}, nil
 	}
+	if m.Family == "breeze_tts" {
+		o, _ := d.GenerationOptions(m.Family)
+		// Breeze TTS 2 以 12.5 帧/秒生成，官方上下文为 2048 帧；audio.cpp 默认每段 600 字、上限 1500 帧，
+		// 中文长段远超训练长度，容易拖音、重复到上限才停。默认改为短分段，并把单段上限压到约 72 秒。
+		if _, ok := o["text_chunk_size"]; !ok {
+			o["text_chunk_size"] = 160
+		}
+		if _, ok := o["max_tokens"]; !ok {
+			o["max_tokens"] = 900
+		}
+		if d.Seed != nil {
+			o["seed"] = *d.Seed
+		}
+		// 声音设计时描述音色，克隆时作为演绎指导（语速、情绪、语气）。
+		if description := strings.TrimSpace(d.VoiceDescription); description != "" {
+			o["instruction"] = description
+		}
+		r := map[string]any{"text": strings.TrimSpace(d.Text), "options": o}
+		if d.RequiresVoice() {
+			if voice == "" {
+				return nil, msg.Err(msg.ErrVoiceRequired, nil)
+			}
+			r["voice_ref"] = voice
+			o["reference_text"] = strings.TrimSpace(d.ReferenceText)
+		}
+		return map[string]any{"model": "index", "request": r}, nil
+	}
 	if m.Family == "voxcpm2" {
 		guidance, steps := d.GuidanceScale, d.InferenceSteps
 		if guidance == 0 {

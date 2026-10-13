@@ -28,7 +28,7 @@ import { ConfirmDelete } from '../shared/ui/app-dialog';
 import { call, isDesktop } from '../shared/lib/client';
 import { noticeMessage } from '../shared/lib/call-error';
 import { formatNotice } from '../shared/i18n/format';
-import { isKokoroModel, isVoiceModel, isReferenceModel, modelEngineReady, runtimeStatus, runtimeUsable, isVoxModel, requiresVoice, projectKind, createDraft, synthesisSettings, performanceSettings, cueSettings, normalizeDraft, type Character, type Draft, type EngineInfo, type State, type ModelPackage, type Voice, type Generation, type Track } from '../shared/workbench';
+import { isKokoroModel, isVoiceModel, isReferenceModel, isBreezeModel, modelEngineReady, runtimeStatus, runtimeUsable, isVoxModel, requiresVoice, projectKind, createDraft, synthesisSettings, performanceSettings, cueSettings, normalizeDraft, type Character, type Draft, type EngineInfo, type State, type ModelPackage, type Voice, type Generation, type Track } from '../shared/workbench';
 import { SidebarNav } from './sidebar-nav';
 import { Notifications } from './notifications';
 import { UpdateDialogHost } from '../features/update/update-dialog';
@@ -295,7 +295,7 @@ export function WorkbenchChrome({ state, catalog, engine, ready, session, error,
     <Notifications error={error} clearError={() => setError('')} activity={activity} draftId={draft.id} page={page} cancel={() => run(() => call('operation.cancel'))}
       aiTask={state.aiTask} aiTitle={state.drafts.find(item => item.id === state.aiTask?.projectId)?.title} openAITask={() => { const target = state.drafts.find(item => item.id === state.aiTask?.projectId); if (target) selectDraft(target); }}><UpdateNotice /></Notifications>
     <UpdateDialogHost />
-    {ready && !draft.subtitles && !instrumental && !isKokoroModel(draft.modelId) && !isVoxModel(draft.modelId) && !isReferenceModel(draft.modelId) && page === 'create' && !voicePicker && !pronunciation && !deleteTarget ? <SelectionAction key={draft.id} editor={editor} onEdit={annotate} /> : null}
+    {ready && !draft.subtitles && !instrumental && !isKokoroModel(draft.modelId) && !isVoxModel(draft.modelId) && !isReferenceModel(draft.modelId) && !isBreezeModel(draft.modelId) && page === 'create' && !voicePicker && !pronunciation && !deleteTarget ? <SelectionAction key={draft.id} editor={editor} onEdit={annotate} /> : null}
 
     {voiceTarget ? <VoiceTarget voice={voiceTarget} drafts={projectList} apply={applyToTarget} close={() => setVoiceTarget(null)} /> : null}
     {deleteTarget ? <ConfirmDelete title={t('@yovoice.app.deleteProjectTitle')} description={t('@yovoice.app.deleteProjectBody', { title: deleteTarget.title })}

@@ -1052,6 +1052,15 @@
   "@yovoice.vox.voiceDescriptionPlaceholder": {
     "defaultMessage": "如：温柔女声，舒缓语速；留空自然演绎"
   },
+  "@yovoice.breeze.voiceDescriptionPlaceholder": {
+    "defaultMessage": "如：温暖的女声，语速平稳，吐字清晰；留空自然演绎"
+  },
+  "@yovoice.breeze.instructionHelp": {
+    "defaultMessage": "可描述语速、情绪和语气，与正文使用同一种语言。正文中可插入 [笑]、[叹气]，英文用 (laugh)、(sigh)。"
+  },
+  "@yovoice.breeze.referenceTextHelp": {
+    "defaultMessage": "逐字填写参考音频说的内容，重复的话也要写上。参考音频宜为 5–15 秒、无背景噪声的干净人声。"
+  },
   "@yovoice.reference.transcript": {
     "defaultMessage": "参考音频原文（可选）"
   },
@@ -1063,6 +1072,9 @@
   },
   "@yovoice.settings.modelDesc.omni": {
     "defaultMessage": "多语言 · 声音设计与音色克隆"
+  },
+  "@yovoice.settings.modelDesc.breeze": {
+    "defaultMessage": "中文、英语 · 声音设计与音色克隆 · 建议使用显卡。模型许可仅限研究与非商业用途。"
   },
   "@yovoice.settings.modelDesc.qwen": {
     "defaultMessage": "10 种语言 · 参考音频克隆"
@@ -1105,6 +1117,9 @@
   },
   "@yovoice.options.top_p": {
     "defaultMessage": "Top P"
+  },
+  "@yovoice.options.depth_temperature": {
+    "defaultMessage": "细节解码温度"
   },
   "@yovoice.options.repetition_penalty": {
     "defaultMessage": "重复惩罚"
@@ -1378,6 +1393,9 @@
   },
   "@yovoice.error.omniReferenceRequired": {
     "defaultMessage": "OmniVoice 克隆需要填写参考音频原文。"
+  },
+  "@yovoice.error.breezeReferenceRequired": {
+    "defaultMessage": "Breeze TTS 2 克隆需要填写参考音频的完整原文。"
   },
   "@yovoice.reference.omniTranscriptHelp": {
     "defaultMessage": "原文须与参考音频一致。"
