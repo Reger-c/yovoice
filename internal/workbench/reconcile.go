@@ -13,10 +13,12 @@ type ReconcileReport struct {
 	Assets   int `json:"assets"`
 	Accepted int `json:"accepted"`
 	Previews int `json:"previews"`
+	// Links 为指向已删除角色或参考音频的设置引用。
+	Links int `json:"links"`
 }
 
 func (r ReconcileReport) changed() bool {
-	return r.Clips+r.Assets+r.Accepted+r.Previews > 0
+	return r.Clips+r.Assets+r.Accepted+r.Previews+r.Links > 0
 }
 
 // Reconcile 在启动时修复指向已不存在数据的引用。
@@ -52,6 +54,24 @@ func (w *Workbench) Reconcile() (ReconcileReport, error) {
 				missingAssets[d.ID][asset.ID] = true
 			}
 		}
+	}
+	voices, characters := map[string]bool{}, map[string]bool{}
+	for _, v := range s.Voices {
+		voices[v.ID] = true
+	}
+	for _, c := range s.Characters {
+		characters[c.ID] = true
+	}
+	// 悬空的音色引用在生成时只会报“缺少参考音频”且界面无法定位，清空后用户可直接重新选择。
+	unlink := func(settings *schema.SynthesisSettings) int {
+		n := 0
+		for _, ref := range []**string{&settings.VoiceID, &settings.EmotionVoiceID} {
+			if *ref != nil && **ref != "" && !voices[**ref] {
+				*ref = nil
+				n++
+			}
+		}
+		return n
 	}
 	missingPreviews := map[string]bool{}
 	for _, c := range s.Characters {
@@ -91,6 +111,27 @@ func (w *Workbench) Reconcile() (ReconcileReport, error) {
 				report.Accepted += accepted - len(t.AcceptedGenerations)
 			}
 		}
+		links := 0
+		for i := range state.Drafts {
+			d := &state.Drafts[i]
+			d.EachSettings(func(settings *schema.SynthesisSettings) { links += unlink(settings) })
+			if d.CharacterID != "" && !characters[d.CharacterID] {
+				links += detachCharacter(d, d.CharacterID)
+			}
+			if d.Subtitles != nil {
+				for _, speaker := range d.Subtitles.Speakers {
+					if speaker.CharacterID != "" && !characters[speaker.CharacterID] {
+						links += detachCharacter(d, speaker.CharacterID)
+					}
+				}
+			}
+		}
+		for i := range state.Characters {
+			state.Characters[i].EachSettings(func(settings *schema.SynthesisSettings) { links += unlink(settings) })
+		}
+		if count {
+			report.Links += links
+		}
 		for i := range state.Characters {
 			if missingPreviews[state.Characters[i].ID] {
 				state.Characters[i].Preview = nil
@@ -109,6 +150,35 @@ func (w *Workbench) Reconcile() (ReconcileReport, error) {
 	if err := w.Store.Update(func(state *schema.State) { fix(state, false) }, true); err != nil {
 		return report, err
 	}
-	diag.Log(w.Store.Root, "state.reconciled", "clips", report.Clips, "assets", report.Assets, "accepted", report.Accepted, "previews", report.Previews)
+	diag.Log(w.Store.Root, "state.reconciled", "clips", report.Clips, "assets", report.Assets, "accepted", report.Accepted, "previews", report.Previews, "links", report.Links)
 	return report, nil
+}
+
+func clearVoice(settings *schema.SynthesisSettings, id string) bool {
+	changed := false
+	if value(settings.VoiceID) == id {
+		settings.VoiceID, changed = nil, true
+	}
+	if value(settings.EmotionVoiceID) == id {
+		settings.EmotionVoiceID, changed = nil, true
+	}
+	return changed
+}
+
+// detachCharacter 解除作品及其说话人对角色的关联，保留已复制到作品内的合成设置。
+func detachCharacter(d *schema.Draft, id string) int {
+	n := 0
+	if d.CharacterID == id {
+		d.CharacterID = ""
+		n++
+	}
+	if d.Subtitles != nil {
+		for i := range d.Subtitles.Speakers {
+			if d.Subtitles.Speakers[i].CharacterID == id {
+				d.Subtitles.Speakers[i].CharacterID = ""
+				n++
+			}
+		}
+	}
+	return n
 }

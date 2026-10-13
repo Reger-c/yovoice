@@ -100,11 +100,14 @@ export async function previewCall<T>(method: string, data: unknown): Promise<T> 
       if (kind === 'outputs' && state.drafts.some(d => d.timeline?.tracks.some(t => t.clips.some(c => c.generationId === id)))) throw new CallError('@yovoice.timeline.inUse');
       if (kind === 'voices') {
         const uses = (s: SynthesisSettings) => s.voiceId === id || s.emotionVoiceId === id;
-        const draftUses = (d: Draft) => uses(d) || (d.performance && uses(d.performance.settings)) || d.subtitles?.speakers.some(s => s.settings && uses(s.settings)) || d.subtitles?.cues.some(c => c.performance && uses(c.performance.settings));
+        // 与服务端一致：所有说话人都有独立设置时，作品级设置与演绎快照不可见，不阻止删除，删除时一并清理。
+        const baseHidden = (d: Draft) => !!d.subtitles?.speakers.length && d.subtitles.speakers.every(s => s.settings);
+        const draftUses = (d: Draft) => (!baseHidden(d) && (uses(d) || (d.performance && uses(d.performance.settings)))) || d.subtitles?.speakers.some(s => s.settings && uses(s.settings)) || d.subtitles?.cues.some(c => c.performance && uses(c.performance.settings));
         const names = [...state.characters.filter(c => uses(c.settings) || c.performances?.some(p => uses(p.settings)) || (c.preview && uses(c.preview.settings))).map(c => c.name), ...state.drafts.filter(draftUses).map(d => d.title)];
         if (names.length) throw new CallError('@yovoice.error.voiceReferenced', { names: names.join(', ') });
         state.voices = state.voices.filter(v => v.id !== id);
-        state.drafts = state.drafts.map(d => ({ ...d, voiceId: d.voiceId === id ? null : d.voiceId, emotionVoiceId: d.emotionVoiceId === id ? null : d.emotionVoiceId }));
+        const clear = <T extends SynthesisSettings>(s: T): T => ({ ...s, voiceId: s.voiceId === id ? null : s.voiceId, emotionVoiceId: s.emotionVoiceId === id ? null : s.emotionVoiceId });
+        state.drafts = state.drafts.map(d => ({ ...clear(d), performance: d.performance && { ...d.performance, settings: clear(d.performance.settings) } }));
         state.history = state.history.map(g => ({ ...g, settings: { ...g.settings, voiceId: g.settings.voiceId === id ? null : g.settings.voiceId, emotionVoiceId: g.settings.emotionVoiceId === id ? null : g.settings.emotionVoiceId } }));
       } else state.history = state.history.filter(v => v.id !== id);
       if (item && ![...state.voices, ...state.history].some(v => v.fileName === item.fileName)) await blobDelete(item.fileName);

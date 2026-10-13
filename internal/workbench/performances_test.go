@@ -98,8 +98,9 @@ func TestCharacterPerformancesAndCueSnapshots(t *testing.T) {
 	imported, err := w.ImportProject(archive)
 	must(t, err)
 	p := imported.Subtitles.Cues[1].Performance
-	if p.Name != "愤怒" || value(p.Settings.EmotionVoiceID) == emotion.ID {
-		t.Fatal("演绎归档未保留或素材未重映射")
+	// 同一工作区内重复导入时，内容相同的演绎素材复用原音色。
+	if p.Name != "愤怒" || value(p.Settings.EmotionVoiceID) != emotion.ID {
+		t.Fatal("演绎归档未保留或素材未复用")
 	}
 	if _, err = w.MediaFile("voices", value(p.Settings.EmotionVoiceID)); err != nil {
 		t.Fatal("演绎素材未导入", err)

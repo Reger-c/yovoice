@@ -481,3 +481,65 @@ func TestForgetModelDeletesOnlyDownloadedFiles(t *testing.T) {
 		t.Fatal("用户导入的模型文件必须保留", err)
 	}
 }
+
+func TestVoiceDeletionIgnoresHiddenSubtitleDefaults(t *testing.T) {
+	w, err := New(t.TempDir())
+	must(t, err)
+	defer w.Close()
+	v := schema.Voice{ID: schema.NewID(), Name: "旧音色", FileName: "old.wav", Duration: 1}
+	keep := schema.Voice{ID: schema.NewID(), Name: "说话人音色", FileName: "keep.wav", Duration: 1}
+	for _, f := range []string{v.FileName, keep.FileName} {
+		must(t, os.WriteFile(filepath.Join(w.Store.Root, "voices", f), wav(), 0600))
+	}
+	d := schema.DefaultDraft()
+	d.VoiceID = ptr(v.ID)
+	speaker := d.SynthesisSettings
+	speaker.VoiceID = ptr(keep.ID)
+	d.Kind = "subtitle"
+	d.Subtitles = &schema.SubtitleDocument{Speakers: []schema.SubtitleSpeaker{{ID: "s", Settings: &speaker}}, Cues: []schema.SubtitleCue{{ID: "one", Start: 0, End: 1000, Text: "你好", SpeakerID: "s"}}}
+	must(t, w.Store.Update(func(s *schema.State) {
+		s.Voices = []schema.Voice{v, keep}
+		s.Drafts = []schema.Draft{d}
+	}, true))
+	// 作品级设置被说话人覆盖后界面不可见，不能阻止删除；删除后清理悬空引用。
+	must(t, w.DeleteMedia("voices", v.ID))
+	if got := w.Store.Read().Drafts[0]; got.VoiceID != nil || value(got.Subtitles.Speakers[0].Settings.VoiceID) != keep.ID {
+		t.Fatal("隐藏引用未清理或误清可见设置")
+	}
+	if err = w.DeleteMedia("voices", keep.ID); err == nil {
+		t.Fatal("允许删除说话人正在使用的音色")
+	}
+}
+
+func TestCharacterDeletionAndReconcileDetachLinks(t *testing.T) {
+	w, err := New(t.TempDir())
+	must(t, err)
+	defer w.Close()
+	c := schema.Character{ID: schema.NewID(), Name: "旁白"}
+	d := schema.DefaultDraft()
+	d.CharacterID = c.ID
+	speaker := d.SynthesisSettings
+	d.Subtitles = &schema.SubtitleDocument{Speakers: []schema.SubtitleSpeaker{{ID: "s", CharacterID: c.ID, Settings: &speaker}}}
+	must(t, w.Store.Update(func(s *schema.State) {
+		s.Characters = []schema.Character{c}
+		s.Drafts = []schema.Draft{d}
+	}, true))
+	must(t, w.DeleteCharacter(c.ID))
+	got := w.Store.Read().Drafts[0]
+	if got.CharacterID != "" || got.Subtitles.Speakers[0].CharacterID != "" || got.Subtitles.Speakers[0].Settings == nil {
+		t.Fatal("删除角色后作品仍指向角色或丢失设置")
+	}
+	// 历史数据里遗留的悬空角色和音色引用在启动自检时清理。
+	ghost := schema.NewID()
+	must(t, w.Store.Update(func(s *schema.State) {
+		s.Drafts[0].CharacterID = schema.NewID()
+		s.Drafts[0].Subtitles.Speakers[0].Settings.VoiceID = ptr(ghost)
+		s.Characters = []schema.Character{{ID: schema.NewID(), Name: "残留", Settings: schema.SynthesisSettings{EmotionVoiceID: ptr(ghost)}}}
+	}, true))
+	report, err := w.Reconcile()
+	must(t, err)
+	state := w.Store.Read()
+	if report.Links != 3 || state.Drafts[0].CharacterID != "" || state.Drafts[0].Subtitles.Speakers[0].Settings.VoiceID != nil || state.Characters[0].Settings.EmotionVoiceID != nil {
+		t.Fatal("悬空引用未清理", report)
+	}
+}

@@ -138,13 +138,9 @@ func (w *Workbench) DeleteMedia(kind, id string) error {
 			s.History = slices.DeleteFunc(s.History, func(v schema.Generation) bool { return v.ID == id })
 		} else {
 			s.Voices = slices.DeleteFunc(s.Voices, func(v schema.Voice) bool { return v.ID == id })
+			// 可见引用已在前面阻止删除，这里清理的是被说话人设置覆盖的隐藏引用，避免留下悬空 ID。
 			for i := range s.Drafts {
-				if value(s.Drafts[i].VoiceID) == id {
-					s.Drafts[i].VoiceID = nil
-				}
-				if value(s.Drafts[i].EmotionVoiceID) == id {
-					s.Drafts[i].EmotionVoiceID = nil
-				}
+				s.Drafts[i].EachSettings(func(settings *schema.SynthesisSettings) { clearVoice(settings, id) })
 			}
 			for i := range s.History {
 				if value(s.History[i].Settings.VoiceID) == id {

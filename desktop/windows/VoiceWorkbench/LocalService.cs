@@ -112,13 +112,40 @@ public sealed class LocalService : IDisposable
     {
         try
         {
-            using var log = new StreamWriter(Path.Combine(Root, "logs", "host-service.log"), true);
-            while (await running.StandardError.ReadLineAsync() is { } line) { await log.WriteLineAsync(line); await log.FlushAsync(); }
+            // 与 macOS 一致：每次启动保留上一轮日志为 .1，单轮超过 5MB 时轮转，避免日志无限增长。
+            const long limit = 5 * 1024 * 1024;
+            string path = Path.Combine(Root, "logs", "host-service.log");
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            var log = OpenServiceLog(path);
+            long size = log.BaseStream.Length;
+            try
+            {
+                while (await running.StandardError.ReadLineAsync() is { } line)
+                {
+                    if (size >= limit)
+                    {
+                        await log.DisposeAsync();
+                        log = OpenServiceLog(path);
+                        size = 0;
+                    }
+                    await log.WriteLineAsync(line);
+                    await log.FlushAsync();
+                    size += Encoding.UTF8.GetByteCount(line) + Environment.NewLine.Length;
+                }
+            }
+            finally { await log.DisposeAsync(); }
             await running.WaitForExitAsync();
             HostLog.Write(Root, "service.exited:" + running.ExitCode);
             if (!stopped.IsCancellationRequested) Failed?.Invoke("本地服务已停止，请退出后重新打开应用。");
         }
         catch (Exception error) when (error is IOException or ObjectDisposedException or InvalidOperationException) { }
+    }
+    // 轮转失败（例如日志正被外部程序占用）时退回追加写入，不能因此停止读取 stderr，否则服务会被管道阻塞。
+    private static StreamWriter OpenServiceLog(string path)
+    {
+        try { if (File.Exists(path)) File.Move(path, path + ".1", true); }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { Debug.WriteLine(error); }
+        return new StreamWriter(path, true);
     }
     private HttpRequestMessage Request(HttpMethod method, string path)
     {

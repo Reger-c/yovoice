@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -54,6 +55,7 @@ func New(root string) (store *Store, err error) {
 				return nil, e
 			}
 			diag.Log(root, "state.recovered", "source", "state.backup.json")
+			pruneCorrupt(root, keepCorrupt)
 			s.state = recovered
 			if e = writeState(filepath.Join(root, "state.json"), recovered); e != nil {
 				return nil, e
@@ -429,4 +431,17 @@ func CleanupPrevious(root string) (removed string, err error) {
 		return "", e
 	}
 	return previous, forget()
+}
+
+// keepCorrupt 限制损坏状态快照数量：保留最近几份用于排查，避免反复损坏时无限占用空间。
+const keepCorrupt = 3
+
+func pruneCorrupt(root string, keep int) {
+	files, _ := filepath.Glob(filepath.Join(root, "state.corrupt-*.json"))
+	// 文件名带纳秒时间戳，字典序即时间序。
+	slices.Sort(files)
+	for len(files) > keep {
+		_ = os.Remove(files[0])
+		files = files[1:]
+	}
 }
