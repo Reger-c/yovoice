@@ -376,7 +376,14 @@ func run(ctx context.Context, args []string, out, progress io.Writer) error {
 		if e := start(); e != nil {
 			return e
 		}
-		return waitOperation(ctx, w, progress)
+		return waitOperation(ctx, w, progress, func(s schema.State) *schema.Activity { return s.Activity })
+	}
+	// 模型下载与导入记录在独立的 ModelActivity 中。
+	waitModel := func(start func() error) error {
+		if e := start(); e != nil {
+			return e
+		}
+		return waitOperation(ctx, w, progress, func(s schema.State) *schema.Activity { return s.ModelActivity })
 	}
 	var result any
 	switch command {
@@ -393,7 +400,7 @@ func run(ctx context.Context, args []string, out, progress io.Writer) error {
 	case "voices import":
 		result, err = w.ImportVoice(ctx, operand, name)
 	case "models import":
-		err = wait(func() error { return w.ImportModel(operand) })
+		err = waitModel(func() error { return w.ImportModel(operand) })
 		result = w.Store.Read().Models
 	case "setup":
 		p := w.Store.Read().Preferences
@@ -406,7 +413,7 @@ func run(ctx context.Context, args []string, out, progress io.Writer) error {
 		p := w.Store.Read().Preferences
 		p.DownloadSource = source
 		if err = w.SavePreferences(p); err == nil {
-			err = wait(func() error { return w.DownloadModel(operand) })
+			err = waitModel(func() error { return w.DownloadModel(operand) })
 		}
 		result = w.Store.Read().Models
 	case "generate":
@@ -457,7 +464,7 @@ func run(ctx context.Context, args []string, out, progress io.Writer) error {
 }
 
 // 订阅前后都读取状态，避免短任务结束时丢失通知；取消会等待核心收尾。
-func waitOperation(ctx context.Context, w *workbench.Workbench, out io.Writer) error {
+func waitOperation(ctx context.Context, w *workbench.Workbench, out io.Writer, activity func(schema.State) *schema.Activity) error {
 	events, unsubscribe := w.Store.Subscribe()
 	defer unsubscribe()
 	ticker := time.NewTicker(time.Second)
@@ -468,7 +475,7 @@ func waitOperation(ctx context.Context, w *workbench.Workbench, out io.Writer) e
 			w.Close()
 			return err
 		}
-		a := w.Store.Read().Activity
+		a := activity(w.Store.Read())
 		if a == nil {
 			return fmt.Errorf("操作未启动")
 		}

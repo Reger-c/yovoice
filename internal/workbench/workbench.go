@@ -25,13 +25,17 @@ type Workbench struct {
 	// 持有期间不执行转码、下载或推理等耗时操作。锁顺序：先 edit 后 mu。
 	edit sync.Mutex
 	// mu 保护后台操作的取消函数与完成通道。
-	mu        sync.Mutex
-	cancel    context.CancelFunc
-	done      chan struct{}
-	closed    bool
-	closeOnce sync.Once
-	engine    *engine.Engine
-	client    *http.Client
+	// cancel/done 是占用推理引擎的主操作（生成、内核安装、迁移）；installCancel/installDone 是模型下载与导入，
+	// 二者互不阻塞，下载大模型时仍可用已安装的模型生成。
+	mu            sync.Mutex
+	cancel        context.CancelFunc
+	done          chan struct{}
+	installCancel context.CancelFunc
+	installDone   chan struct{}
+	closed        bool
+	closeOnce     sync.Once
+	engine        *engine.Engine
+	client        *http.Client
 	// bundled 记录随安装包分发的内核，键为后端；启动时登记，之后只读。
 	bundled         map[string]bundledRuntime
 	ai              aiState
@@ -69,11 +73,31 @@ func (w *Workbench) begin(kind string, code msg.Code, params msg.Params, modelID
 	return err
 }
 
+// installKind 判断操作是否属于模型安装：下载与导入只写模型目录，不占用推理引擎。
+func installKind(kind string) bool { return kind == "download" || kind == "import" }
+
+// activitySlot 返回操作在状态中的位置。
+func activitySlot(s *schema.State, kind string) **schema.Activity {
+	if installKind(kind) {
+		return &s.ModelActivity
+	}
+	return &s.Activity
+}
+
+// slot 返回操作所用的取消函数与完成通道，调用方须持有 mu。
+func (w *Workbench) slot(kind string) (*context.CancelFunc, *chan struct{}) {
+	if installKind(kind) {
+		return &w.installCancel, &w.installDone
+	}
+	return &w.cancel, &w.done
+}
+
 // start 启动后台操作并返回本次操作的完成通道，调用方据此等待，不会误等后续操作。
 func (w *Workbench) start(kind string, code msg.Code, params msg.Params, modelID *string, action func(context.Context) error, requestIDs ...string) (<-chan struct{}, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if w.closed || w.cancel != nil {
+	slotCancel, slotDone := w.slot(kind)
+	if w.closed || *slotCancel != nil {
 		return nil, msg.Err(msg.ErrBusy, nil)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -82,14 +106,15 @@ func (w *Workbench) start(kind string, code msg.Code, params msg.Params, modelID
 		if len(requestIDs) > 0 {
 			requestID = requestIDs[0]
 		}
-		s.Activity = &schema.Activity{RequestID: requestID, Kind: kind, Code: code, Params: params, Status: "running", ModelID: modelID, StartedAt: time.Now().UTC()}
+		a := &schema.Activity{RequestID: requestID, Kind: kind, Code: code, Params: params, Status: "running", ModelID: modelID, StartedAt: time.Now().UTC()}
 		if len(requestIDs) > 1 {
 			if requestID == "" {
-				s.Activity.ProjectID = requestIDs[1]
+				a.ProjectID = requestIDs[1]
 			} else {
-				s.Activity.CharacterID = requestIDs[1]
+				a.CharacterID = requestIDs[1]
 			}
 		}
+		*activitySlot(s, kind) = a
 	}, true); e != nil {
 		cancel()
 		return nil, e
@@ -98,9 +123,9 @@ func (w *Workbench) start(kind string, code msg.Code, params msg.Params, modelID
 	started := time.Now()
 	fields := []any{"operation_id", operationID, "kind", kind, "model_id", value(modelID), "related_ids", requestIDs}
 	diag.Log(w.Store.Root, "operation.started", fields...)
-	w.cancel = cancel
+	*slotCancel = cancel
 	done := make(chan struct{})
-	w.done = done
+	*slotDone = done
 	go func() {
 		defer close(done)
 		defer cancel()
@@ -115,7 +140,10 @@ func (w *Workbench) start(kind string, code msg.Code, params msg.Params, modelID
 		w.mu.Lock()
 		defer w.mu.Unlock()
 		update := func(s *schema.State) {
-			a := s.Activity
+			a := *activitySlot(s, kind)
+			if a == nil {
+				return
+			}
 			if err == nil {
 				a.Code = msg.ActivityCompleted
 				a.Params = nil
@@ -135,7 +163,7 @@ func (w *Workbench) start(kind string, code msg.Code, params msg.Params, modelID
 				a.Status = "failed"
 				a.Code = msg.ActivityFailed
 				a.Params = nil
-				if ce, ok := err.(*msg.CallError); ok && ce != nil {
+				if ce, ok := msg.Classify(err).(*msg.CallError); ok && ce != nil {
 					a.ErrorCode = &ce.Code
 					a.ErrorParams = ce.Params
 				} else {
@@ -151,13 +179,18 @@ func (w *Workbench) start(kind string, code msg.Code, params msg.Params, modelID
 		if e := w.Store.Update(update, true); e != nil {
 			_ = w.Store.Update(func(s *schema.State) {
 				update(s)
-				s.Activity.Status = "failed"
-				code := msg.ErrStateSaveFailed
-				s.Activity.ErrorCode = &code
-				s.Activity.ErrorParams = msg.Params{"detail": e.Error()}
+				if a := *activitySlot(s, kind); a != nil {
+					a.Status = "failed"
+					code, params := msg.ErrStateSaveFailed, msg.Params{"detail": e.Error()}
+					if ce, ok := msg.Classify(e).(*msg.CallError); ok {
+						code, params = ce.Code, ce.Params
+					}
+					a.ErrorCode = &code
+					a.ErrorParams = params
+				}
 			}, false)
 		}
-		w.cancel = nil
+		*slotCancel = nil
 	}()
 	return done, nil
 }
@@ -174,6 +207,18 @@ func (w *Workbench) Done() <-chan struct{} {
 	return w.done
 }
 
+// ModelDone 返回当前模型下载或导入的完成信号；没有进行中的安装时返回已关闭的通道。
+func (w *Workbench) ModelDone() <-chan struct{} {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.installDone == nil {
+		closed := make(chan struct{})
+		close(closed)
+		return closed
+	}
+	return w.installDone
+}
+
 func (w *Workbench) Cancel() {
 	diag.Log(w.Store.Root, "operation.cancel_requested")
 	w.mu.Lock()
@@ -182,19 +227,33 @@ func (w *Workbench) Cancel() {
 		w.cancel()
 	}
 }
+
+// CancelModel 暂停模型下载或取消导入，不影响正在进行的生成。
+func (w *Workbench) CancelModel() {
+	diag.Log(w.Store.Root, "model.cancel_requested")
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.installCancel != nil {
+		w.installCancel()
+	}
+}
 func (w *Workbench) Close() {
 	w.closeOnce.Do(func() {
 		diag.Log(w.Store.Root, "service.stopping")
 		defer diag.Log(w.Store.Root, "service.stopped")
 		w.mu.Lock()
 		w.closed = true
-		if w.cancel != nil {
-			w.cancel()
+		for _, cancel := range []context.CancelFunc{w.cancel, w.installCancel} {
+			if cancel != nil {
+				cancel()
+			}
 		}
-		done := w.done
+		done, installDone := w.done, w.installDone
 		w.mu.Unlock()
-		if done != nil {
-			<-done
+		for _, ch := range []chan struct{}{done, installDone} {
+			if ch != nil {
+				<-ch
+			}
 		}
 		w.stopAI()
 		w.engine.Stop()
@@ -203,12 +262,23 @@ func (w *Workbench) Close() {
 }
 
 func (w *Workbench) progress(code msg.Code, params msg.Params, received, total int64) {
+	w.progressOf("generate", code, params, received, total)
+}
+
+// progressOf 更新指定类别操作的进度，仅在内存中广播。
+func (w *Workbench) progressOf(kind string, code msg.Code, params msg.Params, received, total int64) {
 	_ = w.Store.Update(func(s *schema.State) {
-		if s.Activity != nil {
-			s.Activity.Code = code
-			s.Activity.Params = params
-			s.Activity.Received = received
-			s.Activity.Total = total
+		if a := *activitySlot(s, kind); a != nil {
+			a.Code = code
+			a.Params = params
+			a.Received = received
+			a.Total = total
 		}
 	}, false)
+}
+
+// installing 判断某个模型是否正在下载或导入；正在替换文件的模型不能同时用于生成。
+func installing(s schema.State, id string) bool {
+	a := s.ModelActivity
+	return a != nil && a.Status == "running" && a.ModelID != nil && *a.ModelID == id
 }

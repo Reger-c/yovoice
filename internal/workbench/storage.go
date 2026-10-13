@@ -92,7 +92,7 @@ func (w *Workbench) RelocateStorage(targetPath string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	w.mu.Lock()
-	if w.closed || w.cancel != nil {
+	if w.closed || w.cancel != nil || w.installCancel != nil {
 		w.mu.Unlock()
 		return msg.Err(msg.ErrBusy, nil)
 	}
@@ -186,6 +186,7 @@ func (w *Workbench) RelocateStorage(targetPath string) error {
 		snapshot.Runtimes[backend] = installed
 	}
 	snapshot.Activity = nil
+	snapshot.ModelActivity = nil
 	if err := store.WriteState(filepath.Join(targetPath, "state.json"), snapshot); err != nil {
 		cleanupTarget()
 		return fmt.Errorf("写入新目录状态失败: %w", err)

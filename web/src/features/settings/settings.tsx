@@ -25,7 +25,7 @@ const aiTimeouts = [60, 120, 300, 600, 1200, 1800];
 export function Settings({ state, catalog, engine, draft, run, focus }: { focus?: { tab: string; modelId: string; request: number }; state: State; catalog: ModelPackage[]; engine: EngineInfo; draft: Draft; run: (task: () => Promise<unknown>) => void }) {
   const t = useTranslator();
   const [license, setLicense] = useState<string | null>(null);
-  const [tab, setTab] = useState('general'); const busy = state.activity?.status === 'running';
+  const [tab, setTab] = useState('general'); const busy = state.activity?.status === 'running'; const modelBusy = state.modelActivity?.status === 'running';
   useEffect(() => { if (focus) setTab(focus.tab); }, [focus]);
   useEffect(() => {
     if (!focus || (tab !== 'models' && tab !== 'soundfonts')) return;
@@ -71,7 +71,7 @@ export function Settings({ state, catalog, engine, draft, run, focus }: { focus?
           <Switch label={t('@yovoice.settings.proxyEnabled')} isLabelHidden value={proxyEnabled} isLoading={savingProxy} isDisabled={savingProxy || (!proxyEnabled && !proxyURL.trim())} onChange={enabled => saveProxy(enabled)} />
         </SettingsRow>
       </SettingsGroup>
-      <StorageSettings state={state} run={run} busy={busy} />
+      <StorageSettings state={state} run={run} busy={busy || modelBusy} />
       <SettingsGroup title={t('@yovoice.settings.aiGroup')}>
         <SettingsRow label={t('@yovoice.settings.aiTimeout')} hint={t('@yovoice.settings.aiTimeoutHint')}>
           <Selector size="sm" label={t('@yovoice.settings.aiTimeout')} isLabelHidden value={String(preferences.aiTimeout || aiTimeoutDefault)} width="calc(var(--spacing-10) * 5)"
@@ -91,11 +91,11 @@ export function Settings({ state, catalog, engine, draft, run, focus }: { focus?
           <Selector size="sm" label={t('@yovoice.settings.downloadSource')} isLabelHidden value={preferences.downloadSource} options={[{ value: 'modelscope', label: t('@yovoice.settings.source.modelscope') }, { value: 'huggingface', label: t('@yovoice.settings.source.huggingface') }, { value: 'mirror', label: t('@yovoice.settings.source.mirror') }]} onChange={downloadSource => run(() => call('preferences.save', { ...preferences, downloadSource }))} width="calc(var(--spacing-10) * 5)" className="download-source" />
         </SettingsRow>
         <SettingsRow className="settings-directory" label={t('@yovoice.settings.modelDirectory')} hint={<span className="model-path" onPointerEnter={overflowTitle}>{preferences.modelDirectory ?? t('@yovoice.settings.defaultDirectory')}</span>}>
-          <Button size="sm" label={t('@yovoice.settings.changeLocation')} icon={<FolderCog size={16} />} isDisabled={busy} onClick={() => run(() => call('model.directory'))} />
+          <Button size="sm" label={t('@yovoice.settings.changeLocation')} icon={<FolderCog size={16} />} isDisabled={modelBusy} onClick={() => run(() => call('model.directory'))} />
           <Button size="sm" label={t('@yovoice.settings.openFolder')} icon={<FolderOpen size={16} />} onClick={() => run(() => call('model.directory.open'))} />
         </SettingsRow>
         <SettingsRow label={t('@yovoice.settings.importLocal')} hint={t('@yovoice.settings.importLocalHint')}>
-          <Button size="sm" label={t('@yovoice.settings.importGguf')} icon={<FilePlus size={16} />} isDisabled={busy} onClick={() => run(() => call('model.import'))} />
+          <Button size="sm" label={t('@yovoice.settings.importGguf')} icon={<FilePlus size={16} />} isDisabled={modelBusy} onClick={() => run(() => call('model.import'))} />
         </SettingsRow>
       </SettingsGroup>
       <ModelGroups models={catalog.filter(model => model.family !== 'soundfont')} state={state} draft={draft} run={run} />

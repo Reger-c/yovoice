@@ -79,16 +79,8 @@ func New(root string) (store *Store, err error) {
 		}
 	}
 
-	if s.state.Activity != nil && s.state.Activity.Status == "running" {
-		s.state.Activity.Status = "interrupted"
-		s.state.Activity.Code = msg.ActivityInterrupted
-		s.state.Activity.Params = nil
-		s.state.Activity.ErrorCode = nil
-		s.state.Activity.ErrorParams = nil
-	} else if s.state.Activity != nil && (s.state.Activity.Code == "" || s.state.Activity.Status == "failed") {
-		// 失败提示属于上次会话，重启后不再冒充本次操作的错误。
-		s.state.Activity = nil
-	}
+	s.state.Activity = settleActivity(s.state.Activity)
+	s.state.ModelActivity = settleActivity(s.state.ModelActivity)
 	// Legacy state.json without uiLocale defaults to zh-CN. Brand-new installs stay empty so the web can persist navigator.language.
 	if s.state.Preferences.UiLocale == "" && fromFile {
 		s.state.Preferences.UiLocale = schema.UiLocaleZhCN
@@ -102,6 +94,25 @@ func New(root string) (store *Store, err error) {
 		_ = os.Remove(file)
 	}
 	return s, nil
+}
+
+// settleActivity 整理上次会话遗留的操作：运行中的标记为中断，失败提示属于上次会话，重启后不再冒充本次操作的错误。
+func settleActivity(a *schema.Activity) *schema.Activity {
+	if a == nil {
+		return nil
+	}
+	if a.Status == "running" {
+		a.Status = "interrupted"
+		a.Code = msg.ActivityInterrupted
+		a.Params = nil
+		a.ErrorCode = nil
+		a.ErrorParams = nil
+		return a
+	}
+	if a.Code == "" || a.Status == "failed" {
+		return nil
+	}
+	return a
 }
 func clone(s schema.State) schema.State {
 	b, _ := json.Marshal(s)

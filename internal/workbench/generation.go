@@ -146,6 +146,9 @@ func (w *Workbench) startGeneration(d schema.Draft, previewID, cueID, clipID str
 		if e = modelEngineReady(s, part.model.ID); e != nil {
 			return nil, e
 		}
+		if installing(s, part.model.ID) {
+			return nil, msg.Err(msg.ErrBusy, nil)
+		}
 	}
 	if saveDraft {
 		if e = w.saveDraft(original); e != nil {

@@ -15,10 +15,13 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 	"yovoice/internal/audio"
 	"yovoice/internal/catalog"
+	"yovoice/internal/diag"
 	"yovoice/internal/msg"
 	"yovoice/internal/platform"
 	"yovoice/internal/schema"
@@ -35,7 +38,32 @@ type Engine struct {
 }
 
 func New(root string) *Engine {
+	ReapOrphan(root)
 	return &Engine{root: root, client: &http.Client{Transport: &http.Transport{Proxy: nil}}}
+}
+
+func pidPath(root string) string { return filepath.Join(root, "runtime", "engine.pid") }
+
+// ReapOrphan 结束上次服务异常退出后残留的推理进程：它仍占用显存和端口，Windows 上还会锁住内核文件。
+// 只结束命令行包含本数据目录 server.json 的进程，避免误杀 PID 被复用的其他程序；
+// 数据目录由 service.lock 独占，此时不可能有其他服务正在使用这个推理进程。
+func ReapOrphan(root string) {
+	path := pidPath(root)
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return
+	}
+	defer os.Remove(path)
+	pid, err := strconv.Atoi(strings.TrimSpace(string(b)))
+	if err != nil || pid <= 1 || pid == os.Getpid() {
+		return
+	}
+	command, err := platform.ProcessCommand(pid)
+	if err != nil || !strings.Contains(command, filepath.Join(root, "runtime", "server.json")) {
+		return
+	}
+	platform.KillGroup(pid)
+	diag.Log(root, "engine.orphan_killed", "pid", pid)
 }
 func (e *Engine) Stop() {
 	e.mu.Lock()
@@ -50,6 +78,7 @@ func (e *Engine) stop() {
 		<-e.done
 		e.process = nil
 		e.key = ""
+		_ = os.Remove(pidPath(e.root))
 	}
 }
 func (e *Engine) start(ctx context.Context, executable, model string, definition catalog.ModelPackage, backend string, encoderSamples int, progress func(msg.Code, msg.Params)) error {
@@ -125,12 +154,13 @@ func (e *Engine) start(ctx context.Context, executable, model string, definition
 		}
 	}
 	platform.ConfigureProcess(c)
-	out, err := os.Create(filepath.Join(e.root, "logs", "engine.log.out"))
+	// 推理日志追加写入，崩溃后重试重新启动引擎时，上一轮的出错原因仍保留在同一文件中。
+	out, err := diag.OpenProcessLog(filepath.Join(e.root, "logs", "engine.log.out"), "engine "+family)
 	if err != nil {
 		return err
 	}
 	defer out.Close()
-	stderr, err := os.Create(filepath.Join(e.root, "logs", "engine.log"))
+	stderr, err := diag.OpenProcessLog(filepath.Join(e.root, "logs", "engine.log"), "engine "+family)
 	if err != nil {
 		return err
 	}
@@ -140,6 +170,11 @@ func (e *Engine) start(ctx context.Context, executable, model string, definition
 	if err = c.Start(); err != nil {
 		return err
 	}
+	// 服务崩溃或被强制结束时不能留下推理进程：Windows 绑定作业对象，其他系统记录 PID 供下次启动清理。
+	if err := platform.TieToParent(c); err != nil {
+		diag.Log(e.root, "engine.tie_failed", "error", diag.Error(err))
+	}
+	_ = os.WriteFile(pidPath(e.root), []byte(strconv.Itoa(c.Process.Pid)), 0600)
 	e.process = c
 	e.done = make(chan error, 1)
 	done := e.done

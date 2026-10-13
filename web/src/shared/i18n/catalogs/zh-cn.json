@@ -2915,7 +2915,22 @@
   "@yovoice.error.dataRootMissing": {
     "defaultMessage": "数据目录已不存在或无法访问：{path}。如果在外置磁盘上请重新连接；目录被删除时请退出后重新打开 yovoice 选择处理方式。"
   },
+  "@yovoice.error.diskFull": {
+    "defaultMessage": "磁盘空间不足，内容未能保存。请清理磁盘空间，或在“设置 › 常规 › 存储”中清理残留、把数据目录迁移到空间更大的磁盘后重试。"
+  },
   "@yovoice.error.storageRestartRequired": {
     "defaultMessage": "数据目录已迁移，请完全退出 yovoice 并重新打开后再继续操作。"
+  },
+  "@yovoice.app.pageError.title": {
+    "defaultMessage": "这个页面出错了"
+  },
+  "@yovoice.app.pageError.body": {
+    "defaultMessage": "其他页面不受影响，出错原因已记录到日志。可以重试，或重新加载窗口；已保存的作品不会丢失。"
+  },
+  "@yovoice.app.pageError.retry": {
+    "defaultMessage": "重试"
+  },
+  "@yovoice.app.pageError.reload": {
+    "defaultMessage": "重新加载"
   }
 }

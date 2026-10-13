@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="yovoice" Icon="Resources/AppIcon.ico" Width="1440" Height="920"
-        MinWidth="840" MinHeight="640" Background="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"
+        MinWidth="960" MinHeight="640" Background="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"
         WindowStartupLocation="CenterScreen" FontFamily="Segoe UI, Microsoft YaHei UI" FontSize="14">
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome CaptionHeight="40" ResizeBorderThickness="6" GlassFrameThickness="0" CornerRadius="0" UseAeroCaptionButtons="False" />
@@ -118,22 +118,22 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <StackPanel Orientation="Horizontal">
-                <Button Style="{StaticResource CaptionButton}" Width="36" Click="ShowWindowMenu_Click" ToolTip="yovoice" AutomationProperties.Name="yovoice 窗口菜单">
+                <Button x:Name="WindowMenuButton" Style="{StaticResource CaptionButton}" Width="36" Click="ShowWindowMenu_Click" ToolTip="yovoice" AutomationProperties.Name="yovoice 窗口菜单">
                     <Image Source="Resources/AppIcon.ico" Width="18" Height="18" />
                 </Button>
-                <Button Style="{StaticResource CaptionButton}" Width="36" Click="ToggleSidebar_Click" ToolTip="切换侧栏" AutomationProperties.Name="切换侧栏">
+                <Button x:Name="ToggleSidebarButton" Style="{StaticResource CaptionButton}" Width="36" Click="ToggleSidebar_Click" ToolTip="切换侧栏" AutomationProperties.Name="切换侧栏">
                     <Path Data="M 2,1 L 14,1 Q 16,1 16,3 L 16,13 Q 16,15 14,15 L 2,15 Q 0,15 0,13 L 0,3 Q 0,1 2,1 M 5,1 L 5,15"
                           Stroke="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" StrokeThickness="1" Width="16" Height="16" />
                 </Button>
                 <Menu VerticalAlignment="Center" Background="Transparent" shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                    <MenuItem Header="文件">
-                        <MenuItem Header="退出 yovoice" Click="ExitMenu_Click" />
+                    <MenuItem x:Name="FileMenu" Header="文件">
+                        <MenuItem x:Name="ExitMenu" Header="退出 yovoice" Click="ExitMenu_Click" />
                     </MenuItem>
-                    <MenuItem Header="视图">
-                        <MenuItem Header="切换侧栏" Click="ToggleSidebar_Click" />
+                    <MenuItem x:Name="ViewMenu" Header="视图">
+                        <MenuItem x:Name="ToggleSidebarMenu" Header="切换侧栏" Click="ToggleSidebar_Click" />
                         <MenuItem x:Name="ToggleInspectorMenu" Header="切换右侧面板" Click="ToggleInspector_Click" IsEnabled="False" />
                     </MenuItem>
-                    <MenuItem Header="帮助">
+                    <MenuItem x:Name="HelpMenu" Header="帮助">
                         <MenuItem x:Name="CheckUpdatesMenu" Header="检查更新…" />
                     </MenuItem>
                 </Menu>
@@ -143,13 +143,13 @@
                     <Path Data="M 2,1 L 14,1 Q 16,1 16,3 L 16,13 Q 16,15 14,15 L 2,15 Q 0,15 0,13 L 0,3 Q 0,1 2,1 M 11,1 L 11,15"
                           Stroke="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}" StrokeThickness="1" Width="16" Height="16" />
                 </Button>
-                <Button Style="{StaticResource CaptionButton}" Click="Minimize_Click" ToolTip="最小化" AutomationProperties.Name="最小化">
+                <Button x:Name="MinimizeButton" Style="{StaticResource CaptionButton}" Click="Minimize_Click" ToolTip="最小化" AutomationProperties.Name="最小化">
                     <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE921;" />
                 </Button>
                 <Button x:Name="MaximizeButton" Style="{StaticResource CaptionButton}" Click="Maximize_Click" ToolTip="最大化" AutomationProperties.Name="最大化">
                     <TextBlock x:Name="MaximizeGlyph" FontFamily="Segoe MDL2 Assets" Text="&#xE922;" />
                 </Button>
-                <Button Style="{StaticResource CaptionButton}" Click="Close_Click" ToolTip="关闭" AutomationProperties.Name="关闭">
+                <Button x:Name="CloseButton" Style="{StaticResource CaptionButton}" Click="Close_Click" ToolTip="关闭" AutomationProperties.Name="关闭">
                     <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8BB;" />
                 </Button>
             </StackPanel>

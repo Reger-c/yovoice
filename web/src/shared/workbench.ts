@@ -101,7 +101,7 @@ export interface CleanupReport {
 export interface Preferences { downloadSource: string; backend: string; modelDirectory: string | null; uiLocale: UiLocale; proxyURL?: string; proxyEnabled?: boolean; aiTimeout?: number }
 export interface State {
   characters: Character[]; previews: CharacterPreview[]; drafts: Draft[]; voices: Voice[]; models: InstalledModel[]; history: Generation[];
-  preferences: Preferences; runtimePath: string | null; runtimeBackend: string | null; runtimeVersion: string | null; runtimes?: Record<string, { path: string; version: string }>; activity: Activity | null;
+  preferences: Preferences; runtimePath: string | null; runtimeBackend: string | null; runtimeVersion: string | null; runtimes?: Record<string, { path: string; version: string }>; activity: Activity | null; modelActivity?: Activity | null;
   aiProviders?: AIProvider[]; aiProviderID?: string; aiTask?: AITask;
 }
 
@@ -129,7 +129,7 @@ export const createDraft = (example = false, locale: UiLocale = 'zh-CN', modelId
   intervalSilenceMs: 200, doSample: true, numBeams: 3, lengthPenalty: 0, seed: null,
 };
 };
-export const emptyState = (): State => ({ characters: [], previews: [], drafts: [createDraft(true)], voices: [], models: [], history: [], preferences: { downloadSource: 'modelscope', backend: 'cpu', modelDirectory: null, uiLocale: 'zh-CN' }, runtimePath: null, runtimeBackend: null, runtimeVersion: null, activity: null });
+export const emptyState = (): State => ({ characters: [], previews: [], drafts: [createDraft(true)], voices: [], models: [], history: [], preferences: { downloadSource: 'modelscope', backend: 'cpu', modelDirectory: null, uiLocale: 'zh-CN' }, runtimePath: null, runtimeBackend: null, runtimeVersion: null, activity: null, modelActivity: null });
 // version 是推荐安装的 audio.cpp 版本，minimum 是当前应用可用的最低版本。
 export interface EngineInfo { version: string; minimum: string }
 // 服务未报告版本要求（如浏览器预览）时不做限制。

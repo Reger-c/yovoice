@@ -278,17 +278,48 @@ func TestDownloadAndArchives(t *testing.T) {
 func TestOperationCancellation(t *testing.T) {
 	w, e := New(t.TempDir())
 	must(t, e)
+	must(t, w.begin("runtime", msg.ActivityRuntimeDownload, nil, nil, func(ctx context.Context) error { <-ctx.Done(); return ctx.Err() }))
+	if e = w.begin("generate", msg.ActivityGenerate, nil, nil, func(context.Context) error { return nil }); e == nil {
+		t.Fatal("允许并发主操作")
+	}
+	// 模型下载使用独立槽位，可与主操作同时进行，且取消互不影响。
 	must(t, w.begin("download", msg.ActivityDownload, nil, ptr("index-2-q8"), func(ctx context.Context) error { <-ctx.Done(); return ctx.Err() }))
-	if e = w.begin("runtime", msg.ActivityRuntimeDownload, nil, nil, func(context.Context) error { return nil }); e == nil {
-		t.Fatal("允许并发操作")
+	if e = w.begin("import", msg.ActivityImport, nil, nil, func(context.Context) error { return nil }); e == nil {
+		t.Fatal("允许并发模型安装")
+	}
+	w.CancelModel()
+	<-w.ModelDone()
+	s := w.Store.Read()
+	if s.ModelActivity.Status != "cancelled" || s.ModelActivity.Code != msg.ActivityPaused || value(s.ModelActivity.ModelID) != "index-2-q8" || s.Activity.Status != "running" {
+		t.Fatal(s.Activity, s.ModelActivity)
 	}
 	w.Cancel()
-	w.Close()
-	s := w.Store.Read()
-	if s.Activity.Status != "cancelled" || value(s.Activity.ModelID) != "index-2-q8" {
+	<-w.Done()
+	if s = w.Store.Read(); s.Activity.Status != "cancelled" {
 		t.Fatal(s.Activity)
 	}
 	w.Close()
+}
+
+// 下载未安装的模型时仍可用已安装的模型生成；正在重新下载的模型不能同时生成。
+func TestGenerateDuringModelDownload(t *testing.T) {
+	w, e := New(t.TempDir())
+	must(t, e)
+	defer w.Close()
+	must(t, w.begin("download", msg.ActivityDownload, nil, ptr("voxcpm2-q8"), func(ctx context.Context) error { <-ctx.Done(); return ctx.Err() }))
+	s := w.Store.Read()
+	if installing(s, "index-2-q8") || !installing(s, "voxcpm2-q8") {
+		t.Fatal("安装中的模型判断错误")
+	}
+	must(t, w.begin("generate", msg.ActivityGenerate, nil, nil, func(context.Context) error { return nil }))
+	<-w.Done()
+	if s = w.Store.Read(); s.Activity.Status != "completed" || s.ModelActivity.Status != "running" {
+		t.Fatal(s.Activity, s.ModelActivity)
+	}
+	// 迁移数据目录需要所有操作都结束。
+	if e = w.RelocateStorage(t.TempDir()); e == nil {
+		t.Fatal("下载中不应允许迁移数据目录")
+	}
 }
 
 // 子进程模拟真实 audio.cpp 协议，验证启动、复用和取消时的进程清理。
@@ -320,7 +351,7 @@ func TestForgetModelDuringDownload(t *testing.T) {
 	must(t, w.begin("download", msg.ActivityDownload, nil, ptr("voxcpm2-q8"), func(ctx context.Context) error { <-ctx.Done(); return ctx.Err() }))
 	err = w.ForgetModel("index-2-q8")
 	must(t, err)
-	if len(w.Store.Read().Models) != 1 || w.Store.Read().Activity.Status != "running" {
+	if len(w.Store.Read().Models) != 1 || w.Store.Read().ModelActivity.Status != "running" {
 		t.Fatal("移除其他模型不能影响下载")
 	}
 	if _, err = os.Stat(path); err != nil {
@@ -329,8 +360,8 @@ func TestForgetModelDuringDownload(t *testing.T) {
 	if err = w.ForgetModel("voxcpm2-q8"); err == nil {
 		t.Fatal("不能移除正在下载的模型")
 	}
-	w.Cancel()
-	<-w.Done()
+	w.CancelModel()
+	<-w.ModelDone()
 	must(t, w.begin("generate", msg.ActivityGenerate, nil, nil, func(ctx context.Context) error { <-ctx.Done(); return ctx.Err() }))
 	if err = w.ForgetModel("voxcpm2-q8"); err == nil {
 		t.Fatal("生成期间应保护模型")
@@ -350,5 +381,47 @@ func TestPackageRoot(t *testing.T) {
 	must(t, os.WriteFile(filepath.Join(root, "sidecars", "config.json"), []byte("{}"), 0600))
 	if packageRoot(m, main) != root {
 		t.Fatal("文件齐全时应返回模型目录")
+	}
+}
+
+// 更换到已有模型的目录时，按下载布局自动登记完整的模型，不完整的忽略。
+func TestSetModelDirectoryAdoptsModels(t *testing.T) {
+	w, err := New(t.TempDir())
+	must(t, err)
+	defer w.Close()
+	dir := t.TempDir()
+	var single, multi *catalog.ModelPackage
+	for i := range catalog.Models {
+		m := &catalog.Models[i]
+		if len(m.Files) == 0 && single == nil {
+			single = m
+		} else if len(m.Files) > 0 && multi == nil {
+			multi = m
+		}
+	}
+	if single == nil || multi == nil {
+		t.Skip("目录清单缺少单文件或多文件模型")
+	}
+	sparse := func(path string, size int64) {
+		must(t, os.MkdirAll(filepath.Dir(path), 0700))
+		f, err := os.Create(path)
+		must(t, err)
+		must(t, f.Truncate(size))
+		must(t, f.Close())
+	}
+	sparse(filepath.Join(dir, filepath.Base(single.RemotePath)), single.Size)
+	// 多文件模型缺一个文件，不应登记。
+	for _, f := range multi.Files[1:] {
+		sparse(filepath.Join(dir, multi.Directory, filepath.FromSlash(f.Path)), f.Size)
+	}
+	must(t, w.SetModelDirectory(dir))
+	models := w.Store.Read().Models
+	if len(models) != 1 || models[0].ID != single.ID || !models[0].Managed {
+		t.Fatalf("应只登记完整的单文件模型: %+v", models)
+	}
+	sparse(filepath.Join(dir, multi.Directory, filepath.FromSlash(multi.Files[0].Path)), multi.Files[0].Size)
+	must(t, w.SetModelDirectory(dir))
+	if len(w.Store.Read().Models) != 2 {
+		t.Fatalf("文件齐全的多文件模型应登记: %+v", w.Store.Read().Models)
 	}
 }
