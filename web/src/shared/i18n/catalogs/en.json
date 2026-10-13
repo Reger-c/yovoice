@@ -2880,7 +2880,7 @@
     "defaultMessage": "Data directory"
   },
   "@yovoice.settings.storageRelocateHint": {
-    "defaultMessage": "Changing the location copies all data to the new directory. It takes effect after you fully quit yovoice (on Windows, quit from the system tray) and reopen it; the old directory is then removed automatically to free up space."
+    "defaultMessage": "Changing the location copies all data to the new folder. When it finishes, yovoice restarts automatically to apply it, and the old folder is then deleted to free space."
   },
   "@yovoice.settings.storageRelocatePending": {
     "defaultMessage": "Data has been copied to the new location. Please fully quit and reopen yovoice to take effect. New changes cannot be saved until then, and the old directory is removed automatically after the restart."

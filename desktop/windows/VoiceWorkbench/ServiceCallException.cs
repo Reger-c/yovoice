@@ -6,7 +6,9 @@ namespace VoiceWorkbench.Desktop;
 // 跨过 JsonDocument 生命周期保留原始错误，交给前端按当前语言显示。
 public sealed class ServiceCallException : IOException
 {
+    public const string StorageRestartRequired = "@yovoice.error.storageRestartRequired";
     public JsonElement Wire { get; }
+    public string Code => Wire.ValueKind == JsonValueKind.Object && Wire.TryGetProperty("code", out var value) && value.ValueKind == JsonValueKind.String ? value.GetString()! : "";
 
     public ServiceCallException(JsonElement wire) : base(Describe(wire)) => Wire = wire.Clone();
 

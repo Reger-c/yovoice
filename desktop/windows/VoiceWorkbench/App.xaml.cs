@@ -4,14 +4,25 @@ using System.Windows;
 namespace VoiceWorkbench.Desktop;
 public partial class App : Application
 {
+    public const string RelaunchArgument = "--relaunch";
     private Mutex? instance;
+    private bool owned;
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
-        instance = new Mutex(true, "Local\\VoiceWorkbench.Desktop", out bool created);
-        if (!created) { AppDialog.Show(null, "yovoice 已在运行", "请点击系统托盘中的 yovoice 图标打开窗口。"); Shutdown(); return; }
+        instance = new Mutex(false, "Local\\VoiceWorkbench.Desktop");
+        // 自动重启时旧实例仍在保存和关停服务，等待其释放单实例锁，而不是提示“已在运行”。
+        var wait = e.Args.Contains(RelaunchArgument) ? TimeSpan.FromSeconds(60) : TimeSpan.Zero;
+        try { owned = instance.WaitOne(wait); }
+        catch (AbandonedMutexException) { owned = true; }
+        if (!owned) { AppDialog.Show(null, "yovoice 已在运行", "请点击系统托盘中的 yovoice 图标打开窗口。"); Shutdown(); return; }
         try { new MainWindow().Show(); }
         catch (Exception error) { AppDialog.Show(null, "无法启动 yovoice", error.Message); Shutdown(1); }
     }
-    protected override void OnExit(ExitEventArgs e) { instance?.Dispose(); base.OnExit(e); }
+    protected override void OnExit(ExitEventArgs e)
+    {
+        if (owned) instance?.ReleaseMutex();
+        instance?.Dispose();
+        base.OnExit(e);
+    }
 }
