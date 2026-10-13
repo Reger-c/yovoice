@@ -21,6 +21,8 @@ export function useDraftSession(ready: boolean, state: State, onError: (message:
   // 只有最后一次保存完成时才清除“保存中”。
   const saveSequence = useRef(0);
 
+  // window.__workbenchDraft 只在存在未落盘的修改时有值：原生宿主退出或迁移前据此补存最后的输入，
+  // 已保存时为空，避免在设置页等没有改动的场景下退出也去写作品（数据目录不可写时会挡住退出）。
   useEffect(() => {
     if (!ready || deleting || !draftPersisted) return;
     window.__workbenchDraft = draft;
@@ -28,7 +30,7 @@ export function useDraftSession(ready: boolean, state: State, onError: (message:
     setSaving(true); setSaveFailed(false); const sequence = ++saveSequence.current;
     const timer = saveTimer.current = setTimeout(() => {
       pendingSave.current = pendingSave.current.catch(() => {}).then(() => call('draft.save', draft));
-      void pendingSave.current.then(() => { if (sequence === saveSequence.current) setSaving(false); }).catch(e => { setSaveFailed(true); setSaving(false); onError(noticeMessage(e)); });
+      void pendingSave.current.then(() => { if (sequence === saveSequence.current) { setSaving(false); if (window.__workbenchDraft === draft) window.__workbenchDraft = undefined; } }).catch(e => { setSaveFailed(true); setSaving(false); onError(noticeMessage(e)); });
     }, 350);
     return () => clearTimeout(timer);
   }, [draft, ready, deleting, draftPersisted, onError]);
@@ -40,7 +42,7 @@ export function useDraftSession(ready: boolean, state: State, onError: (message:
     clearTimeout(saveTimer.current); const sequence = ++saveSequence.current;
     setSaving(true); setSaveFailed(false);
     pendingSave.current = pendingSave.current.catch(() => {}).then(() => call('draft.save', next));
-    try { await pendingSave.current; setDraftPersisted(true); if (sequence === saveSequence.current) setSaving(false); }
+    try { await pendingSave.current; setDraftPersisted(true); if (sequence === saveSequence.current) { setSaving(false); window.__workbenchDraft = undefined; } }
     catch (error) { setSaving(false); setSaveFailed(true); throw error; }
   }
 
@@ -53,7 +55,8 @@ export function useDraftSession(ready: boolean, state: State, onError: (message:
       if (deleteTarget.id === draft.id) {
         const next = state.drafts.find(item => item.id !== draft.id);
         const replacement = next ?? createDraft(false, state.preferences.uiLocale, state.models[0]?.id ?? 'index-2.5-q8');
-        window.__workbenchDraft = replacement; setDraft(replacement); setDraftPersisted(!!next);
+        // 替换作品要么在下面立即保存，要么是尚未写入的空白新作品，退出时都无需补存。
+        window.__workbenchDraft = undefined; setDraft(replacement); setDraftPersisted(!!next);
         if (next) await call('draft.save', next);
       }
       await call('draft.delete', { id: deleteTarget.id });
