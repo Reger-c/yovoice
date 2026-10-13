@@ -228,6 +228,52 @@
     "sha256": "f4cebcd68023a2db7c3fc8d52d1d28eafb22d4e3b7a64e12c4f946a300536f86"
   },
   {
+    "id": "breeze-tts-2-q8",
+    "name": "Breeze TTS 2",
+    "family": "breeze_tts",
+    "version": "2",
+    "task": "tts",
+    "engineMinimum": "v0.9.1",
+    "sessionOptions": {
+      "breeze_tts.bf16_activations": "on"
+    },
+    "precision": "Q8",
+    "remotePath": "Breeze-TTS-2-GGUF/breeze-tts-2-q8_0.gguf",
+    "size": 5079668352,
+    "sha256": "0de52d61560f9f6b2dfeca79f9100f8fce0c2b17c52ec30622e23e150df1ad88"
+  },
+  {
+    "id": "breeze-tts-2-q4",
+    "name": "Breeze TTS 2",
+    "family": "breeze_tts",
+    "version": "2",
+    "task": "tts",
+    "engineMinimum": "v0.9.1",
+    "sessionOptions": {
+      "breeze_tts.bf16_activations": "on"
+    },
+    "precision": "Q4",
+    "remotePath": "Breeze-TTS-2-GGUF/breeze-tts-2-q4_0.gguf",
+    "size": 3794799296,
+    "sha256": "b1c2467ac542d9ba05ad0e7bd331b09137f3752f1be2d3c491bd1b2045df6767",
+    "revision": "f861648c0c1f4da9f18e9a0ce5e217b0679bb2f5"
+  },
+  {
+    "id": "breeze-tts-2-bf16",
+    "name": "Breeze TTS 2",
+    "family": "breeze_tts",
+    "version": "2",
+    "task": "tts",
+    "engineMinimum": "v0.9.1",
+    "sessionOptions": {
+      "breeze_tts.bf16_activations": "on"
+    },
+    "precision": "BF16",
+    "remotePath": "Breeze-TTS-2-GGUF/breeze-tts-2-bf16.gguf",
+    "size": 7342916800,
+    "sha256": "a00c9f678b4c5ae03d1dcd228f636b329352cda200823faef4e01d3bd97c0a89"
+  },
+  {
     "id": "kokoro-82m-q8",
     "name": "Kokoro-82M 1.0 Official",
     "family": "kokoro_tts",

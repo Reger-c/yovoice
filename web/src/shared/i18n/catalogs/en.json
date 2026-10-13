@@ -1052,6 +1052,15 @@
   "@yovoice.vox.voiceDescriptionPlaceholder": {
     "defaultMessage": "e.g. gentle female voice, relaxed pace; leave blank for natural delivery"
   },
+  "@yovoice.breeze.voiceDescriptionPlaceholder": {
+    "defaultMessage": "e.g. A warm female voice, steady pace, clear diction; leave empty for a natural read"
+  },
+  "@yovoice.breeze.instructionHelp": {
+    "defaultMessage": "Describe pace, emotion and tone in the same language as the text. Insert (laugh) or (sigh) in English text, [笑] or [叹气] in Chinese."
+  },
+  "@yovoice.breeze.referenceTextHelp": {
+    "defaultMessage": "Type exactly what the reference audio says, including any repeats. Use 5–15 seconds of clean speech without background noise."
+  },
   "@yovoice.reference.transcript": {
     "defaultMessage": "Reference transcript (optional)"
   },
@@ -1063,6 +1072,9 @@
   },
   "@yovoice.settings.modelDesc.omni": {
     "defaultMessage": "Multilingual · Voice design and cloning"
+  },
+  "@yovoice.settings.modelDesc.breeze": {
+    "defaultMessage": "Chinese, English · voice design and cloning · GPU recommended. Model license allows research and non-commercial use only."
   },
   "@yovoice.settings.modelDesc.qwen": {
     "defaultMessage": "10 languages · Reference voice cloning"
@@ -1105,6 +1117,9 @@
   },
   "@yovoice.options.top_p": {
     "defaultMessage": "Top P"
+  },
+  "@yovoice.options.depth_temperature": {
+    "defaultMessage": "Depth decoder temperature"
   },
   "@yovoice.options.repetition_penalty": {
     "defaultMessage": "Repetition penalty"
@@ -1378,6 +1393,9 @@
   },
   "@yovoice.error.omniReferenceRequired": {
     "defaultMessage": "OmniVoice cloning requires the reference transcript."
+  },
+  "@yovoice.error.breezeReferenceRequired": {
+    "defaultMessage": "Breeze TTS 2 cloning requires the full reference transcript."
   },
   "@yovoice.reference.omniTranscriptHelp": {
     "defaultMessage": "The transcript must match the reference audio."

@@ -12,6 +12,7 @@
 | Qwen3-TTS Base 0.6B / 1.7B | 参考克隆、带原文克隆、无原文纯音色克隆、语言、主/子解码器采样、种子、长文分段 | 必须参考音频；有原文时必须与参考音频一致 |
 | Qwen3-TTS 1.7B CustomVoice | 9 种内置音色、文字风格/情绪、语言、主/子解码器采样、种子、长文分段 | 不使用外部参考音频 |
 | Qwen3-TTS 1.7B VoiceDesign | 自然语言声音设计、语言、主/子解码器采样、种子、长文分段 | 必须填写声音描述，不使用外部参考音频 |
+| Breeze TTS 2 | 自然语言声音设计、参考克隆、克隆时演绎指导、CFG、主/细节解码器采样、种子、长文分段、单段生成上限、正文 [笑]/(laugh) 等声音事件 | 中英；克隆必须提供逐字原文；需要 v0.9.1 内核，建议 GPU；权重仅限非商业 |
 
 此处覆盖语音生成能力，并非 audio.cpp 的全部底层调优开关。图内存、运行时重量化、缓存槽位、调试用噪声文件等引擎参数继续使用默认值，不作为声音设置展示。训练、微调、ASR、对齐及批量训练数据处理不属于此 TTS 接入。
 
@@ -53,6 +54,9 @@ Windows/Linux 后端选择见 [引擎与模型下载](setup.md)。精度影响�
 | `qwen3-tts-base-0.6b-bf16` | Qwen3-TTS 0.6B Base | BF16 | 2.52 GB |
 | `qwen3-tts-voicedesign-q8` | Qwen3-TTS 1.7B VoiceDesign | Q8 | 2.82 GB |
 | `qwen3-tts-voicedesign-bf16` | Qwen3-TTS 1.7B VoiceDesign | BF16 | 4.18 GB |
+| `breeze-tts-2-q4` | Breeze TTS 2 | Q4 | 3.79 GB |
+| `breeze-tts-2-q8` | Breeze TTS 2 | Q8 | 5.08 GB |
+| `breeze-tts-2-bf16` | Breeze TTS 2 | BF16 | 7.34 GB |
 
 ## 调用方式
 
@@ -158,6 +162,21 @@ yovoice generate --model qwen3-tts-customvoice-q8 --speaker Ryan --text-file nar
 | `subtalker_top_k` | 子解码器 Top K | `50` | 1–200 |
 | `subtalker_top_p` | 子解码器 Top P | `1` | 0.01–1 |
 
+### breeze_tts
+
+| 参数 | 含义 | 默认值 | 可用范围 |
+| --- | --- | --- | --- |
+| `text_chunk_size` | 长文分段字数 | `160` | 20–600 |
+| `text_chunk_mode` | 分段方式 | `"default"` | default, tag_aware, japanese, endline |
+| `max_tokens` | 单段最大生成帧数（12.5 帧/秒） | `900` | 50–1500 |
+| `guidance_scale` | 引导强度（1 为关闭 CFG） | `1` | 1–5 |
+| `temperature` | 温度 | `0.9` | 0.05–2 |
+| `depth_temperature` | 细节解码温度 | `0.9` | 0.05–2 |
+| `top_k` | Top K | `50` | 1–200 |
+| `top_p` | Top P | `1` | 0.01–1 |
+
+Breeze TTS 2 用 `--voice-mode design|clone` 选择方式（有参考音频时默认克隆），`--voice-description` 在设计时描述音色、克隆时作为演绎指导。拖音时先缩短 `text_chunk_size`，再降低 `temperature`；CPU 后端无法使用 bf16 参考路径，长文更容易拖音。
+
 VoxCPM2 的 `stateless` 适合普通文本或参考克隆长文，跨段风格延续应保留默认 `continuation`。VoxCPM2 的 CFG 和步数继续用 `--guidance-scale`、`--inference-steps`，与 App 控件一致。
 
 ## 上游依据
@@ -166,4 +185,5 @@ VoxCPM2 的 `stateless` 适合普通文本或参考克隆长文，跨段风格�
 - [audio.cpp VoxCPM2 文档（v0.9.1）](https://github.com/0xShug0/audio.cpp/blob/v0.9.1/docs/tts.md#voxcpm2)
 - [audio.cpp OmniVoice 文档（v0.9.1）](https://github.com/0xShug0/audio.cpp/blob/v0.9.1/docs/models/omnivoice.md)
 - [audio.cpp Qwen3 文档（v0.9.1）](https://github.com/0xShug0/audio.cpp/blob/v0.9.1/docs/models/qwen3.md)
+- [audio.cpp BreezeTTS 2 文档（v0.9.1）](https://github.com/0xShug0/audio.cpp/blob/v0.9.1/docs/models/breeze_tts.md)
 - [Qwen 官方模型与说话人](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice)

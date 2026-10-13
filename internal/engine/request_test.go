@@ -255,3 +255,55 @@ func TestMusicRequest(t *testing.T) {
 		}
 	}
 }
+
+func TestBreezeRequest(t *testing.T) {
+	d := schema.DefaultDraft()
+	d.ModelID = "breeze-tts-2-q8"
+	d.Text = " 你好，世界。\n"
+	d.VoiceDescription = "温暖的女声，语速平稳"
+	// IndexTTS 的采样参数不能泄漏到 Breeze 请求中。
+	d.Mode = "reference"
+	d.Language = "ja"
+	p, err := BuildRequest(d, "voice.wav", "emotion.wav")
+	must(t, err)
+	r := p["request"].(map[string]any)
+	o := r["options"].(map[string]any)
+	if r["text"] != "你好，世界。" || r["voice_ref"] != nil || o["instruction"] != d.VoiceDescription || o["text_chunk_size"] != 160 || o["max_tokens"] != 900 || len(o) != 3 {
+		t.Fatal(r)
+	}
+	// 克隆需要参考音频和原文；描述作为演绎指导一并传入，用户设置的分段覆盖默认值。
+	d.VoiceMode = "clone"
+	d.ReferenceText = " 参考原文 "
+	d.ModelOptions = map[string]map[string]any{"breeze_tts": {"text_chunk_size": float64(80), "guidance_scale": float64(3)}}
+	seed := 7
+	d.Seed = &seed
+	if !d.RequiresVoice() {
+		t.Fatal("克隆应要求参考音频")
+	}
+	p, err = BuildRequest(d, "voice.wav", "")
+	must(t, err)
+	r = p["request"].(map[string]any)
+	o = r["options"].(map[string]any)
+	if r["voice_ref"] != "voice.wav" || o["reference_text"] != "参考原文" || o["instruction"] != d.VoiceDescription || o["text_chunk_size"] != float64(80) || o["guidance_scale"] != float64(3) || o["seed"] != seed {
+		t.Fatal(r)
+	}
+	if _, err = BuildRequest(d, "", ""); err == nil {
+		t.Fatal("克隆缺少参考音频时应报错")
+	}
+	for _, patch := range []func(*schema.Draft){
+		func(d *schema.Draft) { d.ReferenceText = " " },
+		func(d *schema.Draft) { d.VoiceMode = "continuation" },
+		func(d *schema.Draft) {
+			d.ModelOptions = map[string]map[string]any{"breeze_tts": {"text_chunk_size": float64(0)}}
+		},
+		func(d *schema.Draft) {
+			d.ModelOptions = map[string]map[string]any{"breeze_tts": {"max_tokens": float64(2000)}}
+		},
+	} {
+		invalid := d
+		patch(&invalid)
+		if schema.Validate(invalid) == nil {
+			t.Fatal("应拒绝无效参数", invalid)
+		}
+	}
+}

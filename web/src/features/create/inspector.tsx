@@ -14,7 +14,8 @@ import { useTranslator } from '@astryxdesign/core/i18n';
 import { ChevronUp, ChevronRight, LoaderCircle } from 'lucide-react';
 import { ReferenceControls } from './reference-controls';
 import { VoxControls } from './vox-controls';
-import { isVoiceModel, isReferenceModel, isVoxModel, formatTime, type Draft, type Mode, type State, type ModelPackage } from '../../shared/workbench';
+import { BreezeControls } from './breeze-controls';
+import { isVoiceModel, isReferenceModel, isVoxModel, isBreezeModel, formatTime, type Draft, type Mode, type State, type ModelPackage } from '../../shared/workbench';
 import type { Track } from '../../shared/workbench';
 import { formatActivity } from '../../shared/i18n/format';
 
@@ -91,7 +92,7 @@ export function Inspector({ draft, state, catalog, change, chooseVoice, chooseEm
 
     </VStack>
     <HStack className="inspector-heading" hAlign="between" vAlign="center"><h2 className="inspector-section-title">{t('@yovoice.create.voiceSettings')}</h2>{!embedded ? <Button label={t('@yovoice.create.backToScript')} className="inspector-toggle" variant="secondary" onClick={close} /> : null}</HStack>
-      {catalog.find(model => model.id === draft.modelId)?.family === 'kokoro_tts' ? <KokoroControls advanced={advanced} setAdvanced={setAdvanced} draft={draft} model={catalog.find(model => model.id === draft.modelId)!} change={change} /> : isReferenceModel(draft.modelId) ? <ReferenceControls advanced={advanced} setAdvanced={setAdvanced} draft={draft} state={state} change={change} chooseVoice={chooseVoice} play={play} /> : isVoxModel(draft.modelId) ? <VoxControls draft={draft} state={state} change={change} chooseVoice={chooseVoice} play={play} advanced={advanced} setAdvanced={setAdvanced} /> : <>
+      {catalog.find(model => model.id === draft.modelId)?.family === 'kokoro_tts' ? <KokoroControls advanced={advanced} setAdvanced={setAdvanced} draft={draft} model={catalog.find(model => model.id === draft.modelId)!} change={change} /> : isReferenceModel(draft.modelId) ? <ReferenceControls advanced={advanced} setAdvanced={setAdvanced} draft={draft} state={state} change={change} chooseVoice={chooseVoice} play={play} /> : isBreezeModel(draft.modelId) ? <BreezeControls draft={draft} state={state} change={change} chooseVoice={chooseVoice} play={play} advanced={advanced} setAdvanced={setAdvanced} /> : isVoxModel(draft.modelId) ? <VoxControls draft={draft} state={state} change={change} chooseVoice={chooseVoice} play={play} advanced={advanced} setAdvanced={setAdvanced} /> : <>
       <ReferenceVoice voice={voice} choose={chooseVoice} play={play} />
       <VStack gap={3}>
         <h3>{t('@yovoice.create.expression')}</h3>

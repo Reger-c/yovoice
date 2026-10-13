@@ -47,6 +47,8 @@ test('参考音频需求随模型和模式变化', () => {
   expect(needs('qwen3-tts-1.7b-voicedesign')).toBe(false);
   expect(needs('omnivoice-q8')).toBe(false);
   expect(needs('omnivoice-q8', { voiceMode: 'clone' })).toBe(true);
+  expect(needs('breeze-tts-2-q8')).toBe(false);
+  expect(needs('breeze-tts-2-q8', { voiceMode: 'clone' })).toBe(true);
   expect(needs('voxcpm2-q8')).toBe(false);
   expect(needs('voxcpm2-q8', { voxMode: 'clone' })).toBe(true);
   expect(needs('voxcpm2-q8', { voxMode: 'continuation' })).toBe(true);

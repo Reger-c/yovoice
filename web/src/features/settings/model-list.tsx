@@ -23,6 +23,7 @@ function modelDescription(t: (key: string) => string, model: ModelPackage) {
   if (model.family === 'omnivoice') return t('@yovoice.settings.modelDesc.omni');
   if (model.family === 'qwen3_tts') return t(`@yovoice.settings.modelDesc.qwen.${model.variant || 'base'}`);
   if (model.family === 'voxcpm2') return t('@yovoice.settings.modelDesc.vox');
+  if (model.family === 'breeze_tts') return t('@yovoice.settings.modelDesc.breeze');
   return model.version === '2.5' ? t('@yovoice.settings.modelDesc.25') : t('@yovoice.settings.modelDesc.basic');
 }
 

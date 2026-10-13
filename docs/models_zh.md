@@ -12,6 +12,7 @@
 | Qwen3-TTS Base · 0.6B / 1.7B | 音色克隆 | 必须提供参考音频，原文可选 |
 | Qwen3-TTS CustomVoice · 1.7B | 内置音色与演绎控制 | 音色 ID，可选风格描述 |
 | Qwen3-TTS VoiceDesign · 1.7B | 声音设计 | 必须填写声音描述 |
+| Breeze TTS 2 | 中英声音设计、音色克隆与演绎指导 | 设计描述可选；克隆需音频和完整原文；建议使用显卡 |
 | Kokoro | 轻量内置音色 | 音色 ID，无需参考音频 |
 
 通过 `yovoice models list --json` 查询模型 ID、精度、文件大小、音色和高级参数定义。App 的设置中也可查看模型。引擎和模型下载见 [CLI 指南](cli_zh.md)。
@@ -23,9 +24,10 @@ yovoice generate --model index-2.5-q8 --text-file narration.txt --reference voic
 yovoice generate --model voxcpm2-q8 --text-file narration.txt --reference voice.wav --reference-text "参考音频中实际说出的内容。" --output vox.wav
 yovoice generate --model omnivoice-q8 --text-file narration.txt --reference voice.wav --reference-text "参考音频中实际说出的内容。" --output omni.wav
 yovoice generate --model qwen3-tts-base-0.6b-q8 --text-file narration.txt --reference voice.wav --output qwen.wav
+yovoice generate --model breeze-tts-2-q8 --text-file narration.txt --reference voice.wav --reference-text "参考音频中实际说出的内容。" --voice-description "语速稍快，语气轻松" --output breeze.wav
 ```
 
-VoxCPM2 省略 `--reference-text` 时使用普通克隆。Qwen3-TTS Base 添加准确原文后可进行原文辅助克隆。OmniVoice 克隆始终需要匹配的原文。
+VoxCPM2 省略 `--reference-text` 时使用普通克隆。Qwen3-TTS Base 添加准确原文后可进行原文辅助克隆。OmniVoice 与 Breeze TTS 2 克隆始终需要匹配的原文；Breeze 的 `--voice-description` 在克隆时作为演绎指导，保留音色并调整语速、情绪和语气。
 
 参考录音应人声清晰、只有一位说话人且背景噪声较少，长度为 1–60 秒、大小不超过 20 MB。
 
@@ -34,6 +36,7 @@ VoxCPM2 省略 `--reference-text` 时使用普通克隆。Qwen3-TTS Base 添加�
 ```sh
 yovoice generate --model voxcpm2-q8 --voice-description "温暖平静的成年旁白" --text-file narration.txt --output vox-design.wav
 yovoice generate --model omnivoice-q8 --voice-description "女, 青年, 中音调" --text-file narration.txt --output omni-design.wav
+yovoice generate --model breeze-tts-2-q8 --voice-description "温暖的女声，语速平稳，吐字清晰" --text-file narration.txt --output breeze-design.wav
 yovoice generate --model qwen3-tts-voicedesign-q8 --voice-description "低沉、富有磁性的成年旁白" --text-file narration.txt --output qwen-design.wav
 yovoice generate --model qwen3-tts-customvoice-q8 --speaker Serena --voice-description "温柔轻声，语速舒缓" --language zh --text-file narration.txt --output custom.wav
 ```
@@ -56,6 +59,17 @@ IndexTTS 可通过 `--emotion-text`、`--emotion-reference` 或 `--emotion-vecto
 VoxCPM2 通过声音描述表达语速、情绪和方言，也可使用 `--guidance-scale`、`--inference-steps`、`--seed` 调整生成。精细克隆沿用参考音频的演绎，不叠加设计描述。
 
 OmniVoice 支持 `--speed`、`--language`、`--guidance-scale`、`--inference-steps`，正文可插入 `[laughter]`、`[sigh]` 等声音标签。Qwen3-TTS 支持 `--language auto|zh|en|ja|ko|de|fr|ru|pt|es|it`。
+
+### Breeze TTS 2 与拖音
+
+Breeze TTS 2 自然度高，但自回归生成在以下情况下容易拖音、重复或在句尾拖出长段静音，YoVoice 已按此调整默认值：
+
+- **段落过长。** 模型以每秒 12.5 帧生成，官方上下文为 2048 帧；audio.cpp 默认每段 600 字、单段上限 1500 帧（120 秒），中文长段会超出训练长度。YoVoice 默认每段 160 字、单段上限 900 帧（约 72 秒），可在高级设置的 `text_chunk_size`、`max_tokens` 调整。
+- **非 bf16 推理。** 官方实现全程以 bf16 运行，fp32 激活容易发音错误和重复。YoVoice 在 CUDA、Vulkan 和 Metal 上都开启 bf16 参考路径（Metal 约慢 20%）；CPU 后端无法开启，长文更容易拖音，建议使用显卡。
+- **参考音频与原文。** 克隆参考宜为 5–15 秒、无背景噪声、不循环的干净人声，原文须逐字一致（重复的话也要写上）。
+- **调教顺序。** 仍有拖音时，先缩短分段（如 80–120 字），再把 `temperature` 降到 0.6–0.8；需要更贴合描述时把 `guidance_scale` 调到 3–4（耗时约翻倍）。语速、情绪用描述表达，例如“语速稍快，语气轻松”，与正文使用同一种语言。
+
+长文不带参考音频生成时，v0.9.1 内核会为每段单独挑选音色，前后音色可能不一致；需要稳定音色时，先用短句设计满意的声音，保存为音色后改用克隆。
 
 App 在高级设置中展示可用参数。CLI 使用可重复的 `--option KEY=JSON`，具体参数及范围通过 `models list --json` 查询：
 
@@ -108,4 +122,4 @@ Kokoro 不支持音色克隆或文字情绪控制。请保留 CLI 安装包中�
 
 ## 使用协议
 
-OmniVoice 权重使用 CC-BY-NC 协议，仅限非商业用途。IndexTTS 有独立的[模型协议](../web/public/model-license.txt)。商业使用前请确认所选模型发布方的使用条款。
+OmniVoice 权重使用 CC-BY-NC 协议，仅限非商业用途。Breeze TTS 2 权重使用 [BreezeBlue 研究与非商业许可](https://huggingface.co/BreezeBlue/Breeze-TTS-2)，生成结果同样不可商用。IndexTTS 有独立的[模型协议](../web/public/model-license.txt)。商业使用前请确认所选模型发布方的使用条款。

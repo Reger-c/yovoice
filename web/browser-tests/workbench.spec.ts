@@ -47,7 +47,7 @@ test('四种表达方式、草稿持久化与模型协议', async ({ page }) => 
   await page.reload(); await expect(page.getByLabel('作品名称')).toHaveValue('测试旁白');
   await page.getByRole('button', { name: '设置', exact: true }).click();
   await page.getByRole('tab', { name: '模型', exact: true }).click();
-  await expect(page.getByRole('button', { name: '下载模型', exact: true })).toHaveCount(30);
+  await expect(page.getByRole('button', { name: '下载模型', exact: true })).toHaveCount(33);
   await page.getByRole('button', { name: 'IndexTTS 协议' }).click();
   await expect(page.getByRole('heading', { name: '模型使用协议' })).toBeVisible();
   await page.getByRole('button', { name: '关闭协议' }).click();
@@ -320,6 +320,22 @@ test('OmniVoice 和 Qwen3-TTS 使用各自的声音控件', async ({ page }) => 
   await expect(page.getByRole('radio', { name: '声音设计', exact: true })).toHaveCount(0);
   await expect(page.getByRole('radio', { name: '情绪调节', exact: true })).toHaveCount(0);
   await expect(page.getByLabel('参考音频原文（可选）')).toHaveValue('你好。');
+});
+
+test('Breeze TTS 2 在设计与克隆间切换描述用途，并以短分段为默认', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('combobox', { name: '模型', exact: true }).click();
+  await page.getByRole('option', { name: /Breeze TTS 2 · Q8/ }).click();
+  await expect(page.getByRole('radio', { name: '声音设计', exact: true })).toBeChecked();
+  await expect(page.getByRole('button', { name: '添加参考音频', exact: true })).toHaveCount(0);
+  await page.getByLabel('声音描述', { exact: true }).fill('温暖的女声，语速平稳');
+  await page.getByRole('radio', { name: '音色克隆', exact: true }).click();
+  await expect(page.getByRole('button', { name: '添加参考音频', exact: true })).toBeVisible();
+  await expect(page.getByLabel('参考音频原文', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('风格指导（可选）', { exact: true })).toHaveValue('温暖的女声，语速平稳');
+  await page.locator('summary').filter({ hasText: '高级设置' }).click();
+  await expect(page.getByLabel('长文分段字数（0 为模型默认）')).toHaveValue('160');
+  await expect(page.getByLabel('细节解码温度')).toHaveValue('0.9');
 });
 
 
