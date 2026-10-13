@@ -157,8 +157,11 @@ func openDB(path string) (*sql.DB, error) {
 	if e != nil {
 		return nil, e
 	}
-	// 单连接：写入本就由 Store 串行化，单连接也让连接级 PRAGMA 始终生效。
+	// 单连接：写入本就由 Store 串行化。空闲时不保留连接，不长期占用文件句柄：
+	// Windows 上打开的文件不能改名或删除，数据目录迁移、损坏恢复与清理都依赖这一点。
+	// 写入频率很低，每次事务重新打开连接的开销可以忽略；连接级 PRAGMA 由 DSN 在每次打开时设置。
 	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(0)
 	if e = migrate(db); e != nil {
 		db.Close()
 		return nil, e
