@@ -15,10 +15,10 @@ public partial class App : Application
         var wait = e.Args.Contains(RelaunchArgument) ? TimeSpan.FromSeconds(60) : TimeSpan.Zero;
         try { owned = instance.WaitOne(wait); }
         catch (AbandonedMutexException) { owned = true; }
-        if (!owned) { AppDialog.Show(null, "yovoice 已在运行", "请点击系统托盘中的 yovoice 图标打开窗口。"); Shutdown(); return; }
+        if (!owned) { AppDialog.Show(null, HostL10n.T("yovoice 已在运行", "yovoice is already running"), HostL10n.T("请点击系统托盘中的 yovoice 图标打开窗口。", "Click the yovoice icon in the system tray to open the window.")); Shutdown(); return; }
         try { new MainWindow().Show(); }
         catch (OperationCanceledException) { Shutdown(); }
-        catch (Exception error) { AppDialog.Show(null, "无法启动 yovoice", error.Message); Shutdown(1); }
+        catch (Exception error) { AppDialog.Show(null, HostL10n.T("无法启动 yovoice", "Could not start yovoice"), error.Message); Shutdown(1); }
     }
     protected override void OnExit(ExitEventArgs e)
     {

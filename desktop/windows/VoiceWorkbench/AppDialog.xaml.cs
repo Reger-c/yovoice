@@ -32,8 +32,8 @@ public partial class AppDialog : Window
         };
     }
 
-    public static bool Show(Window? owner, string title, string message, string confirm = "知道了", string? cancel = null)
-        => new AppDialog(owner, title, message, confirm, cancel).ShowDialog() == true;
+    public static bool Show(Window? owner, string title, string message, string? confirm = null, string? cancel = null)
+        => new AppDialog(owner, title, message, confirm ?? HostL10n.T("知道了", "OK"), cancel).ShowDialog() == true;
 
     private void Confirm_Click(object sender, RoutedEventArgs e) => DialogResult = true;
 

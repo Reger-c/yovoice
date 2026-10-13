@@ -250,6 +250,8 @@ type State struct {
 	// Runtimes 按后端记录下载安装的内核，切换计算设备后再切回时直接复用。
 	Runtimes map[string]InstalledRuntime `json:"runtimes,omitempty"`
 	Activity *Activity                   `json:"activity"`
+	// ModelActivity 是模型下载或导入：不占用推理引擎，与 Activity 中的生成等操作同时进行。
+	ModelActivity *Activity `json:"modelActivity"`
 	// AIProviders 为可选的大模型服务，AIProviderID 指向当前使用的服务。
 	AIProviders  []AIProvider `json:"aiProviders,omitempty"`
 	AIProviderID string       `json:"aiProviderID,omitempty"`

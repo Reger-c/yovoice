@@ -12,6 +12,14 @@ function Confirm-Package {
     if ((Get-FileHash -LiteralPath $package -Algorithm SHA256).Hash -ne $settings.ExpectedHash) {
         throw '更新包校验失败。'
     }
+    # 已安装的应用带有效签名时，更新包必须由同一发行者签名；未签名的开发构建不受影响。
+    $installed = Get-AuthenticodeSignature -LiteralPath (Join-Path $target 'yovoice.exe')
+    if ($installed.Status -eq 'Valid') {
+        $signature = Get-AuthenticodeSignature -LiteralPath $package
+        if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -ne $installed.SignerCertificate.Subject) {
+            throw '更新包签名与当前应用不一致。'
+        }
+    }
 }
 try {
     if ($settings.ExpectedHash -notmatch '^[0-9a-fA-F]{64}$' -or $settings.Version -notmatch '^\d+\.\d+\.\d+$' -or

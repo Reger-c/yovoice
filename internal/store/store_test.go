@@ -16,15 +16,18 @@ func TestStoreDoesNotReplayPreviousFailure(t *testing.T) {
 		must(t, store.Update(func(state *schema.State) {
 			code := msg.ErrAudioDecode
 			state.Activity = &schema.Activity{Kind: "generate", Status: status, Code: msg.ActivityFailed, ErrorCode: &code}
+			state.ModelActivity = &schema.Activity{Kind: "download", Status: status, Code: msg.ActivityFailed, ErrorCode: &code}
 		}, true))
 		reopened, err := New(root)
 		must(t, err)
-		activity := reopened.Read().Activity
-		if status == "failed" && activity != nil {
-			t.Fatal("重启不应重新显示历史失败提示")
-		}
-		if status == "running" && (activity == nil || activity.Status != "interrupted" || activity.ErrorCode != nil) {
-			t.Fatal("未结束的操作仍应标记为中断")
+		// 生成与模型下载分开记录，两者都按同样的规则整理。
+		for _, activity := range []*schema.Activity{reopened.Read().Activity, reopened.Read().ModelActivity} {
+			if status == "failed" && activity != nil {
+				t.Fatal("重启不应重新显示历史失败提示")
+			}
+			if status == "running" && (activity == nil || activity.Status != "interrupted" || activity.ErrorCode != nil) {
+				t.Fatal("未结束的操作仍应标记为中断")
+			}
 		}
 	}
 }

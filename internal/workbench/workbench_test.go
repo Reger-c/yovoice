@@ -278,17 +278,48 @@ func TestDownloadAndArchives(t *testing.T) {
 func TestOperationCancellation(t *testing.T) {
 	w, e := New(t.TempDir())
 	must(t, e)
+	must(t, w.begin("runtime", msg.ActivityRuntimeDownload, nil, nil, func(ctx context.Context) error { <-ctx.Done(); return ctx.Err() }))
+	if e = w.begin("generate", msg.ActivityGenerate, nil, nil, func(context.Context) error { return nil }); e == nil {
+		t.Fatal("允许并发主操作")
+	}
+	// 模型下载使用独立槽位，可与主操作同时进行，且取消互不影响。
 	must(t, w.begin("download", msg.ActivityDownload, nil, ptr("index-2-q8"), func(ctx context.Context) error { <-ctx.Done(); return ctx.Err() }))
-	if e = w.begin("runtime", msg.ActivityRuntimeDownload, nil, nil, func(context.Context) error { return nil }); e == nil {
-		t.Fatal("允许并发操作")
+	if e = w.begin("import", msg.ActivityImport, nil, nil, func(context.Context) error { return nil }); e == nil {
+		t.Fatal("允许并发模型安装")
+	}
+	w.CancelModel()
+	<-w.ModelDone()
+	s := w.Store.Read()
+	if s.ModelActivity.Status != "cancelled" || s.ModelActivity.Code != msg.ActivityPaused || value(s.ModelActivity.ModelID) != "index-2-q8" || s.Activity.Status != "running" {
+		t.Fatal(s.Activity, s.ModelActivity)
 	}
 	w.Cancel()
-	w.Close()
-	s := w.Store.Read()
-	if s.Activity.Status != "cancelled" || value(s.Activity.ModelID) != "index-2-q8" {
+	<-w.Done()
+	if s = w.Store.Read(); s.Activity.Status != "cancelled" {
 		t.Fatal(s.Activity)
 	}
 	w.Close()
+}
+
+// 下载未安装的模型时仍可用已安装的模型生成；正在重新下载的模型不能同时生成。
+func TestGenerateDuringModelDownload(t *testing.T) {
+	w, e := New(t.TempDir())
+	must(t, e)
+	defer w.Close()
+	must(t, w.begin("download", msg.ActivityDownload, nil, ptr("voxcpm2-q8"), func(ctx context.Context) error { <-ctx.Done(); return ctx.Err() }))
+	s := w.Store.Read()
+	if installing(s, "index-2-q8") || !installing(s, "voxcpm2-q8") {
+		t.Fatal("安装中的模型判断错误")
+	}
+	must(t, w.begin("generate", msg.ActivityGenerate, nil, nil, func(context.Context) error { return nil }))
+	<-w.Done()
+	if s = w.Store.Read(); s.Activity.Status != "completed" || s.ModelActivity.Status != "running" {
+		t.Fatal(s.Activity, s.ModelActivity)
+	}
+	// 迁移数据目录需要所有操作都结束。
+	if e = w.RelocateStorage(t.TempDir()); e == nil {
+		t.Fatal("下载中不应允许迁移数据目录")
+	}
 }
 
 // 子进程模拟真实 audio.cpp 协议，验证启动、复用和取消时的进程清理。
@@ -320,7 +351,7 @@ func TestForgetModelDuringDownload(t *testing.T) {
 	must(t, w.begin("download", msg.ActivityDownload, nil, ptr("voxcpm2-q8"), func(ctx context.Context) error { <-ctx.Done(); return ctx.Err() }))
 	err = w.ForgetModel("index-2-q8")
 	must(t, err)
-	if len(w.Store.Read().Models) != 1 || w.Store.Read().Activity.Status != "running" {
+	if len(w.Store.Read().Models) != 1 || w.Store.Read().ModelActivity.Status != "running" {
 		t.Fatal("移除其他模型不能影响下载")
 	}
 	if _, err = os.Stat(path); err != nil {
@@ -329,8 +360,8 @@ func TestForgetModelDuringDownload(t *testing.T) {
 	if err = w.ForgetModel("voxcpm2-q8"); err == nil {
 		t.Fatal("不能移除正在下载的模型")
 	}
-	w.Cancel()
-	<-w.Done()
+	w.CancelModel()
+	<-w.ModelDone()
 	must(t, w.begin("generate", msg.ActivityGenerate, nil, nil, func(ctx context.Context) error { <-ctx.Done(); return ctx.Err() }))
 	if err = w.ForgetModel("voxcpm2-q8"); err == nil {
 		t.Fatal("生成期间应保护模型")

@@ -141,7 +141,9 @@ const (
 	ErrStorageRestart        Code = "@yovoice.error.storageRestartRequired"
 	// 数据目录在运行中被删除或断开（外置盘拔出），写入无法完成。
 	ErrDataRootMissing Code = "@yovoice.error.dataRootMissing"
-	ErrUnknown         Code = "@yovoice.error.unknown"
+	// 磁盘已满：写入状态、音频或下载时系统返回空间不足。
+	ErrDiskFull Code = "@yovoice.error.diskFull"
+	ErrUnknown  Code = "@yovoice.error.unknown"
 )
 
 // Params carries ICU values. Keys match catalog placeholders.
@@ -166,7 +168,7 @@ func Err(code Code, params Params) *CallError {
 }
 
 func Encode(err error) map[string]any {
-	if ce, ok := err.(*CallError); ok && ce != nil {
+	if ce, ok := Classify(err).(*CallError); ok && ce != nil {
 		out := map[string]any{"code": ce.Code}
 		if len(ce.Params) > 0 {
 			out["params"] = ce.Params
@@ -207,7 +209,7 @@ func All() []Code {
 		ErrAIProviderInvalid, ErrAINotConfigured, ErrAIAuth, ErrAIRateLimit, ErrAINetwork, ErrAIResponse, ErrAIModelsPath, ErrAIResultInvalid, ErrAITimeout,
 		ErrAIFreeRate, ErrAIFreeBusy, ErrAIFreePromptCap, ErrAIFreeAccess,
 		ErrLocalAPIPort, ErrLocalAPIPortInUse,
-		ErrStorageInsideApp, ErrStorageTargetNotEmpty, ErrStorageSame, ErrStorageInsideData, ErrStorageRestart, ErrDataRootMissing,
+		ErrStorageInsideApp, ErrStorageTargetNotEmpty, ErrStorageSame, ErrStorageInsideData, ErrStorageRestart, ErrDataRootMissing, ErrDiskFull,
 		ErrLegacyRestore, ErrUnknown,
 	}
 }

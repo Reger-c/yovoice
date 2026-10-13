@@ -14,13 +14,14 @@ public sealed class ServiceCallException : IOException
 
     private static string Describe(JsonElement wire)
     {
-        if (wire.ValueKind == JsonValueKind.String) return wire.GetString() ?? "请求失败。";
-        if (wire.ValueKind != JsonValueKind.Object) return "本地服务返回了无效错误：" + wire;
+        if (wire.ValueKind == JsonValueKind.String) return wire.GetString() ?? HostL10n.T("请求失败。", "Request failed.");
+        if (wire.ValueKind != JsonValueKind.Object) return HostL10n.T("本地服务返回了无效错误：", "The local service returned an invalid error: ") + wire;
         string code = wire.TryGetProperty("code", out var value) && value.ValueKind == JsonValueKind.String ? value.GetString()! : "";
-        using var stream = typeof(ServiceCallException).Assembly.GetManifestResourceStream("yovoice.messages.zh-cn.json");
+        // 错误文案与网页共用同一份翻译，按当前界面语言选择。
+        using var stream = typeof(ServiceCallException).Assembly.GetManifestResourceStream(HostL10n.English ? "yovoice.messages.en.json" : "yovoice.messages.zh-cn.json");
         using var catalog = stream is null ? null : JsonDocument.Parse(stream);
         string message = catalog is not null && catalog.RootElement.TryGetProperty(code, out var entry)
-            ? entry.GetProperty("defaultMessage").GetString()! : "本地服务请求失败。";
+            ? entry.GetProperty("defaultMessage").GetString()! : HostL10n.T("本地服务请求失败。", "The local service request failed.");
         if (wire.TryGetProperty("params", out var parameters) && parameters.ValueKind == JsonValueKind.Object)
         {
             foreach (var parameter in parameters.EnumerateObject()) message = message.Replace("{" + parameter.Name + "}", parameter.Value.ToString());

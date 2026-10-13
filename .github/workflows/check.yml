@@ -112,6 +112,10 @@ jobs:
       - name: Package Windows
         if: runner.os == 'Windows'
         shell: pwsh
+        env:
+          # 仅正式发布签名；未配置证书时脚本跳过签名。
+          WINDOWS_SIGN_PFX_BASE64: ${{ inputs.release && secrets.WINDOWS_SIGN_PFX_BASE64 || '' }}
+          WINDOWS_SIGN_PASSWORD: ${{ inputs.release && secrets.WINDOWS_SIGN_PASSWORD || '' }}
         run: |
           if ('${{ inputs.release }}' -eq 'true') {
             ./scripts/desktop/build-windows.ps1 -Package -Cuda
