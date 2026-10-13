@@ -334,6 +334,13 @@ public partial class MainWindow : Window
                     string modelDirectory = state.GetProperty("preferences").GetProperty("modelDirectory").GetString() ?? Path.Combine(service.Root, "models");
                     Directory.CreateDirectory(modelDirectory);
                     Process.Start(new ProcessStartInfo(modelDirectory) { UseShellExecute = true }); result = true; break;
+                case "storage.directory":
+                    var storageFolder = new OpenFolderDialog { Title = "选择数据存储目录" };
+                    string? chosenStorage = storageFolder.ShowDialog(this) == true ? storageFolder.FolderName : null;
+                    result = chosenStorage is null ? null : await service.CallAsync("storage.relocate", new { path = chosenStorage }); break;
+                case "storage.directory.open":
+                    Directory.CreateDirectory(service.Root);
+                    Process.Start(new ProcessStartInfo(service.Root) { UseShellExecute = true }); result = true; break;
                 case "app.update.get":
                     result = JsonSerializer.SerializeToElement(updater.Snapshot, WebJson); break;
                 case "app.update.check":

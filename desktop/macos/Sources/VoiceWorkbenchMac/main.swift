@@ -15,7 +15,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
     private var closing = false
     private var shutdownComplete = false
     private var updater: AppUpdater?
-    private let root = ProcessInfo.processInfo.environment["WORKBENCH_DATA"].map { URL(fileURLWithPath: $0, isDirectory: true) } ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".yovoice", isDirectory: true)
+    private let root = DataRoot.resolve()
     private var cookieName: String { "vw-" + token.prefix(12) }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -378,9 +378,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
             NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
             return ["id": message["id"]!, "result": true]
         }
-        if ["voice.import", "model.import", "model.directory"].contains(method) {
+        if ["voice.import", "model.import", "model.directory", "storage.directory"].contains(method) {
             let panel = NSOpenPanel()
-            panel.canChooseDirectories = method == "model.directory" || (data["directory"] as? Bool == true)
+            panel.canChooseDirectories = ["model.directory", "storage.directory"].contains(method) || (data["directory"] as? Bool == true)
             panel.canChooseFiles = !panel.canChooseDirectories
             panel.allowsMultipleSelection = false
             if panel.canChooseFiles { panel.allowedContentTypes = method == "voice.import" ? [.audio] : [UTType(filenameExtension: "gguf") ?? .data] }
@@ -388,6 +388,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
             guard response == .OK, let url = panel.url else { return ["id": message["id"]!, "result": NSNull()] }
             data["path"] = url.path
             message["data"] = data
+            if method == "storage.directory" {
+                // 跨盘复制模型可能远超普通请求的 120 秒上限，进度通过状态推送展示。
+                return try await request("api/call", body: ["id": message["id"]!, "method": "storage.relocate", "data": data], timeout: 24 * 60 * 60)
+            }
+        }
+        if method == "storage.directory.open" {
+            try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+            guard NSWorkspace.shared.open(root) else { throw failure(HostL10n.t("err.modelDirOpen")) }
+            return ["id": message["id"]!, "result": true]
         }
         if method == "model.directory.open" {
             let response = try await request("api/call", body: ["id": "model-directory", "method": "state.get", "data": [:]])
@@ -423,15 +432,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
         }
         return try await request("api/call", body: message)
     }
-    private func request(_ path: String, body: [String: Any]) async throws -> [String: Any] {
+    private func request(_ path: String, body: [String: Any], timeout: TimeInterval = 120) async throws -> [String: Any] {
         guard let origin else { throw failure(HostL10n.t("err.serviceNotReady")) }
         var request = URLRequest(url: origin.appendingPathComponent(path))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("\(cookieName)=\(token)", forHTTPHeaderField: "Cookie")
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        // AI 写作在服务端后台运行，调用立即返回，所有请求统一 120 秒上限。
-        request.timeoutInterval = 120
+        // AI 写作在服务端后台运行，调用立即返回，普通请求统一 120 秒上限。
+        request.timeoutInterval = timeout
         let (data, response) = try await URLSession.shared.data(for: request)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw failure(HostL10n.t("err.serviceRequest")) }
         if data.isEmpty { return [:] }

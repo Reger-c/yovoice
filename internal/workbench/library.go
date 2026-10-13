@@ -148,7 +148,13 @@ func (w *Workbench) DeleteCharacter(id string) error {
 	if index < 0 {
 		return msg.Err(msg.ErrCharacterInvalid, nil)
 	}
-	if err := w.Store.Update(func(s *schema.State) { s.Characters = slices.Delete(s.Characters, index, index+1) }, true); err != nil {
+	if err := w.Store.Update(func(s *schema.State) {
+		s.Characters = slices.Delete(s.Characters, index, index+1)
+		// 作品保留已复制的合成设置，仅解除对已删除角色的关联，避免界面指向不存在的角色。
+		for i := range s.Drafts {
+			detachCharacter(&s.Drafts[i], id)
+		}
+	}, true); err != nil {
 		return err
 	}
 	w.removePreviewFile(state.Characters[index].Preview)

@@ -2,8 +2,11 @@ package workbench
 
 import (
 	"archive/zip"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"slices"
@@ -315,6 +318,63 @@ func (w *Workbench) ImportProject(path string) (schema.Draft, error) {
 		}
 		return nil
 	}
+	// 重复导入同一工程时复用内容完全相同的参考音频和角色，避免素材库被重复副本填满；
+	// 只有音频内容、名称和参数都一致才复用，有任何差异仍导入为独立副本。
+	w.edit.Lock()
+	defer w.edit.Unlock()
+	state := w.Store.Read()
+	reused := map[string]bool{}
+	for _, v := range pack.Voices {
+		if id := matchVoice(w.Store, state.Voices, v, filepath.Join(stage, "voices", v.FileName)); id != "" {
+			ids[v.ID], reused[v.ID] = id, true
+		}
+	}
+	for _, c := range pack.Characters {
+		if len(c.Performances) > 32 {
+			return schema.Draft{}, bad
+		}
+		var probe schema.Character
+		if data, err := json.Marshal(c); err != nil || json.Unmarshal(data, &probe) != nil {
+			return schema.Draft{}, bad
+		}
+		if err = remapSettings(&probe.Settings); err != nil {
+			return schema.Draft{}, err
+		}
+		for j := range probe.Performances {
+			if err = remapSettings(&probe.Performances[j].Settings); err != nil {
+				return schema.Draft{}, err
+			}
+		}
+		if id := matchCharacter(state.Characters, probe); id != "" {
+			ids[c.ID], reused[c.ID] = id, true
+		}
+	}
+	keep := map[string]bool{}
+	for _, v := range pack.Voices {
+		if !reused[v.ID] {
+			keep["voices/"+v.FileName] = true
+		}
+	}
+	for _, c := range pack.Characters {
+		if !reused[c.ID] && c.Preview != nil {
+			keep["outputs/"+c.Preview.FileName] = true
+		}
+	}
+	for _, g := range pack.History {
+		keep["outputs/"+g.FileName] = true
+	}
+	if pack.Draft.Timeline != nil {
+		for _, a := range pack.Draft.Timeline.Assets {
+			keep["outputs/"+a.FileName] = true
+		}
+	}
+	for name := range names {
+		if !keep[name] {
+			delete(names, name)
+		}
+	}
+	pack.Voices = slices.DeleteFunc(pack.Voices, func(v schema.Voice) bool { return reused[v.ID] })
+	pack.Characters = slices.DeleteFunc(pack.Characters, func(c schema.Character) bool { return reused[c.ID] })
 	remapDraft := func(d *schema.Draft) error {
 		if err := remapSettings(&d.SynthesisSettings); err != nil {
 			return err
@@ -445,4 +505,60 @@ func (w *Workbench) ImportProject(path string) (schema.Draft, error) {
 	}
 	committed = true
 	return pack.Draft, nil
+}
+
+// matchVoice 查找名称、参考文本和音频内容都相同的已有参考音频。
+func matchVoice(st *store.Store, voices []schema.Voice, v schema.Voice, staged string) string {
+	var digest string
+	for _, existing := range voices {
+		if existing.Name != v.Name || existing.ReferenceText != v.ReferenceText || existing.Source != v.Source || math.Abs(existing.Duration-v.Duration) > .001 {
+			continue
+		}
+		path, err := st.MediaPath("voices", existing.FileName)
+		if err != nil {
+			continue
+		}
+		if digest == "" {
+			if digest = fileDigest(staged); digest == "" {
+				return ""
+			}
+		}
+		if fileDigest(path) == digest {
+			return existing.ID
+		}
+	}
+	return ""
+}
+
+// matchCharacter 查找名称、示例文本、合成设置与演绎都相同的已有角色；试听不参与比较。
+func matchCharacter(characters []schema.Character, c schema.Character) string {
+	key := func(c schema.Character) string {
+		data, _ := json.Marshal(struct {
+			Name         string
+			DemoText     string
+			Settings     schema.SynthesisSettings
+			Performances []schema.CharacterPerformance
+		}{c.Name, c.DemoText, c.Settings, c.Performances})
+		return string(data)
+	}
+	want := key(c)
+	for _, existing := range characters {
+		if key(existing) == want {
+			return existing.ID
+		}
+	}
+	return ""
+}
+
+func fileDigest(path string) string {
+	f, err := os.Open(path)
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+	h := sha256.New()
+	if _, err = io.Copy(h, f); err != nil {
+		return ""
+	}
+	return hex.EncodeToString(h.Sum(nil))
 }

@@ -194,6 +194,10 @@ func (w *Workbench) InstallRuntime() error {
 		}
 		// 每次安装解压到新目录，旧版本已不再引用，及时清理避免重复安装持续占用磁盘。
 		w.removeStaleRuntimes()
+		// 安装包已解压到 runtime/，切换回该后端时复用已安装目录，不再需要保留压缩包。
+		for _, a := range archives {
+			_ = os.Remove(filepath.Join(w.Store.Root, "downloads", a.Name))
+		}
 		return nil
 	})
 }

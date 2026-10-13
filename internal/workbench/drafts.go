@@ -2,6 +2,7 @@ package workbench
 
 import (
 	"encoding/json"
+	"os"
 	"slices"
 	"time"
 	"yovoice/internal/diag"
@@ -72,7 +73,49 @@ func (w *Workbench) DeleteDraft(id string) error {
 	}
 	w.edit.Lock()
 	defer w.edit.Unlock()
-	return w.Store.Update(func(s *schema.State) {
+	s := w.Store.Read()
+	if s.Activity != nil && s.Activity.Kind == "generate" && s.Activity.Status == "running" && s.Activity.ProjectID == id {
+		return msg.Err(msg.ErrBusy, nil)
+	}
+	// 其他作品时间线仍在使用的版本保留，其余历史版本随作品一起删除。
+	referenced := timelineGenerations(s, id)
+	deleteIDs := map[string]bool{}
+	for _, g := range s.History {
+		if g.Settings.ID == id && !referenced[g.ID] {
+			deleteIDs[g.ID] = true
+		}
+	}
+	var candidates []string
+	for _, g := range s.History {
+		if deleteIDs[g.ID] {
+			candidates = append(candidates, g.FileName)
+		}
+	}
+	for _, d := range s.Drafts {
+		if d.ID == id && d.Timeline != nil {
+			for _, asset := range d.Timeline.Assets {
+				candidates = append(candidates, asset.FileName)
+			}
+		}
+	}
+	err := w.Store.Update(func(s *schema.State) {
 		s.Drafts = slices.DeleteFunc(s.Drafts, func(d schema.Draft) bool { return d.ID == id })
+		if len(deleteIDs) > 0 {
+			s.History = slices.DeleteFunc(s.History, func(g schema.Generation) bool { return deleteIDs[g.ID] })
+		}
 	}, true)
+	if err != nil {
+		return err
+	}
+	// 只删除删除后已无任何记录使用的文件（例如复制作品后共享的导入素材仍保留）。
+	active := referencedOutputs(w.Store.Read())
+	for _, name := range candidates {
+		if name == "" || active[name] {
+			continue
+		}
+		if p, err := w.Store.MediaPath("outputs", name); err == nil {
+			_ = os.Remove(p)
+		}
+	}
+	return nil
 }

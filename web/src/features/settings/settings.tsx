@@ -17,6 +17,7 @@ import { SettingsGroup, SettingsRow } from './settings-group';
 import { overflowTitle } from '../../shared/ui/overflow-title';
 import { UpdateSettings } from '../update/update-settings';
 import { LocalAPISettings } from './local-api-settings';
+import { StorageSettings } from './storage-settings';
 
 // AI 请求超时的可选值（秒）。
 const aiTimeouts = [60, 120, 300, 600, 1200, 1800];
@@ -70,6 +71,7 @@ export function Settings({ state, catalog, engine, draft, run, focus }: { focus?
           <Switch label={t('@yovoice.settings.proxyEnabled')} isLabelHidden value={proxyEnabled} isLoading={savingProxy} isDisabled={savingProxy || (!proxyEnabled && !proxyURL.trim())} onChange={enabled => saveProxy(enabled)} />
         </SettingsRow>
       </SettingsGroup>
+      <StorageSettings state={state} run={run} busy={busy} />
       <SettingsGroup title={t('@yovoice.settings.aiGroup')}>
         <SettingsRow label={t('@yovoice.settings.aiTimeout')} hint={t('@yovoice.settings.aiTimeoutHint')}>
           <Selector size="sm" label={t('@yovoice.settings.aiTimeout')} isLabelHidden value={String(preferences.aiTimeout || aiTimeoutDefault)} width="calc(var(--spacing-10) * 5)"

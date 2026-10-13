@@ -902,6 +902,9 @@
   "@yovoice.settings.removeTooltip": {
     "defaultMessage": "解除模型登记，保留本地文件"
   },
+  "@yovoice.settings.removeManagedTooltip": {
+    "defaultMessage": "移除模型并删除已下载的文件，释放磁盘空间"
+  },
   "@yovoice.settings.resumeDownload": {
     "defaultMessage": "继续下载"
   },
@@ -2860,5 +2863,56 @@
   },
   "@yovoice.import.tooLarge": {
     "defaultMessage": "文件超过 2 MB，请拆分后再导入。"
+  },
+  "@yovoice.error.storageInsideApp": {
+    "defaultMessage": "数据目录不能放在应用安装目录内，避免更新时丢失。"
+  },
+  "@yovoice.error.storageTargetNotEmpty": {
+    "defaultMessage": "目标目录已存在且不为空，请选择空文件夹。"
+  },
+  "@yovoice.error.storageSame": {
+    "defaultMessage": "所选目录与当前数据目录相同。"
+  },
+  "@yovoice.settings.storageGroup": {
+    "defaultMessage": "存储"
+  },
+  "@yovoice.settings.storageDirectory": {
+    "defaultMessage": "数据存储目录"
+  },
+  "@yovoice.settings.storageRelocateHint": {
+    "defaultMessage": "更改位置会把数据完整复制到新目录，完全退出 yovoice（Windows 请从系统托盘退出）并重新打开后生效，旧目录随后自动删除以释放空间。"
+  },
+  "@yovoice.settings.storageRelocatePending": {
+    "defaultMessage": "数据已复制到新目录。请完全退出 yovoice 并重新打开应用生效；重启前无法保存新的修改，旧目录会在重启后自动删除。"
+  },
+  "@yovoice.settings.storageBreakdown": {
+    "defaultMessage": "占用：总计 {total}（模型 {models} · 生成音频 {outputs} · 参考声音 {voices} · 缓存 {downloads}）"
+  },
+  "@yovoice.settings.cleanupResiduals": {
+    "defaultMessage": "清理残留"
+  },
+  "@yovoice.settings.cleanupResidualsHint": {
+    "defaultMessage": "回收超过 24 小时未引用的孤儿文件与遗留版本。"
+  },
+  "@yovoice.settings.cleanupSuccess": {
+    "defaultMessage": "已清理 {count} 个文件，释放 {size} 空间。"
+  },
+  "@yovoice.settings.cleanupEmpty": {
+    "defaultMessage": "没有发现超过 24 小时的残留文件。"
+  },
+  "@yovoice.activity.relocate": {
+    "defaultMessage": "正在迁移数据存储目录"
+  },
+  "@yovoice.settings.relocatingTitle": {
+    "defaultMessage": "正在迁移数据存储目录"
+  },
+  "@yovoice.settings.relocatingHint": {
+    "defaultMessage": "正在将数据复制到新存储位置，请勿关闭应用或断开存储设备…"
+  },
+  "@yovoice.error.storageInsideData": {
+    "defaultMessage": "新目录不能位于当前数据目录内，也不能包含当前数据目录。"
+  },
+  "@yovoice.error.storageRestartRequired": {
+    "defaultMessage": "数据目录已迁移，请完全退出 yovoice 并重新打开后再继续操作。"
   }
 }

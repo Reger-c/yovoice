@@ -7,10 +7,12 @@ import (
 	"slices"
 	"strings"
 	"yovoice/internal/catalog"
+	"yovoice/internal/diag"
 	"yovoice/internal/download"
 	"yovoice/internal/msg"
 	"yovoice/internal/platform"
 	"yovoice/internal/schema"
+	"yovoice/internal/store"
 )
 
 func (w *Workbench) register(id, path string, managed bool) error {
@@ -135,18 +137,52 @@ func (w *Workbench) ImportModel(path string) error {
 	})
 }
 
-// ForgetModel 移除模型登记，不删除用户导入的文件。下载其他模型不占用推理引擎，可同时移除。
+// ForgetModel 移除模型登记。应用自己下载的模型同时删除文件释放空间；用户导入的模型只解除登记，保留本地文件。
+// 下载其他模型不占用推理引擎，可同时移除。
 func (w *Workbench) ForgetModel(id string) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	activity := w.Store.Read().Activity
+	state := w.Store.Read()
+	activity := state.Activity
 	if w.cancel != nil && (activity == nil || activity.Kind != "download" || activity.ModelID == nil || *activity.ModelID == id) {
 		return msg.Err(msg.ErrModelForgetBlocked, nil)
 	}
 	w.engine.Stop()
-	return w.Store.Update(func(s *schema.State) {
+	if err := w.Store.Update(func(s *schema.State) {
 		s.Models = slices.DeleteFunc(s.Models, func(m schema.InstalledModel) bool { return m.ID == id })
-	}, true)
+	}, true); err != nil {
+		return err
+	}
+	if path := managedModelPath(state, w.Store.Root, id); path != "" {
+		if err := os.RemoveAll(path); err != nil {
+			diag.Log(w.Store.Root, "model.files_remove_failed", "model_id", id, "error", diag.Error(err))
+		}
+	}
+	return nil
+}
+
+// managedModelPath 返回可安全删除的下载模型路径：必须是应用下载的模型，位于模型目录内部（不是目录本身），
+// 且没有其他已登记模型使用同一位置；否则返回空串，只解除登记。
+func managedModelPath(s schema.State, root, id string) string {
+	i := slices.IndexFunc(s.Models, func(m schema.InstalledModel) bool { return m.ID == id })
+	if i < 0 || !s.Models[i].Managed || s.Models[i].Path == "" {
+		return ""
+	}
+	path := filepath.Clean(s.Models[i].Path)
+	dirs := []string{filepath.Join(root, "models")}
+	if dir := value(s.Preferences.ModelDirectory); dir != "" {
+		dirs = append(dirs, dir)
+	}
+	inside := slices.ContainsFunc(dirs, func(dir string) bool { return store.Within(dir, path) && !store.SamePath(dir, path) })
+	if !inside {
+		return ""
+	}
+	for j, m := range s.Models {
+		if j != i && m.Path != "" && (store.Within(path, m.Path) || store.Within(m.Path, path)) {
+			return ""
+		}
+	}
+	return path
 }
 
 // packageRoot 根据主模型文件位置推出多文件模型包的目录，文件不全时返回空串。
