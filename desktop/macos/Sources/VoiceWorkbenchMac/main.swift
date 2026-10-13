@@ -160,8 +160,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
             guard migration.terminationStatus == 0 else { throw failure(HostL10n.t("err.migrateFailed")) }
         }
         try FileManager.default.createDirectory(at: root.appendingPathComponent("logs"), withIntermediateDirectories: true)
-        service = Process()
-        input = Pipe()
+        self.service = Process()
+        self.input = Pipe()
         let service = self.service, input = self.input
         service.executableURL = executable
         var environment = ProcessInfo.processInfo.environment
@@ -183,7 +183,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
         }
         if !FileManager.default.fileExists(atPath: log.path) { FileManager.default.createFile(atPath: log.path, contents: nil) }
         let handle = try FileHandle(forWritingTo: log)
-        handle.seekToEndOfFile()
+        _ = handle.seekToEndOfFile()
         handle.write("\n===== \(ISO8601DateFormatter().string(from: Date())) service =====\n".data(using: .utf8)!)
         service.standardError = handle
         service.terminationHandler = { [weak self] process in
@@ -504,7 +504,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
         restartingService = true
         Task { @MainActor in
             defer { restartingService = false }
-            let draft = web == nil ? nil : (try? await web.evaluateJavaScript("window.__workbenchDraft ?? null")) as? [String: Any]
+            var draft: [String: Any]?
+            if web != nil { draft = try? await web.evaluateJavaScript("window.__workbenchDraft ?? null") as? [String: Any] }
             var message = HostL10n.t("err.serviceStopped", status)
             while !closing {
                 let alert = NSAlert()
@@ -635,8 +636,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
         Task {
             do {
                 if service.isRunning, web != nil {
-                    let state = try await request("api/call", body: ["id": "exit-state", "method": "state.get", "data": [:]])
-                    let result = state["result"] as? [String: Any]
+                    let response = try await request("api/call", body: ["id": "exit-state", "method": "state.get", "data": [:]])
+                    let result = response["result"] as? [String: Any]
                     // 生成与模型下载分别记录，任一进行中都需要确认。
                     let state = result?["state"] as? [String: Any]
                     let running = ["activity", "modelActivity"].contains { ((state?[$0] as? [String: Any])?["status"] as? String) == "running" }
