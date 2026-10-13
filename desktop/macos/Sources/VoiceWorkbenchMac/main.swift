@@ -18,7 +18,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
     private var storageRelocated = false
     private var relaunchOnExit = false
     private var updater: AppUpdater?
-    private let root = DataRoot.resolve()
+    // 延迟到单实例检查之后解析，数据目录缺失时才弹出处理选项。
+    private lazy var root: URL = DataRoot.confirmAvailable(DataRoot.resolve())
     private var cookieName: String { "vw-" + token.prefix(12) }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -466,8 +467,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
     private static let storageRestartRequired = "@yovoice.error.storageRestartRequired"
     private static func hostErrorMessage(_ error: Any?) -> String? {
         if let text = error as? String { return text }
-        if let object = error as? [String: Any], let code = object["code"] as? String { return code }
+        if let object = error as? [String: Any], let code = object["code"] as? String {
+            if code == "@yovoice.error.dataRootMissing", let path = (object["params"] as? [String: Any])?["path"] as? String { return HostL10n.t("err.dataRootMissing", path) }
+            if let detail = (object["params"] as? [String: Any])?["detail"] as? String, !detail.isEmpty { return code + "\n" + detail }
+            return code
+        }
         return nil
+    }
+    private static func hostErrorCode(_ error: Any?) -> String? {
+        (error as? [String: Any])?["code"] as? String
+    }
+    // 退出保存失败时与 Windows 一致：可备份正文后退出、直接退出或返回编辑。
+    private func confirmExitAfterSaveFailure(_ error: String, draft: [String: Any]) -> Bool {
+        while true {
+            let alert = NSAlert()
+            alert.alertStyle = .warning
+            alert.messageText = HostL10n.t("alert.exitSaveFailed.title")
+            alert.informativeText = HostL10n.t("alert.exitSaveFailed.body", error)
+            alert.addButton(withTitle: HostL10n.t("alert.exitSaveFailed.backup"))
+            alert.addButton(withTitle: HostL10n.t("alert.exitSaveFailed.return"))
+            alert.addButton(withTitle: HostL10n.t("alert.exitSaveFailed.quit")).hasDestructiveAction = true
+            switch alert.runModal() {
+            case .alertFirstButtonReturn:
+                let panel = NSSavePanel()
+                panel.allowedContentTypes = [.json]
+                let stamp = DateFormatter()
+                stamp.dateFormat = "yyyyMMdd-HHmmss"
+                panel.nameFieldStringValue = "yovoice-recovery-\(stamp.string(from: Date())).json"
+                guard panel.runModal() == .OK, let url = panel.url else { continue }
+                do {
+                    try JSONSerialization.data(withJSONObject: draft, options: [.prettyPrinted, .sortedKeys]).write(to: url, options: .atomic)
+                    return true
+                } catch {
+                    let failed = NSAlert()
+                    failed.messageText = HostL10n.t("alert.exitSaveFailed.backupFailed")
+                    failed.informativeText = error.localizedDescription
+                    failed.runModal()
+                }
+            case .alertThirdButtonReturn:
+                return true
+            default:
+                return false
+            }
+        }
     }
     private func refreshHostMenus() {
         guard let menu = NSApp.mainMenu else { return }
@@ -532,7 +574,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
                     if !storageRelocated, let draft = try await web.evaluateJavaScript("window.__workbenchDraft ?? null") as? [String: Any] {
                         let saved = try await request("api/call", body: ["id": "exit-save", "method": "draft.save", "data": draft])
                         // 迁移完成后旧目录冻结写入，此时保存必然失败且没有意义，不能因此挡住退出。
-                        if let error = Self.hostErrorMessage(saved["error"]), error != Self.storageRestartRequired { throw failure(HostL10n.t("err.exitSave", error)) }
+                        if let error = Self.hostErrorMessage(saved["error"]), Self.hostErrorCode(saved["error"]) != Self.storageRestartRequired {
+                            // 数据目录被删除、磁盘已满或外置盘断开时保存会一直失败，必须给出退出路径，而不是只能强制结束。
+                            guard confirmExitAfterSaveFailure(error, draft: draft) else { closing = false; updater?.cancelInstall(); return }
+                            updater?.cancelInstall()
+                        }
                     }
                 }
                 // 先确认更新助手可启动，再关闭服务；失败时仍可继续使用应用。

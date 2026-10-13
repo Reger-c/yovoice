@@ -17,6 +17,7 @@ public partial class App : Application
         catch (AbandonedMutexException) { owned = true; }
         if (!owned) { AppDialog.Show(null, "yovoice 已在运行", "请点击系统托盘中的 yovoice 图标打开窗口。"); Shutdown(); return; }
         try { new MainWindow().Show(); }
+        catch (OperationCanceledException) { Shutdown(); }
         catch (Exception error) { AppDialog.Show(null, "无法启动 yovoice", error.Message); Shutdown(1); }
     }
     protected override void OnExit(ExitEventArgs e)

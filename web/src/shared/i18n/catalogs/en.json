@@ -2912,6 +2912,9 @@
   "@yovoice.error.storageInsideData": {
     "defaultMessage": "The new directory cannot be inside, or contain, the current data directory."
   },
+  "@yovoice.error.dataRootMissing": {
+    "defaultMessage": "The data folder is missing or unavailable: {path}. Reconnect the external drive if it is on one; if the folder was deleted, quit and reopen yovoice to choose how to continue."
+  },
   "@yovoice.error.storageRestartRequired": {
     "defaultMessage": "The data directory has been moved. Please fully quit and reopen yovoice before continuing."
   }

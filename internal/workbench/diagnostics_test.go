@@ -27,6 +27,8 @@ func TestSaveDiagnostics(t *testing.T) {
 	// 模拟备份文件被目录占用，保留具体的文件系统错误。
 	must(t, os.Remove(filepath.Join(w.Store.Root, "state.backup.json")))
 	must(t, os.Mkdir(filepath.Join(w.Store.Root, "state.backup.json"), 0700))
+	// 内容未变的保存不写盘，需带上改动才会触发写入。
+	d.Title = "改动后的标题"
 	if err = w.SaveDraft(d); err == nil {
 		t.Fatal("应报告写入失败")
 	}
