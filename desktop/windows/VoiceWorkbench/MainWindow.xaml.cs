@@ -37,7 +37,7 @@ public partial class MainWindow : Window
         // 先按数据目录中保存的界面语言初始化，原生菜单与对话框与网页保持一致。
         HostL10n.LoadFrom(service.Root);
         InitializeComponent();
-        StateChanged += (_, _) => ApplyMaximizeLabel();
+        StateChanged += (_, _) => { ApplyMaximizeLabel(); SyncWebVisibility(); };
         using (var stream = System.Windows.Application.GetResourceStream(new Uri("Resources/AppIcon.ico", UriKind.Relative)).Stream)
             trayIcon = new System.Drawing.Icon(stream);
         trayMenu = new Forms.ContextMenuStrip();
@@ -163,6 +163,12 @@ public partial class MainWindow : Window
         trayExit.Text = HostL10n.T("退出 yovoice", "Quit yovoice");
         updater.ApplyLocale();
     }
+    // WebView2CompositionControl 另有一个跟随窗口的输入窗口，WPF 最小化时不会隐藏它，
+    // 会留在原位置拦截鼠标（如桌面右键菜单无法弹出）；最小化时隐藏控件，让它随之隐藏，还原后再显示。
+    private void SyncWebVisibility()
+    {
+        if (web is not null) web.Visibility = WindowState == WindowState.Minimized ? Visibility.Hidden : Visibility.Visible;
+    }
     private void ApplyMaximizeLabel()
     {
         bool maximized = WindowState == WindowState.Maximized;
@@ -255,6 +261,8 @@ public partial class MainWindow : Window
     private void RestoreWindow()
     {
         Show();
+        // 从托盘打开最小化的窗口时恢复到最小化前的状态（普通或最大化）。
+        if (WindowState == WindowState.Minimized) SystemCommands.RestoreWindow(this);
         FitWindowToScreen();
         Activate();
     }
@@ -337,7 +345,7 @@ public partial class MainWindow : Window
         {
             await service.StartAsync();
             web?.Dispose(); Container.Children.Clear();
-            web = new WebView2CompositionControl(); Container.Children.Add(web);
+            web = new WebView2CompositionControl(); Container.Children.Add(web); SyncWebVisibility();
             var environment = await CoreWebView2Environment.CreateAsync(null, Path.Combine(service.Root, "web-cache"));
             await web.EnsureCoreWebView2Async(environment);
             var core = web.CoreWebView2;
