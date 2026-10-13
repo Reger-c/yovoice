@@ -52,3 +52,26 @@ test('新建四种作品、取消导入、卡片菜单与重命名独立保存',
   await page.getByRole('button', { name: '雨夜', exact: true }).last().click();
   await expect(page.getByLabel('第 1 句台词')).toHaveValue('第一句。');
 });
+
+test('本机接口：开关、端口与令牌在设置 › 通用中管理', async ({ page }, testInfo) => {
+  await page.goto('/');
+  await page.getByTestId('nav-settings').click();
+  const status = page.getByTestId('local-api-status');
+  await expect(status).toHaveText('未开启，不占用端口。');
+  await page.getByRole('switch', { name: '启用本机接口' }).click();
+  await expect(status).toHaveText('运行中：http://127.0.0.1:8080');
+  await page.getByRole('textbox', { name: '端口' }).fill('80');
+  await page.getByRole('textbox', { name: '端口' }).press('Enter');
+  await expect(page.getByText('端口需在 1024–65535 之间。')).toBeVisible();
+  await expect(page.getByRole('textbox', { name: '端口' })).toHaveValue('8080');
+  await page.getByRole('textbox', { name: '端口' }).fill('18080');
+  await page.getByRole('textbox', { name: '端口' }).press('Enter');
+  await expect(status).toHaveText('运行中：http://127.0.0.1:18080');
+  await expect(page.getByText('curl -H "Authorization: Bearer YOUR_TOKEN" http://127.0.0.1:18080/v1/status')).toBeVisible();
+  const token = page.getByLabel('访问令牌', { exact: true });
+  const before = await token.inputValue();
+  await page.getByRole('button', { name: '重置' }).click();
+  await expect(token).not.toHaveValue(before);
+  await page.getByTestId('local-api-status').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath('local-api-settings.png'), animations: 'disabled' });
+});

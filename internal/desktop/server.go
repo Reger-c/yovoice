@@ -17,6 +17,8 @@ type Server struct {
 	Workbench      *workbench.Workbench
 	Assets, Secret string
 	Shutdown       func()
+	// LocalAPI 为空时不提供本机接口设置。
+	LocalAPI *LocalAPI
 	// calls 允许 RPC 并发执行；关闭时独占，等待在途调用结束后再释放资源。
 	calls   sync.RWMutex
 	once    sync.Once
@@ -28,6 +30,26 @@ type Server struct {
 func (s *Server) lifetime() context.Context {
 	s.once.Do(func() { s.closing, s.stop = context.WithCancel(context.Background()) })
 	return s.closing
+}
+
+// call 先处理本机接口设置，其余方法交给 Call。
+func (s *Server) call(ctx context.Context, method string, data json.RawMessage) (any, error) {
+	if !strings.HasPrefix(method, "localApi.") {
+		return Call(ctx, s.Workbench, method, data)
+	}
+	if s.LocalAPI == nil {
+		return nil, msg.Err(msg.ErrMethodUnsupported, nil)
+	}
+	var input struct {
+		Enabled bool `json:"enabled"`
+		Port    int  `json:"port"`
+	}
+	if len(data) > 0 && string(data) != "null" {
+		if e := json.Unmarshal(data, &input); e != nil {
+			return nil, msg.Err(msg.ErrRequestInvalid, nil)
+		}
+	}
+	return s.LocalAPI.call(method, input.Enabled, input.Port)
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -55,7 +77,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithCancel(r.Context())
 		release := context.AfterFunc(s.lifetime(), cancel)
 		s.calls.RLock()
-		result, err := Call(ctx, s.Workbench, message.Method, message.Data)
+		result, err := s.call(ctx, message.Method, message.Data)
 		s.calls.RUnlock()
 		release()
 		cancel()
@@ -107,6 +129,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.lifetime()
 		s.stop()
 		s.calls.Lock()
+		if s.LocalAPI != nil {
+			s.LocalAPI.Close()
+		}
 		s.Workbench.Close()
 		s.calls.Unlock()
 		w.Header().Set("Content-Type", "application/json")

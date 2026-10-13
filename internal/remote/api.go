@@ -63,7 +63,7 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case r.Method == "POST" && (r.URL.Path == "/v1/voices" || r.URL.Path == "/v1/generate"):
 		// 单个引擎只运行一个请求，繁忙时直接拒绝，不积压无限队列。
 		if !a.busy.TryLock() {
-			http.Error(w, "推理服务繁忙，请稍后重试", http.StatusConflict)
+			http.Error(w, errBusy.Error(), http.StatusConflict)
 			return
 		}
 		defer a.busy.Unlock()
@@ -110,6 +110,8 @@ func (a *API) generate(w http.ResponseWriter, r *http.Request) {
 		status := http.StatusInternalServerError
 		if errors.Is(err, context.DeadlineExceeded) {
 			status = http.StatusGatewayTimeout
+		} else if errors.Is(err, errBusy) {
+			status = http.StatusConflict
 		}
 		http.Error(w, err.Error(), status)
 		return
@@ -139,10 +141,18 @@ func decodeGeneration(body io.Reader) (schema.Draft, error) {
 	return d, schema.Validate(d)
 }
 
+var errBusy = errors.New("推理服务繁忙，请稍后重试")
+
 func (a *API) generateAudio(ctx context.Context, d schema.Draft) (schema.Generation, error) {
 	ctx, cancel := context.WithTimeout(ctx, a.generationTimeout())
 	defer cancel()
-	return a.Workbench.Synthesize(ctx, d)
+	g, err := a.Workbench.Synthesize(ctx, d)
+	// 桌面应用内置接口与界面共用引擎，界面正在生成或下载时同样按繁忙处理。
+	var callErr *msg.CallError
+	if errors.As(err, &callErr) && callErr.Code == msg.ErrBusy {
+		return g, errBusy
+	}
+	return g, err
 }
 
 func (a *API) audio(w http.ResponseWriter, r *http.Request, id string) {

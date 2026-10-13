@@ -1,6 +1,6 @@
 import catalog from './catalog.json';
 import aiPresets from './ai-presets.json';
-import { performanceSettings, emptyState, type AudioAsset, type Draft, type State, type Voice, type Preferences, type Character, type SynthesisSettings, type AIProvider, type AITask, aiTimeoutDefault } from '../workbench';
+import { performanceSettings, emptyState, type AudioAsset, type Draft, type State, type Voice, type Preferences, type Character, type SynthesisSettings, type AIProvider, type AITask, type LocalAPIStatus, aiTimeoutDefault } from '../workbench';
 import { encodeWav } from './sound';
 import { CallError } from './call-error';
 
@@ -9,6 +9,9 @@ import { CallError } from './call-error';
 const primaryKey = 'voice-workbench-v1';
 const backupKey = 'voice-workbench-backup';
 const maxUploadBytes = 20 * 1024 * 1024;
+
+// 预览不监听端口：本机接口只记录开关与端口，用于演示设置页。
+let localApi: LocalAPIStatus = { enabled: false, port: 8080, token: 'preview'.padEnd(64, '0'), running: false };
 
 const listeners = new Set<(state: State) => void>();
 let stored: State | undefined;
@@ -107,6 +110,16 @@ export async function previewCall<T>(method: string, data: unknown): Promise<T> 
     publish(); return true as T;
   }
   if (method === 'draft.delete') { state.drafts = state.drafts.filter(draft => draft.id !== (data as { id: string }).id); publish(); return true as T; }
+  if (method === 'localApi.get' || method === 'localApi.save' || method === 'localApi.resetToken') {
+    if (method === 'localApi.save') {
+      const { enabled, port } = data as { enabled: boolean; port: number };
+      if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new CallError('@yovoice.error.localApiPort');
+      localApi = { ...localApi, enabled, port };
+    }
+    if (method === 'localApi.resetToken') localApi = { ...localApi, token: crypto.randomUUID().replaceAll('-', '').repeat(2) };
+    localApi = { ...localApi, running: localApi.enabled, url: localApi.enabled ? `http://127.0.0.1:${localApi.port}` : undefined };
+    return structuredClone(localApi) as T;
+  }
   if (method === 'preferences.save') { state.preferences = data as Preferences; publish(); return true as T; }
   if (method === 'voice.record') {
     const recording = data as { base64: string; name: string };

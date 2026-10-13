@@ -2773,5 +2773,59 @@
   },
   "@yovoice.error.aiFreeAccess": {
     "defaultMessage": "OrcaRouter 需要账号绑定一个注册较久的 GitHub 账号才能使用免费模型。请在 OrcaRouter 个人设置中绑定 GitHub，或充值后再用。"
+  },
+  "@yovoice.settings.localApi": {
+    "defaultMessage": "本机接口"
+  },
+  "@yovoice.settings.localApiIntro": {
+    "defaultMessage": "让本机其他软件通过 HTTP 或 MCP 调用 yovoice 生成语音。只在 127.0.0.1 上监听，局域网中的其他设备无法访问。"
+  },
+  "@yovoice.settings.localApiEnabled": {
+    "defaultMessage": "启用本机接口"
+  },
+  "@yovoice.settings.localApiOff": {
+    "defaultMessage": "未开启，不占用端口。"
+  },
+  "@yovoice.settings.localApiRunning": {
+    "defaultMessage": "运行中：{url}"
+  },
+  "@yovoice.settings.localApiRunningShort": {
+    "defaultMessage": "运行中"
+  },
+  "@yovoice.settings.localApiFailed": {
+    "defaultMessage": "未能启动"
+  },
+  "@yovoice.settings.localApiPort": {
+    "defaultMessage": "端口"
+  },
+  "@yovoice.settings.localApiPortHint": {
+    "defaultMessage": "1024–65535，默认 8080。"
+  },
+  "@yovoice.settings.localApiToken": {
+    "defaultMessage": "访问令牌"
+  },
+  "@yovoice.settings.localApiTokenHint": {
+    "defaultMessage": "请求头带上 Authorization: Bearer 和此令牌。重置后旧令牌立即失效。"
+  },
+  "@yovoice.settings.localApiCopy": {
+    "defaultMessage": "复制"
+  },
+  "@yovoice.settings.localApiCopied": {
+    "defaultMessage": "已复制"
+  },
+  "@yovoice.settings.localApiReset": {
+    "defaultMessage": "重置"
+  },
+  "@yovoice.settings.localApiExample": {
+    "defaultMessage": "调用示例"
+  },
+  "@yovoice.settings.localApiExampleHint": {
+    "defaultMessage": "HTTP 接口位于 {url}/v1，MCP 地址为 {url}/mcp。把 YOUR_TOKEN 换成上方复制的令牌。"
+  },
+  "@yovoice.error.localApiPort": {
+    "defaultMessage": "端口需在 1024–65535 之间。"
+  },
+  "@yovoice.error.localApiPortInUse": {
+    "defaultMessage": "端口 {port} 已被其他程序占用，请换一个端口。"
   }
 }

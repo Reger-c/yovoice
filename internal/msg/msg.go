@@ -128,7 +128,10 @@ const (
 	ErrAIFreeBusy      Code = "@yovoice.error.aiFreeBusy"
 	ErrAIFreePromptCap Code = "@yovoice.error.aiFreePromptCap"
 	ErrAIFreeAccess    Code = "@yovoice.error.aiFreeAccess"
-	ErrUnknown         Code = "@yovoice.error.unknown"
+	// 本机接口：端口超出范围、端口已被占用。
+	ErrLocalAPIPort      Code = "@yovoice.error.localApiPort"
+	ErrLocalAPIPortInUse Code = "@yovoice.error.localApiPortInUse"
+	ErrUnknown           Code = "@yovoice.error.unknown"
 )
 
 // Params carries ICU values. Keys match catalog placeholders.
@@ -193,6 +196,7 @@ func All() []Code {
 		ErrMusicStyle, ErrMusicLyrics, ErrMusicParams, ErrMusicLyricsRequired, ErrEngineUpgradeRequired, ErrScoreInvalid, ErrMidiInvalid,
 		ErrAIProviderInvalid, ErrAINotConfigured, ErrAIAuth, ErrAIRateLimit, ErrAINetwork, ErrAIResponse, ErrAIModelsPath, ErrAIResultInvalid, ErrAITimeout,
 		ErrAIFreeRate, ErrAIFreeBusy, ErrAIFreePromptCap, ErrAIFreeAccess,
+		ErrLocalAPIPort, ErrLocalAPIPortInUse,
 		ErrLegacyRestore, ErrUnknown,
 	}
 }
