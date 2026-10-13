@@ -88,7 +88,13 @@ export function WorkbenchChrome({ state, catalog, engine, ready, session, error,
   }), []);
   useEffect(() => {
     // 只有工作区有右侧面板；列表、设置等页面忽略开关，不跳回上次的作品。
-    const handleToggle = () => { if (page === 'create') toggleInspector(); };
+    // 创作区较窄时检查器与正文切换显示（见 styles.css 的 studio 容器查询），标题栏开关随之切换显示而非收起。
+    const handleToggle = () => {
+      if (page !== 'create') return;
+      const studio = document.querySelector('.studio');
+      if (studio && studio.clientWidth <= 860) setShowInspector(current => !current);
+      else toggleInspector();
+    };
     window.addEventListener('workbench-toggle-inspector', handleToggle);
     return () => window.removeEventListener('workbench-toggle-inspector', handleToggle);
   }, [page, toggleInspector]);
