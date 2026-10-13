@@ -54,3 +54,21 @@ func TestCorruptSnapshotsAreBounded(t *testing.T) {
 		t.Fatal("损坏快照数量未受限", len(files))
 	}
 }
+
+func TestWriteReportsMissingDataRoot(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "data")
+	s, err := New(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = os.RemoveAll(root); err != nil {
+		t.Fatal(err)
+	}
+	err = s.Update(func(state *schema.State) { state.Drafts = append(state.Drafts, schema.DefaultDraft()) }, true)
+	if ce, ok := err.(*msg.CallError); !ok || ce.Code != msg.ErrDataRootMissing {
+		t.Fatal("数据目录被删除后应返回明确的错误", err)
+	}
+	if _, err = os.Stat(root); !os.IsNotExist(err) {
+		t.Fatal("不能自动重建已删除的数据目录")
+	}
+}

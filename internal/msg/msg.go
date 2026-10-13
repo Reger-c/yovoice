@@ -139,7 +139,9 @@ const (
 	ErrStorageSame           Code = "@yovoice.error.storageSame"
 	ErrStorageInsideData     Code = "@yovoice.error.storageInsideData"
 	ErrStorageRestart        Code = "@yovoice.error.storageRestartRequired"
-	ErrUnknown               Code = "@yovoice.error.unknown"
+	// 数据目录在运行中被删除或断开（外置盘拔出），写入无法完成。
+	ErrDataRootMissing Code = "@yovoice.error.dataRootMissing"
+	ErrUnknown         Code = "@yovoice.error.unknown"
 )
 
 // Params carries ICU values. Keys match catalog placeholders.
@@ -205,7 +207,7 @@ func All() []Code {
 		ErrAIProviderInvalid, ErrAINotConfigured, ErrAIAuth, ErrAIRateLimit, ErrAINetwork, ErrAIResponse, ErrAIModelsPath, ErrAIResultInvalid, ErrAITimeout,
 		ErrAIFreeRate, ErrAIFreeBusy, ErrAIFreePromptCap, ErrAIFreeAccess,
 		ErrLocalAPIPort, ErrLocalAPIPortInUse,
-		ErrStorageInsideApp, ErrStorageTargetNotEmpty, ErrStorageSame, ErrStorageInsideData, ErrStorageRestart,
+		ErrStorageInsideApp, ErrStorageTargetNotEmpty, ErrStorageSame, ErrStorageInsideData, ErrStorageRestart, ErrDataRootMissing,
 		ErrLegacyRestore, ErrUnknown,
 	}
 }

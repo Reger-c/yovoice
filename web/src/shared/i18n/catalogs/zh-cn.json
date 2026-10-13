@@ -2912,6 +2912,9 @@
   "@yovoice.error.storageInsideData": {
     "defaultMessage": "新目录不能位于当前数据目录内，也不能包含当前数据目录。"
   },
+  "@yovoice.error.dataRootMissing": {
+    "defaultMessage": "数据目录已不存在或无法访问：{path}。如果在外置磁盘上请重新连接；目录被删除时请退出后重新打开 yovoice 选择处理方式。"
+  },
   "@yovoice.error.storageRestartRequired": {
     "defaultMessage": "数据目录已迁移，请完全退出 yovoice 并重新打开后再继续操作。"
   }

@@ -31,6 +31,10 @@ func run() error {
 	if root == "" || assets == "" || len(secret) < 32 {
 		return fmt.Errorf("缺少有效的数据目录、界面目录或会话凭证。")
 	}
+	// 启动前新目录里是否已有数据：迁移完成的新目录一定带 state.json。
+	// 若新目录在重启前被删除或外置盘未连接而被重新创建为空目录，绝不能再删除旧目录——那可能是唯一的副本。
+	_, stateErr := os.Stat(filepath.Join(root, "state.json"))
+	hadState := stateErr == nil
 	if e := os.MkdirAll(root, 0700); e != nil {
 		return e
 	}
@@ -50,9 +54,13 @@ func run() error {
 	}
 	go func() {
 		// 数据目录迁移后首次在新目录启动：删除旧目录释放空间，失败时下次启动重试。
-		removed, e := store.CleanupPrevious(root)
-		if removed != "" || e != nil {
-			diag.Log(root, "storage.previous_cleanup", "path", removed, "error", diag.Error(e))
+		if hadState {
+			removed, e := store.CleanupPrevious(root)
+			if removed != "" || e != nil {
+				diag.Log(root, "storage.previous_cleanup", "path", removed, "error", diag.Error(e))
+			}
+		} else {
+			diag.Log(root, "storage.previous_cleanup_skipped", "reason", "data root had no state")
 		}
 		// 每次启动自动回收残留，生成数据不必依赖用户手动点“清理残留”才能闭环。
 		report, e := wb.CleanupResiduals()
