@@ -309,6 +309,9 @@ func send(ctx context.Context, client *http.Client, c Config, method, target str
 	if len(body) > maxBody {
 		return nil, msg.Err(msg.ErrAIResponse, msg.Params{"status": res.StatusCode, "detail": "response too large"})
 	}
+	if e := freeTierError(res.StatusCode, body); e != nil {
+		return nil, e
+	}
 	switch {
 	case res.StatusCode == http.StatusUnauthorized || res.StatusCode == http.StatusForbidden:
 		return nil, msg.Err(msg.ErrAIAuth, msg.Params{"status": res.StatusCode})
@@ -333,6 +336,36 @@ func networkDetail(e error) string {
 }
 
 // errorDetail 优先取服务返回的 error.message，否则截取正文。
+// freeTierError 识别 OrcaRouter 免费模型的拒绝（error.code 为 free_rate_limited），按 metadata.reason 区分：
+// 窗口已满（附等待秒数）、免费通道繁忙、单次提示超长（重试无用）与账号未满足免费条件。其他响应返回 nil。
+func freeTierError(status int, body []byte) error {
+	if status != http.StatusTooManyRequests && status != http.StatusBadRequest {
+		return nil
+	}
+	var v struct {
+		Error struct {
+			Code     string `json:"code"`
+			Metadata struct {
+				Reason     string  `json:"reason"`
+				RetryAfter float64 `json:"retry_after_seconds"`
+			} `json:"metadata"`
+		} `json:"error"`
+	}
+	if json.Unmarshal(body, &v) != nil || v.Error.Code != "free_rate_limited" {
+		return nil
+	}
+	switch v.Error.Metadata.Reason {
+	case "err_free_prompt_cap":
+		return msg.Err(msg.ErrAIFreePromptCap, nil)
+	case "err_free_access_denied":
+		return msg.Err(msg.ErrAIFreeAccess, nil)
+	}
+	if seconds := int(v.Error.Metadata.RetryAfter + 0.5); seconds > 0 {
+		return msg.Err(msg.ErrAIFreeRate, msg.Params{"seconds": seconds})
+	}
+	return msg.Err(msg.ErrAIFreeBusy, nil)
+}
+
 func errorDetail(body []byte, key string) string {
 	var v struct {
 		Error json.RawMessage `json:"error"`

@@ -2761,5 +2761,17 @@
   },
   "@yovoice.ai.orca.hint": {
     "defaultMessage": "No key to copy: sign in to OrcaRouter in your browser and approve, and it is added with a free model."
+  },
+  "@yovoice.error.aiFreeRate": {
+    "defaultMessage": "The free model's allowance is used up for now. It resets in about {seconds} seconds; try again then."
+  },
+  "@yovoice.error.aiFreeBusy": {
+    "defaultMessage": "The free model is busy right now. Wait a moment and try again, or pick another model in the writing panel."
+  },
+  "@yovoice.error.aiFreePromptCap": {
+    "defaultMessage": "This request is longer than the free model allows in one go, so retrying will not help. Shorten the description, or claim credit (orcarouter.ai/offers) or top up on OrcaRouter and switch to a paid model."
+  },
+  "@yovoice.error.aiFreeAccess": {
+    "defaultMessage": "OrcaRouter only offers free models to accounts linked to an established GitHub account. Link GitHub in your OrcaRouter profile settings, or top up first."
   }
 }
