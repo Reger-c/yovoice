@@ -31,7 +31,8 @@ var migrations = []string{
 	 CREATE TABLE voices (key TEXT PRIMARY KEY, pos INTEGER NOT NULL, data TEXT NOT NULL);
 	 CREATE TABLE models (key TEXT PRIMARY KEY, pos INTEGER NOT NULL, data TEXT NOT NULL);
 	 CREATE TABLE history (key TEXT PRIMARY KEY, pos INTEGER NOT NULL, data TEXT NOT NULL);
-	 CREATE TABLE ai_providers (key TEXT PRIMARY KEY, pos INTEGER NOT NULL, data TEXT NOT NULL);`,
+	 CREATE TABLE ai_providers (key TEXT PRIMARY KEY, pos INTEGER NOT NULL, data TEXT NOT NULL);
+	 CREATE TABLE private (key TEXT PRIMARY KEY, data TEXT NOT NULL);`,
 }
 
 // row 是一行已编码的记录；pos 保留列表顺序，data 为实体的 JSON。
@@ -312,17 +313,8 @@ func commit(db *sql.DB, saved, next snapshot) (bool, error) {
 	return true, tx.Commit()
 }
 
-// WriteSnapshot 在 dir 中新建状态库并写入 state，供数据目录迁移生成新目录的数据。
-// 先写入临时文件再改名，中途失败不会留下半成品数据库。
-func WriteSnapshot(dir string, state schema.State) error {
-	path := filepath.Join(dir, DatabaseFile)
-	if _, e := os.Stat(path); e == nil {
-		return fmt.Errorf("%s 已存在", path)
-	}
-	return createDB(path, state)
-}
-
-func createDB(path string, state schema.State) error {
+// createDB 新建状态库并写入 state 与 private 中的私有设置；先写临时文件再改名，中途失败不会留下半成品数据库。
+func createDB(path string, state schema.State, private map[string]string) error {
 	tmp := filepath.Join(filepath.Dir(path), fmt.Sprintf(".yovoice-%d.db", os.Getpid()))
 	removeDB(tmp)
 	defer removeDB(tmp)
@@ -334,13 +326,19 @@ func createDB(path string, state schema.State) error {
 	if e == nil {
 		_, e = commit(db, snapshot{}, snap)
 	}
+	for key, data := range private {
+		if e != nil {
+			break
+		}
+		_, e = db.Exec("INSERT INTO private (key, data) VALUES (?, ?)", key, data)
+	}
 	if ce := db.Close(); e == nil {
 		e = ce
 	}
 	if e != nil {
 		return e
 	}
-	if e = syncFile(tmp); e != nil {
+	if e = secure(tmp); e != nil {
 		return e
 	}
 	if e = os.Rename(tmp, path); e != nil {
@@ -350,18 +348,44 @@ func createDB(path string, state schema.State) error {
 	return nil
 }
 
-// backup 用 VACUUM INTO 生成一致的完整副本，先写临时文件再替换旧备份。
-func backup(db *sql.DB, root string) error {
-	tmp := filepath.Join(root, fmt.Sprintf(".yovoice-backup-%d.db", os.Getpid()))
+// backup 用 VACUUM INTO 生成一致的完整副本，先写临时文件再改名为 target。
+func backup(db *sql.DB, target string) error {
+	tmp := filepath.Join(filepath.Dir(target), fmt.Sprintf(".yovoice-backup-%d.db", os.Getpid()))
 	removeDB(tmp)
 	defer removeDB(tmp)
 	if _, e := db.Exec("VACUUM INTO ?", tmp); e != nil {
 		return e
 	}
-	if e := syncFile(tmp); e != nil {
+	if e := secure(tmp); e != nil {
 		return e
 	}
-	return os.Rename(tmp, filepath.Join(root, backupFile))
+	return os.Rename(tmp, target)
+}
+
+// secure 收紧数据库文件权限（含 AI 密钥与本机接口令牌）并落盘。
+func secure(path string) error {
+	if e := os.Chmod(path, 0600); e != nil {
+		return e
+	}
+	return syncFile(path)
+}
+
+// loadPrivate 读取 private 表的全部原始内容。
+func loadPrivate(db *sql.DB) (map[string]string, error) {
+	rows, e := db.Query("SELECT key, data FROM private")
+	if e != nil {
+		return nil, e
+	}
+	defer rows.Close()
+	private := map[string]string{}
+	for rows.Next() {
+		var key, data string
+		if e = rows.Scan(&key, &data); e != nil {
+			return nil, e
+		}
+		private[key] = data
+	}
+	return private, rows.Err()
 }
 
 // removeDB 删除数据库文件及其回滚日志。

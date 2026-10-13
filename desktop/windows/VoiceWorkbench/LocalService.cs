@@ -34,24 +34,32 @@ public sealed class LocalService : IDisposable
         }
         return path;
     }
+    private static string ServiceExecutable => Path.Combine(AppContext.BaseDirectory, "service", "yovoice-service.exe");
+
+    // 同步运行服务的辅助命令并返回标准输出；退出码非零时以服务的错误信息抛出。
+    private static string RunService(params string[] arguments)
+    {
+        if (!File.Exists(ServiceExecutable)) throw new IOException(HostL10n.T("本地服务缺失，请重新构建或安装应用。", "The local service is missing. Rebuild or reinstall the app."));
+        var start = new ProcessStartInfo(ServiceExecutable) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
+        foreach (string argument in arguments) start.ArgumentList.Add(argument);
+        using var process = Process.Start(start) ?? throw new IOException(HostL10n.T("无法启动本地服务。", "Could not start the local service."));
+        var error = process.StandardError.ReadToEndAsync();
+        string output = process.StandardOutput.ReadToEnd();
+        process.WaitForExit();
+        if (process.ExitCode != 0) throw new IOException(HostL10n.T("存储配置无法读取或写入：", "The storage settings could not be read or written: ") + error.Result.Trim());
+        return output;
+    }
+
     private static string DetermineDataRoot()
     {
         string? env = Environment.GetEnvironmentVariable("WORKBENCH_DATA");
         if (!string.IsNullOrWhiteSpace(env)) return Path.GetFullPath(env);
 
-        string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        string configFile = Path.Combine(appData, "yovoice", "storage.json");
-        if (File.Exists(configFile))
+        // 存储配置只由服务解析：配置损坏时直接报错退出，不静默回退到默认目录，也不会被宿主覆盖。
+        using (var config = JsonDocument.Parse(RunService("--data-root")))
         {
-            try
-            {
-                using var doc = JsonDocument.Parse(File.ReadAllText(configFile));
-                if (doc.RootElement.TryGetProperty("dataPath", out var p) && p.GetString() is { Length: > 0 } customPath)
-                {
-                    return ConfirmAvailable(Path.GetFullPath(customPath));
-                }
-            }
-            catch (Exception error) when (error is IOException or JsonException or UnauthorizedAccessException or ArgumentException or NotSupportedException) { }
+            if (config.RootElement.TryGetProperty("dataPath", out var p) && p.GetString() is { Length: > 0 } customPath)
+                return ConfirmAvailable(Path.GetFullPath(customPath));
         }
 
         string defaultUserData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".yovoice");
@@ -73,12 +81,9 @@ public sealed class LocalService : IDisposable
             {
                 string chosen = Path.Combine(parent, "yovoice-data");
                 // 记录自动选择的目录：之后即使 ~/.yovoice 被命令行等工具创建，桌面应用也不会悄悄切回系统盘。
-                try
-                {
-                    Directory.CreateDirectory(Path.GetDirectoryName(configFile)!);
-                    File.WriteAllText(configFile, JsonSerializer.Serialize(new { dataPath = chosen }));
-                }
-                catch { }
+                // 由服务原子写入并保留配置中的其他内容；记录失败不影响本次启动。
+                try { RunService("--set-data-root", chosen); }
+                catch (IOException error) { HostLog.Write(chosen, "storage.config_write_failed", error); }
                 return chosen;
             }
         }

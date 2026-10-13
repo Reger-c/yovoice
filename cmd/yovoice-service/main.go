@@ -3,7 +3,9 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -24,8 +26,19 @@ import (
 )
 
 func run() error {
-	if len(os.Args) > 1 && os.Args[1] == "--prepare-data" {
-		return store.PrepareDefault()
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "--prepare-data":
+			return store.PrepareDefault()
+		case "--data-root":
+			// 原生宿主通过它读取“设置 › 存储”选择的数据目录，配置只由服务解析；未设置时输出空路径，配置损坏时报错退出。
+			return printDataRoot(os.Stdout)
+		case "--set-data-root":
+			if len(os.Args) < 3 || !filepath.IsAbs(os.Args[2]) {
+				return fmt.Errorf("--set-data-root 需要绝对路径")
+			}
+			return setDataRoot(os.Args[2])
+		}
 	}
 	root, secret, assets := os.Getenv("WORKBENCH_DATA"), os.Getenv("WORKBENCH_TOKEN"), os.Getenv("WORKBENCH_WEB")
 	if root == "" || assets == "" || len(secret) < 32 {
@@ -55,8 +68,8 @@ func run() error {
 		// 数据目录迁移后首次在新目录启动：删除旧目录释放空间，失败时下次启动重试。
 		if hadState {
 			removed, e := store.CleanupPrevious(root)
-			if removed != "" || e != nil {
-				diag.Log(root, "storage.previous_cleanup", "path", removed, "error", diag.Error(e))
+			if len(removed) > 0 || e != nil {
+				diag.Log(root, "storage.previous_cleanup", "paths", strings.Join(removed, ";"), "error", diag.Error(e))
 			}
 		} else {
 			diag.Log(root, "storage.previous_cleanup_skipped", "reason", "data root had no state")
@@ -135,6 +148,24 @@ func run() error {
 	}
 	return e
 }
+func printDataRoot(out io.Writer) error {
+	cfg, err := store.ReadConfig()
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return json.NewEncoder(out).Encode(map[string]string{"dataPath": cfg.DataPath})
+}
+
+// setDataRoot 记录宿主自动选择的数据目录，保留配置中的其他内容；配置损坏时报错而不是覆盖。
+func setDataRoot(path string) error {
+	cfg, err := store.ReadConfig()
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	cfg.DataPath = filepath.Clean(path)
+	return store.WriteConfig(cfg)
+}
+
 func main() {
 	if e := run(); e != nil {
 		fmt.Fprintln(os.Stderr, e)

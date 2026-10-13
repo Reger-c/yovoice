@@ -5,10 +5,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -70,7 +72,7 @@ func New(root string) (store *Store, err error) {
 		diag.Log(root, "state.host_preferences_failed", "error", diag.Error(e))
 	}
 	// 每次成功打开后刷新备份，数据库损坏时可回到最近一次启动的状态。
-	if e := backup(s.db, root); e != nil {
+	if e := backup(s.db, filepath.Join(root, backupFile)); e != nil {
 		diag.Log(root, "state.backup_failed", "error", diag.Error(e))
 	} else {
 		s.backedUp = time.Now()
@@ -86,7 +88,7 @@ func (s *Store) open() error {
 		if e != nil {
 			return e
 		}
-		if e = createDB(path, state); e != nil {
+		if e = createDB(path, state, nil); e != nil {
 			return e
 		}
 		if found {
@@ -207,19 +209,14 @@ func (s *Store) Update(change func(*schema.State), persist bool) (err error) {
 	}()
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if persist && s.frozen {
-		return msg.Err(msg.ErrStorageRestart, nil)
+	if persist {
+		if e := s.checkWritable(); e != nil {
+			return e
+		}
 	}
 	next := clone(s.state)
 	change(&next)
 	if persist {
-		if s.db == nil {
-			return errors.New("状态库已关闭")
-		}
-		// 类 Unix 系统上已删除的文件仍可写入，必须先确认数据库仍在原位，否则修改会静默丢失。
-		if _, e := os.Stat(filepath.Join(s.Root, DatabaseFile)); e != nil {
-			return s.writeError(e)
-		}
 		snap, e := encode(&next)
 		if e != nil {
 			return e
@@ -237,7 +234,7 @@ func (s *Store) Update(change func(*schema.State), persist bool) (err error) {
 				}
 			}
 			if time.Since(s.backedUp) >= backupInterval {
-				if e = backup(s.db, s.Root); e != nil {
+				if e = backup(s.db, filepath.Join(s.Root, backupFile)); e != nil {
 					diag.Log(s.Root, "state.backup_failed", "error", diag.Error(e))
 				}
 				s.backedUp = time.Now()
@@ -267,6 +264,9 @@ func (s *Store) writeHostPreferences() error {
 // 运行中删除数据目录或拔出外置盘时，用户需要知道原因和处理方式。
 // 这里不重新创建目录：外置盘未挂载时在原路径新建会把数据写到系统盘。
 func (s *Store) writeError(e error) error {
+	if e == nil {
+		return nil
+	}
 	if _, err := os.Stat(s.Root); os.IsNotExist(err) {
 		return msg.Err(msg.ErrDataRootMissing, msg.Params{"path": s.Root})
 	}
@@ -293,6 +293,103 @@ func (s *Store) Close() error {
 	e := s.db.Close()
 	s.db = nil
 	return e
+}
+
+// checkWritable 确认可以持久化写入：未冻结、未关闭、数据库仍在原位。调用方需持有 s.mu。
+func (s *Store) checkWritable() error {
+	if s.frozen {
+		return msg.Err(msg.ErrStorageRestart, nil)
+	}
+	if s.db == nil {
+		return errors.New("状态库已关闭")
+	}
+	// 类 Unix 系统上已删除的文件仍可写入，必须先确认数据库仍在原位，否则修改会静默丢失。
+	if _, e := os.Stat(filepath.Join(s.Root, DatabaseFile)); e != nil {
+		return s.writeError(e)
+	}
+	return nil
+}
+
+// Private 读取不属于 State 的私有设置（如本机接口令牌、AI 服务密钥），它们不随状态广播给界面。
+// 不存在时返回 false。
+func (s *Store) Private(key string, v any) (bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.db == nil {
+		return false, errors.New("状态库已关闭")
+	}
+	var data string
+	e := s.db.QueryRow("SELECT data FROM private WHERE key = ?", key).Scan(&data)
+	if errors.Is(e, sql.ErrNoRows) {
+		return false, nil
+	}
+	if e != nil {
+		return false, e
+	}
+	if e = json.Unmarshal([]byte(data), v); e != nil {
+		return false, msg.Err(msg.ErrStateCorrupt, nil)
+	}
+	return true, nil
+}
+
+// SetPrivate 保存私有设置，v 为 nil 时删除；与状态写入一样受冻结和数据目录检查约束。
+func (s *Store) SetPrivate(key string, v any) (err error) {
+	defer func() {
+		if err != nil {
+			diag.Log(s.Root, "state.write_failed", "stage", "private", "key", key, "error", diag.Error(err))
+		}
+	}()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if e := s.checkWritable(); e != nil {
+		return e
+	}
+	if v == nil {
+		_, e := s.db.Exec("DELETE FROM private WHERE key = ?", key)
+		return s.writeError(e)
+	}
+	b, e := json.Marshal(v)
+	if e != nil {
+		return e
+	}
+	_, e = s.db.Exec("INSERT INTO private (key, data) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET data = excluded.data", key, string(b))
+	if e != nil {
+		return s.writeError(e)
+	}
+	return nil
+}
+
+// WriteSnapshot 在 dir 中新建状态库，写入 state 与当前的全部私有设置，供数据目录迁移生成新目录的数据。
+func (s *Store) WriteSnapshot(dir string, state schema.State) error {
+	path := filepath.Join(dir, DatabaseFile)
+	if _, e := os.Stat(path); e == nil {
+		return fmt.Errorf("%s 已存在", path)
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.db == nil {
+		return errors.New("状态库已关闭")
+	}
+	private, e := loadPrivate(s.db)
+	if e != nil {
+		return e
+	}
+	return createDB(path, state, private)
+}
+
+// Snapshot 把当前数据库完整复制为 yovoice.<label>-<时间>.db，在批量修复等不可撤销的修改前留存；同类快照最多保留 keepCorrupt 份。
+func (s *Store) Snapshot(label string) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.db == nil {
+		return "", errors.New("状态库已关闭")
+	}
+	path := filepath.Join(s.Root, "yovoice."+label+"-"+time.Now().Format("20060102-150405.000000000")+".db")
+	if e := backup(s.db, path); e != nil {
+		return "", e
+	}
+	pruneSnapshots(s.Root, "yovoice."+label+"-*.db", keepCorrupt)
+	return path, nil
 }
 
 // HasData 判断目录中是否已有状态数据（新版数据库或尚未导入的旧版 state.json）。
@@ -329,9 +426,12 @@ func DefaultDirectory() (string, error) {
 }
 
 // StorageConfig 存储全局重定向配置。
-// PreviousPath 记录迁移前的旧目录：新目录成功启动后由 CleanupPrevious 删除，释放原磁盘空间。
+// PreviousPaths 记录迁移前的旧目录：新目录成功启动后由 CleanupPrevious 清理，释放原磁盘空间；
+// 清理失败的旧目录保留在列表中下次重试，再次迁移时追加而不是覆盖，旧目录不会变成无人管理的孤儿。
 type StorageConfig struct {
-	DataPath     string `json:"dataPath"`
+	DataPath      string   `json:"dataPath"`
+	PreviousPaths []string `json:"previousPaths,omitempty"`
+	// PreviousPath 是旧版只记一个旧目录的字段，读取时并入 PreviousPaths，写入时不再使用。
 	PreviousPath string `json:"previousPath,omitempty"`
 }
 
@@ -374,8 +474,28 @@ func ReadConfig() (StorageConfig, error) {
 	if err != nil {
 		return cfg, err
 	}
-	err = json.Unmarshal(b, &cfg)
-	return cfg, err
+	if err = json.Unmarshal(b, &cfg); err != nil {
+		return cfg, fmt.Errorf("存储配置 %s 已损坏：%w", cfgPath, err)
+	}
+	if cfg.PreviousPath != "" {
+		if !slices.ContainsFunc(cfg.PreviousPaths, func(p string) bool { return SamePath(p, cfg.PreviousPath) }) {
+			cfg.PreviousPaths = append(cfg.PreviousPaths, cfg.PreviousPath)
+		}
+		cfg.PreviousPath = ""
+	}
+	return cfg, nil
+}
+
+// RecordRelocation 把数据目录切换到 target，并把 from 追加到待清理的旧目录列表；保留配置中的其他内容。
+func RecordRelocation(from, target string) error {
+	cfg, err := ReadConfig()
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	cfg.DataPath = target
+	cfg.PreviousPaths = slices.DeleteFunc(cfg.PreviousPaths, func(p string) bool { return SamePath(p, target) || SamePath(p, from) })
+	cfg.PreviousPaths = append(cfg.PreviousPaths, from)
+	return WriteConfig(cfg)
 }
 
 // WriteConfig 原子保存数据目录重定向配置，避免写到一半时宿主读到损坏的配置。
@@ -416,56 +536,100 @@ func Within(parent, child string) bool {
 	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && !filepath.IsAbs(rel)
 }
 
-// CleanupPrevious 在新数据目录成功启动后删除迁移前的旧目录。
-// 只有配置确认当前目录就是迁移目标、旧目录确实是数据目录且没有其他进程占用时才删除；
+// dataEntries 是数据目录中由应用创建的条目；清理旧目录时只删除这些，其余内容（用户自行放入的文件）原样保留。
+var dataEntries = []string{"voices", "outputs", "downloads", "runtime", "models", "logs", "service.lock", hostPreferences, backupFile, legacyBackup, legacyMigrated, "local-api.json", "secrets.json"}
+
+// dataEntry 判断名称是否为应用创建的条目，包括损坏快照与修复快照。
+func dataEntry(name string) bool {
+	if slices.Contains(dataEntries, name) {
+		return true
+	}
+	for _, pattern := range []string{"state.corrupt-*.json", "yovoice.*.db", "yovoice.*.db-journal", ".yovoice-*", ".tmp-*"} {
+		if ok, _ := filepath.Match(pattern, name); ok {
+			return true
+		}
+	}
+	return false
+}
+
+// CleanupPrevious 在新数据目录成功启动后清理迁移前的旧目录，返回已清理的目录。
+// 只有配置确认当前目录就是迁移目标、旧目录确实是数据目录且没有其他进程占用时才清理；
 // 宿主未切换到新目录（例如旧版宿主）时保持旧目录不动，绝不删除正在使用的数据。
-func CleanupPrevious(root string) (removed string, err error) {
+// 清理只删除应用创建的条目，状态文件最后删除；目录里还有其他内容时保留目录本身。
+func CleanupPrevious(root string) (removed []string, err error) {
 	cfg, err := ReadConfig()
 	if err != nil {
 		if os.IsNotExist(err) {
-			return "", nil
+			return nil, nil
 		}
-		return "", err
+		return nil, err
 	}
-	previous := cfg.PreviousPath
-	if previous == "" || cfg.DataPath == "" || !SamePath(cfg.DataPath, root) {
-		return "", nil
+	if len(cfg.PreviousPaths) == 0 || cfg.DataPath == "" || !SamePath(cfg.DataPath, root) {
+		return nil, nil
 	}
-	forget := func() error {
-		cfg.PreviousPath = ""
-		return WriteConfig(cfg)
+	var pending []string
+	var errs []error
+	for _, previous := range cfg.PreviousPaths {
+		done, e := cleanupPrevious(root, previous)
+		if e != nil {
+			errs = append(errs, fmt.Errorf("%s: %w", previous, e))
+		}
+		if done {
+			removed = append(removed, previous)
+		} else {
+			pending = append(pending, previous)
+		}
 	}
-	if Within(previous, root) || Within(root, previous) {
-		return "", forget()
+	if len(pending) != len(cfg.PreviousPaths) {
+		cfg.PreviousPaths = pending
+		if e := WriteConfig(cfg); e != nil {
+			errs = append(errs, e)
+		}
+	}
+	return removed, errors.Join(errs...)
+}
+
+// cleanupPrevious 清理单个旧目录；done 为真表示无需再保留在待清理列表中。
+func cleanupPrevious(root, previous string) (done bool, err error) {
+	if previous == "" || Within(previous, root) || Within(root, previous) {
+		return true, nil
 	}
 	if _, e := os.Stat(previous); os.IsNotExist(e) {
-		return "", forget()
+		return true, nil
 	}
 	if !HasData(previous) {
 		// 不是可识别的数据目录，不冒险删除。
-		return "", forget()
+		return true, nil
 	}
 	lock, e := platform.Lock(filepath.Join(previous, "service.lock"))
 	if e != nil {
 		// 旧目录仍被其他进程使用，下次启动再试。
-		return "", e
+		return false, e
 	}
 	lock.Close()
-	// 状态文件最后删除：中途退出时下次启动仍能识别这是旧数据目录并继续清理。
 	entries, e := os.ReadDir(previous)
 	if e != nil {
-		return "", e
+		return false, e
 	}
 	for _, entry := range entries {
-		if name := entry.Name(); name == DatabaseFile || name == legacyState {
-			continue
-		}
-		if e = os.RemoveAll(filepath.Join(previous, entry.Name())); e != nil {
-			return "", e
+		if name := entry.Name(); name != DatabaseFile && name != legacyState && dataEntry(name) {
+			if e = os.RemoveAll(filepath.Join(previous, name)); e != nil {
+				return false, e
+			}
 		}
 	}
-	if e = os.RemoveAll(previous); e != nil {
-		return "", e
+	// 状态文件最后删除：中途退出时下次启动仍能识别这是旧数据目录并继续清理。
+	for _, name := range []string{DatabaseFile + "-journal", DatabaseFile, legacyState} {
+		if e = os.Remove(filepath.Join(previous, name)); e != nil && !os.IsNotExist(e) {
+			return false, e
+		}
 	}
-	return previous, forget()
+	// 只在目录已空时删除目录本身，用户放入的其他文件保留。
+	if e = os.Remove(previous); e != nil {
+		if rest, _ := os.ReadDir(previous); len(rest) > 0 {
+			return true, nil
+		}
+		return false, e
+	}
+	return true, nil
 }

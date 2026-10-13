@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"testing"
 	"time"
+	"yovoice/internal/store"
 )
 
 func TestShutdownDrainsResponses(t *testing.T) {
@@ -85,5 +86,38 @@ func TestShutdownDrainsResponses(t *testing.T) {
 	}
 	if err = command.Wait(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// 宿主通过 --data-root 读取数据目录：未配置时为空，--set-data-root 保留待清理的旧目录，配置损坏时报错而不是回退。
+func TestDataRootCommands(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("APPDATA", filepath.Join(home, "AppData", "Roaming"))
+	var out bytes.Buffer
+	if err := printDataRoot(&out); err != nil || out.String() != "{\"dataPath\":\"\"}\n" {
+		t.Fatalf("未配置时应输出空路径: %q %v", out.String(), err)
+	}
+	old := filepath.Join(home, "old")
+	if err := store.RecordRelocation(old, filepath.Join(home, "a")); err != nil {
+		t.Fatal(err)
+	}
+	moved := filepath.Join(home, "b")
+	if err := setDataRoot(moved); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := store.ReadConfig()
+	if err != nil || cfg.DataPath != moved || len(cfg.PreviousPaths) != 1 {
+		t.Fatalf("应保留待清理的旧目录: %+v %v", cfg, err)
+	}
+	path, _ := store.ConfigFile()
+	if err = os.WriteFile(path, []byte("{broken"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err = printDataRoot(io.Discard); err == nil {
+		t.Fatal("配置损坏时应报错")
+	}
+	if err = setDataRoot(moved); err == nil {
+		t.Fatal("配置损坏时不应覆盖")
 	}
 }

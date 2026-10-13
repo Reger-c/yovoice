@@ -57,6 +57,10 @@ func New(root string) (*Workbench, error) {
 	}
 	w := &Workbench{Store: s, engine: engine.New(root), client: &http.Client{Transport: transport}, bundled: map[string]bundledRuntime{}}
 	// 先找回已解压的内核再清理，避免把仍可使用的 GPU 内核当作残留删除。
+	if e = w.importLegacyPrivate(); e != nil {
+		s.Close()
+		return nil, e
+	}
 	if e = w.adoptRuntimes(); e != nil {
 		s.Close()
 		return nil, e

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"yovoice/internal/msg"
 	"yovoice/internal/workbench"
@@ -54,10 +55,14 @@ func TestLocalAPILifecycle(t *testing.T) {
 	if status.Enabled || status.Running || status.Port != workbench.LocalAPIDefaultPort || len(status.Token) < 32 {
 		t.Fatalf("默认状态异常：%+v", status)
 	}
-	info, e := os.Stat(filepath.Join(root, "local-api.json"))
+	// 令牌保存在状态库的私有设置中，不随状态广播给界面。
+	if b, _ := json.Marshal(w.Store.Read()); strings.Contains(string(b), status.Token) {
+		t.Fatal("令牌不应出现在状态中")
+	}
+	info, e := os.Stat(filepath.Join(root, "yovoice.db"))
 	must(t, e)
 	if info.Mode().Perm()&0077 != 0 && os.PathSeparator == '/' {
-		t.Fatalf("设置文件权限过宽：%v", info.Mode())
+		t.Fatalf("状态库权限过宽：%v", info.Mode())
 	}
 
 	port := freePort(t)

@@ -2,7 +2,6 @@ package workbench
 
 import (
 	"encoding/json"
-	"os"
 	"slices"
 	"time"
 	"yovoice/internal/diag"
@@ -124,14 +123,6 @@ func (w *Workbench) DeleteDraft(id string) error {
 		return err
 	}
 	// 只删除删除后已无任何记录使用的文件（例如复制作品后共享的导入素材仍保留）。
-	active := referencedOutputs(w.Store.Read())
-	for _, name := range candidates {
-		if name == "" || active[name] {
-			continue
-		}
-		if p, err := w.Store.MediaPath("outputs", name); err == nil {
-			_ = os.Remove(p)
-		}
-	}
+	w.deleteUnreferenced("outputs", candidates, nil)
 	return nil
 }

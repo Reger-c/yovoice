@@ -54,67 +54,21 @@ func dirSize(path string) int64 {
 // 迁移期间旧目录保持不动：任何一步失败只清理新目录里本次写入的内容，不会损坏现有数据；
 // 新目录成功启动后才由 store.CleanupPrevious 删除旧目录，释放原磁盘空间。
 func (w *Workbench) RelocateStorage(targetPath string) error {
-	w.edit.Lock()
-	defer w.edit.Unlock()
-	if w.pendingDataPath != "" {
-		return msg.Err(msg.ErrStorageRestart, nil)
-	}
-
-	targetPath = filepath.Clean(targetPath)
-	if !filepath.IsAbs(targetPath) {
-		return msg.Err(msg.ErrAudioPathInvalid, nil)
-	}
 	currentRoot := filepath.Clean(w.Store.Root)
-	if store.SamePath(targetPath, currentRoot) {
-		return msg.Err(msg.ErrStorageSame, nil)
-	}
-	// 新目录位于当前数据目录内会被自身复制；当前目录位于新目录内则新目录必然非空。
-	if store.Within(currentRoot, targetPath) || store.Within(targetPath, currentRoot) {
-		return msg.Err(msg.ErrStorageInsideData, nil)
-	}
-	// 更新程序会备份并替换安装目录，因此新数据目录绝不能位于安装目录内。
-	if installDir := detectInstallDir(); installDir != "" && store.Within(installDir, targetPath) {
-		return msg.Err(msg.ErrStorageInsideApp, nil)
-	}
-
-	createdTarget := false
-	if entries, err := os.ReadDir(targetPath); err == nil {
-		if len(entries) > 0 {
-			return msg.Err(msg.ErrStorageTargetNotEmpty, nil)
-		}
-	} else if os.IsNotExist(err) {
-		createdTarget = true
-	} else {
-		return err
-	}
-
-	// 占用后台操作槽位：迁移期间拒绝开始生成或下载，用户也可以取消迁移。
+	targetPath = filepath.Clean(targetPath)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	w.mu.Lock()
-	if w.closed || w.cancel != nil || w.installCancel != nil {
-		w.mu.Unlock()
-		return msg.Err(msg.ErrBusy, nil)
+	createdTarget, err := w.beginRelocate(currentRoot, targetPath, cancel)
+	if err != nil {
+		return err
 	}
-	done := make(chan struct{})
-	w.cancel, w.done = cancel, done
-	w.mu.Unlock()
+	done := w.done
 	defer func() {
 		w.mu.Lock()
 		w.cancel = nil
 		close(done)
 		w.mu.Unlock()
 	}()
-
-	// 迁移前把当前状态完整落盘，并以内存快照作为新目录的状态来源。
-	if err := w.Store.Update(func(_ *schema.State) {}, true); err != nil {
-		return err
-	}
-	snapshot := w.Store.Read()
-
-	if err := os.MkdirAll(targetPath, 0700); err != nil {
-		return err
-	}
 	cleanupTarget := func() {
 		if createdTarget {
 			_ = os.RemoveAll(targetPath)
@@ -152,7 +106,8 @@ func (w *Workbench) RelocateStorage(targetPath string) error {
 			}, false)
 		}
 	}
-	if err := copyDirectoryContentsWithProgress(ctx, currentRoot, targetPath, onProgress); err != nil {
+	// 大量复制期间不持有编辑锁，保存作品等操作照常进行；生成与下载已由后台操作槽位挡住。
+	if err := copyDirectoryContentsWithProgress(ctx, currentRoot, targetPath, false, onProgress); err != nil {
 		cleanupTarget()
 		if ctx.Err() != nil {
 			return ctx.Err()
@@ -160,7 +115,19 @@ func (w *Workbench) RelocateStorage(targetPath string) error {
 		return fmt.Errorf("复制数据失败: %w", err)
 	}
 
-	// 新目录的状态库由内存快照生成，指向旧目录的绝对路径全部改写到新目录。
+	// 收尾阶段持有编辑锁：补齐复制期间新增或修改的文件，再以此刻的状态生成新目录的状态库并冻结旧目录。
+	w.edit.Lock()
+	defer w.edit.Unlock()
+	if err := copyDirectoryContentsWithProgress(ctx, currentRoot, targetPath, true, nil); err != nil {
+		cleanupTarget()
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		return fmt.Errorf("复制数据失败: %w", err)
+	}
+	snapshot := w.Store.Read()
+
+	// 指向旧目录的绝对路径全部改写到新目录。
 	rebase := func(p string) string {
 		if p != "" && store.Within(currentRoot, p) {
 			if rel, err := filepath.Rel(currentRoot, p); err == nil {
@@ -187,12 +154,12 @@ func (w *Workbench) RelocateStorage(targetPath string) error {
 	}
 	snapshot.Activity = nil
 	snapshot.ModelActivity = nil
-	if err := store.WriteSnapshot(targetPath, snapshot); err != nil {
+	if err := w.Store.WriteSnapshot(targetPath, snapshot); err != nil {
 		cleanupTarget()
 		return fmt.Errorf("写入新目录状态失败: %w", err)
 	}
 
-	if err := store.WriteConfig(store.StorageConfig{DataPath: targetPath, PreviousPath: currentRoot}); err != nil {
+	if err := store.RecordRelocation(currentRoot, targetPath); err != nil {
 		cleanupTarget()
 		return fmt.Errorf("写入存储配置失败: %w", err)
 	}
@@ -201,6 +168,48 @@ func (w *Workbench) RelocateStorage(targetPath string) error {
 	w.Store.Freeze()
 	w.pendingDataPath = targetPath
 	return nil
+}
+
+// beginRelocate 在编辑锁内检查迁移目标并占用后台操作槽位：迁移期间拒绝开始生成或下载，用户也可以取消迁移。
+func (w *Workbench) beginRelocate(currentRoot, targetPath string, cancel context.CancelFunc) (createdTarget bool, err error) {
+	w.edit.Lock()
+	defer w.edit.Unlock()
+	if w.pendingDataPath != "" {
+		return false, msg.Err(msg.ErrStorageRestart, nil)
+	}
+	if !filepath.IsAbs(targetPath) {
+		return false, msg.Err(msg.ErrAudioPathInvalid, nil)
+	}
+	if store.SamePath(targetPath, currentRoot) {
+		return false, msg.Err(msg.ErrStorageSame, nil)
+	}
+	// 新目录位于当前数据目录内会被自身复制；当前目录位于新目录内则新目录必然非空。
+	if store.Within(currentRoot, targetPath) || store.Within(targetPath, currentRoot) {
+		return false, msg.Err(msg.ErrStorageInsideData, nil)
+	}
+	// 更新程序会备份并替换安装目录，因此新数据目录绝不能位于安装目录内。
+	if installDir := detectInstallDir(); installDir != "" && store.Within(installDir, targetPath) {
+		return false, msg.Err(msg.ErrStorageInsideApp, nil)
+	}
+	if entries, err := os.ReadDir(targetPath); err == nil {
+		if len(entries) > 0 {
+			return false, msg.Err(msg.ErrStorageTargetNotEmpty, nil)
+		}
+	} else if os.IsNotExist(err) {
+		createdTarget = true
+	} else {
+		return false, err
+	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.closed || w.cancel != nil || w.installCancel != nil {
+		return false, msg.Err(msg.ErrBusy, nil)
+	}
+	if err := os.MkdirAll(targetPath, 0700); err != nil {
+		return false, err
+	}
+	w.cancel, w.done = cancel, make(chan struct{})
+	return createdTarget, nil
 }
 
 // detectInstallDir 获取当前应用的安装根目录。
@@ -223,7 +232,7 @@ func detectInstallDir() string {
 func skipRelocate(rel string, info os.FileInfo) bool {
 	name := info.Name()
 	switch rel {
-	case "service.lock", store.DatabaseFile, store.DatabaseFile + "-journal", "yovoice.backup.db", "state.json", "state.backup.json":
+	case "service.lock", store.DatabaseFile, store.DatabaseFile + "-journal", "yovoice.backup.db", "state.json", "state.backup.json", "local-api.json", "secrets.json":
 		return true
 	}
 	if strings.HasSuffix(name, ".deleted") || strings.HasPrefix(name, ".yovoice-") || strings.HasPrefix(name, ".tmp-") {
@@ -233,7 +242,8 @@ func skipRelocate(rel string, info os.FileInfo) bool {
 }
 
 // copyDirectoryContentsWithProgress 递归复制目录内容，并实时汇报累计复制字节。
-func copyDirectoryContentsWithProgress(ctx context.Context, src, dst string, onProgress func(copied int64)) error {
+// changedOnly 为真时只复制目标中缺失、大小不同或源文件在复制后又被修改的文件，用于收尾时补齐。
+func copyDirectoryContentsWithProgress(ctx context.Context, src, dst string, changedOnly bool, onProgress func(copied int64)) error {
 	var totalCopied int64
 	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -261,6 +271,11 @@ func copyDirectoryContentsWithProgress(ctx context.Context, src, dst string, onP
 		}
 		if !info.Mode().IsRegular() {
 			return nil
+		}
+		if changedOnly {
+			if existing, err := os.Stat(target); err == nil && existing.Size() == info.Size() && !info.ModTime().After(existing.ModTime()) {
+				return nil
+			}
 		}
 		copied, err := copyFileChunked(ctx, path, target, func(n int64) {
 			if onProgress != nil {

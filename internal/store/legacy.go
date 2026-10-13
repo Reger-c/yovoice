@@ -88,14 +88,17 @@ func retireLegacy(root string) error {
 const keepCorrupt = 3
 
 func pruneCorrupt(root string, keep int) {
-	for _, pattern := range []string{"state.corrupt-*.json", "yovoice.corrupt-*.db"} {
-		files, _ := filepath.Glob(filepath.Join(root, pattern))
-		// 文件名带纳秒时间戳，字典序即时间序。
-		slices.Sort(files)
-		for len(files) > keep {
-			removeDB(files[0])
-			files = files[1:]
-		}
+	pruneSnapshots(root, "state.corrupt-*.json", keep)
+	pruneSnapshots(root, "yovoice.corrupt-*.db", keep)
+}
+
+func pruneSnapshots(root, pattern string, keep int) {
+	files, _ := filepath.Glob(filepath.Join(root, pattern))
+	// 文件名带纳秒时间戳，字典序即时间序。
+	slices.Sort(files)
+	for len(files) > keep {
+		removeDB(files[0])
+		files = files[1:]
 	}
 }
 
@@ -165,6 +168,7 @@ func Migrate(legacy, target string) error {
 	}
 	defer lock.Close()
 	var state schema.State
+	var private map[string]string
 	// 旧目录可能已是新版数据库，也可能只有 state.json。
 	fromDB := false
 	if _, e = os.Stat(filepath.Join(legacy, DatabaseFile)); e == nil {
@@ -179,6 +183,9 @@ func Migrate(legacy, target string) error {
 			return e
 		}
 		state, _, e = load(db)
+		if e == nil {
+			private, e = loadPrivate(db)
+		}
 		if ce := db.Close(); e == nil {
 			e = ce
 		}
@@ -229,7 +236,7 @@ func Migrate(legacy, target string) error {
 		write := func() error { return writeState(filepath.Join(target, legacyState), state) }
 		if fromDB {
 			// createDB 先写临时库再改名，原子替换移动过来的数据库。
-			write = func() error { return createDB(filepath.Join(target, DatabaseFile), state) }
+			write = func() error { return createDB(filepath.Join(target, DatabaseFile), state, private) }
 		}
 		if e = write(); e != nil {
 			if rollback := os.Rename(target, legacy); rollback != nil {
