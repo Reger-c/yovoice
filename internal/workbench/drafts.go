@@ -77,28 +77,24 @@ func (w *Workbench) DeleteDraft(id string) error {
 	if s.Activity != nil && s.Activity.Kind == "generate" && s.Activity.Status == "running" && s.Activity.ProjectID == id {
 		return msg.Err(msg.ErrBusy, nil)
 	}
-	referenced := map[string]bool{}
-	for _, d := range s.Drafts {
-		if d.ID == id || d.Timeline == nil {
-			continue
-		}
-		for _, track := range d.Timeline.Tracks {
-			for _, clip := range track.Clips {
-				if clip.GenerationID != "" {
-					referenced[clip.GenerationID] = true
-				}
-			}
+	// 其他作品时间线仍在使用的版本保留，其余历史版本随作品一起删除。
+	referenced := timelineGenerations(s, id)
+	deleteIDs := map[string]bool{}
+	for _, g := range s.History {
+		if g.Settings.ID == id && !referenced[g.ID] {
+			deleteIDs[g.ID] = true
 		}
 	}
-	deleteIDs := map[string]bool{}
-	var filesToDelete []string
+	var candidates []string
 	for _, g := range s.History {
-		if g.Settings.ID == id {
-			if !referenced[g.ID] {
-				deleteIDs[g.ID] = true
-				if p, err := w.Store.MediaPath("outputs", g.FileName); err == nil {
-					filesToDelete = append(filesToDelete, p)
-				}
+		if deleteIDs[g.ID] {
+			candidates = append(candidates, g.FileName)
+		}
+	}
+	for _, d := range s.Drafts {
+		if d.ID == id && d.Timeline != nil {
+			for _, asset := range d.Timeline.Assets {
+				candidates = append(candidates, asset.FileName)
 			}
 		}
 	}
@@ -111,8 +107,15 @@ func (w *Workbench) DeleteDraft(id string) error {
 	if err != nil {
 		return err
 	}
-	for _, f := range filesToDelete {
-		_ = os.Remove(f)
+	// 只删除删除后已无任何记录使用的文件（例如复制作品后共享的导入素材仍保留）。
+	active := referencedOutputs(w.Store.Read())
+	for _, name := range candidates {
+		if name == "" || active[name] {
+			continue
+		}
+		if p, err := w.Store.MediaPath("outputs", name); err == nil {
+			_ = os.Remove(p)
+		}
 	}
 	return nil
 }

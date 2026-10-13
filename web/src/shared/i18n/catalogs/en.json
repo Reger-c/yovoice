@@ -2877,10 +2877,10 @@
     "defaultMessage": "Data directory"
   },
   "@yovoice.settings.storageRelocateHint": {
-    "defaultMessage": "Moving data takes effect after quitting from the system tray and restarting the app. Renamed directly on the same drive, safely copied across drives."
+    "defaultMessage": "Changing the location copies all data to the new directory. It takes effect after you fully quit yovoice (on Windows, quit from the system tray) and reopen it; the old directory is then removed automatically to free up space."
   },
   "@yovoice.settings.storageRelocatePending": {
-    "defaultMessage": "Data has been migrated to the new location. Please fully quit yovoice from the system tray and restart the app to take effect."
+    "defaultMessage": "Data has been copied to the new location. Please fully quit and reopen yovoice to take effect. New changes cannot be saved until then, and the old directory is removed automatically after the restart."
   },
   "@yovoice.settings.storageBreakdown": {
     "defaultMessage": "Usage: total {total} (models {models} · outputs {outputs} · voices {voices} · cache {downloads})"
@@ -2905,6 +2905,11 @@
   },
   "@yovoice.settings.relocatingHint": {
     "defaultMessage": "Copying data to the new location. Please do not close the app or disconnect storage devices..."
+  },
+  "@yovoice.error.storageInsideData": {
+    "defaultMessage": "The new directory cannot be inside, or contain, the current data directory."
+  },
+  "@yovoice.error.storageRestartRequired": {
+    "defaultMessage": "The data directory has been moved. Please fully quit and reopen yovoice before continuing."
   }
 }
-

@@ -41,7 +41,9 @@ public sealed class LocalService : IDisposable
         }
 
         string defaultUserData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".yovoice");
-        if (Directory.Exists(defaultUserData))
+        // 旧版 VoiceWorkbench 数据会由 --prepare-data 迁移到 ~/.yovoice，此时必须沿用默认目录。
+        string legacyData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VoiceWorkbench");
+        if (Directory.Exists(defaultUserData) || Directory.Exists(legacyData))
         {
             return defaultUserData;
         }
@@ -55,7 +57,15 @@ public sealed class LocalService : IDisposable
             string? parent = Path.GetDirectoryName(installDir);
             if (!string.IsNullOrEmpty(parent))
             {
-                return Path.Combine(parent, "yovoice-data");
+                string chosen = Path.Combine(parent, "yovoice-data");
+                // 记录自动选择的目录：之后即使 ~/.yovoice 被命令行等工具创建，桌面应用也不会悄悄切回系统盘。
+                try
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(configFile)!);
+                    File.WriteAllText(configFile, JsonSerializer.Serialize(new { dataPath = chosen }));
+                }
+                catch { }
+                return chosen;
             }
         }
 

@@ -16,6 +16,7 @@ import (
 	"time"
 	"yovoice/internal/catalog"
 	"yovoice/internal/desktop"
+	"yovoice/internal/diag"
 	"yovoice/internal/platform"
 	"yovoice/internal/schema"
 	"yovoice/internal/store"
@@ -43,6 +44,13 @@ func run() error {
 		return e
 	}
 	defer wb.Close()
+	// 数据目录迁移后首次在新目录启动：后台删除旧目录释放空间，失败时下次启动重试。
+	go func() {
+		removed, e := store.CleanupPrevious(root)
+		if removed != "" || e != nil {
+			diag.Log(root, "storage.previous_cleanup", "path", removed, "error", diag.Error(e))
+		}
+	}()
 	bundled := os.Getenv("WORKBENCH_ENGINE")
 	if runtime.GOOS == "windows" {
 		if e = wb.UseBundled(bundled); e != nil {

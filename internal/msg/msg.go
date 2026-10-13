@@ -137,6 +137,8 @@ const (
 	ErrStorageInsideApp      Code = "@yovoice.error.storageInsideApp"
 	ErrStorageTargetNotEmpty Code = "@yovoice.error.storageTargetNotEmpty"
 	ErrStorageSame           Code = "@yovoice.error.storageSame"
+	ErrStorageInsideData     Code = "@yovoice.error.storageInsideData"
+	ErrStorageRestart        Code = "@yovoice.error.storageRestartRequired"
 	ErrUnknown               Code = "@yovoice.error.unknown"
 )
 
@@ -203,7 +205,7 @@ func All() []Code {
 		ErrAIProviderInvalid, ErrAINotConfigured, ErrAIAuth, ErrAIRateLimit, ErrAINetwork, ErrAIResponse, ErrAIModelsPath, ErrAIResultInvalid, ErrAITimeout,
 		ErrAIFreeRate, ErrAIFreeBusy, ErrAIFreePromptCap, ErrAIFreeAccess,
 		ErrLocalAPIPort, ErrLocalAPIPortInUse,
-		ErrStorageInsideApp, ErrStorageTargetNotEmpty, ErrStorageSame,
+		ErrStorageInsideApp, ErrStorageTargetNotEmpty, ErrStorageSame, ErrStorageInsideData, ErrStorageRestart,
 		ErrLegacyRestore, ErrUnknown,
 	}
 }

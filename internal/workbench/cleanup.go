@@ -72,160 +72,159 @@ type CleanupReport struct {
 	FreedBytes   int64 `json:"freedBytes"`
 }
 
-// CleanupResiduals 回收超过 24 小时的孤儿历史版本与孤儿磁盘文件。
-func (w *Workbench) CleanupResiduals() (CleanupReport, error) {
-	w.edit.Lock()
-	defer w.edit.Unlock()
+// orphanHistoryGrace 是孤儿历史的保留期：接口生成不建作品，远程客户端可能稍后才下载音频。
+const orphanHistoryGrace = 24 * time.Hour
 
-	s := w.Store.Read()
-	cutoff := time.Now().Add(-24 * time.Hour)
-
-	var report CleanupReport
-
-	// 1. 收集存活草稿 ID 与所有被时间线引用的 Generation ID
-	aliveDraftIDs := map[string]bool{}
-	timelineReferencedGenIDs := map[string]bool{}
+// timelineGenerations 返回各作品时间线仍在使用的生成版本，skipDraft 对应的作品不计入。
+func timelineGenerations(s schema.State, skipDraft string) map[string]bool {
+	ids := map[string]bool{}
 	for _, d := range s.Drafts {
-		aliveDraftIDs[d.ID] = true
-		if d.Timeline != nil {
-			for _, track := range d.Timeline.Tracks {
-				for _, clip := range track.Clips {
-					if clip.GenerationID != "" {
-						timelineReferencedGenIDs[clip.GenerationID] = true
-					}
+		if d.ID == skipDraft || d.Timeline == nil {
+			continue
+		}
+		for _, track := range d.Timeline.Tracks {
+			for _, clip := range track.Clips {
+				if clip.GenerationID != "" {
+					ids[clip.GenerationID] = true
 				}
 			}
 		}
+		for _, id := range d.Timeline.AcceptedGenerations {
+			ids[id] = true
+		}
 	}
+	return ids
+}
 
-	// 2. 识别遗留的孤儿历史记录（草稿已删除且未被任何时间线引用）
-	deleteGenIDs := map[string]bool{}
-	orphanGenFiles := map[string]bool{}
+// orphanGenerations 返回所属作品已不存在、且没有被任何时间线使用的历史版本，顺序与 History 一致（新到旧）。
+func orphanGenerations(s schema.State) []schema.Generation {
+	alive := map[string]bool{}
+	for _, d := range s.Drafts {
+		alive[d.ID] = true
+	}
+	used := timelineGenerations(s, "")
+	var orphans []schema.Generation
 	for _, g := range s.History {
-		if !aliveDraftIDs[g.Settings.ID] && !timelineReferencedGenIDs[g.ID] {
-			deleteGenIDs[g.ID] = true
-			if g.FileName != "" {
-				orphanGenFiles[g.FileName] = true
-			}
+		if !alive[g.Settings.ID] && !used[g.ID] {
+			orphans = append(orphans, g)
 		}
 	}
+	return orphans
+}
 
-	if len(deleteGenIDs) > 0 {
-		_ = w.Store.Update(func(state *schema.State) {
-			state.History = slices.DeleteFunc(state.History, func(g schema.Generation) bool {
-				return deleteGenIDs[g.ID]
-			})
-		}, true)
-		s = w.Store.Read()
-	}
-
-	// 3. 收集所有活跃被引用的文件名集合
-	activeVoiceFiles := map[string]bool{}
-	for _, v := range s.Voices {
-		if v.FileName != "" {
-			activeVoiceFiles[v.FileName] = true
-		}
-	}
-
-	activeOutputFiles := map[string]bool{}
+// referencedOutputs 返回 outputs/ 下仍被历史、角色试听、未保存试听或时间线素材使用的文件名。
+func referencedOutputs(s schema.State) map[string]bool {
+	files := map[string]bool{}
 	for _, g := range s.History {
-		if g.FileName != "" {
-			activeOutputFiles[g.FileName] = true
-		}
+		files[g.FileName] = true
 	}
 	for _, c := range s.Characters {
-		if c.Preview != nil && c.Preview.FileName != "" {
-			activeOutputFiles[c.Preview.FileName] = true
+		if c.Preview != nil {
+			files[c.Preview.FileName] = true
 		}
 	}
 	for _, p := range s.Previews {
-		if p.FileName != "" {
-			activeOutputFiles[p.FileName] = true
-		}
+		files[p.FileName] = true
 	}
 	for _, d := range s.Drafts {
 		if d.Timeline != nil {
 			for _, asset := range d.Timeline.Assets {
-				if asset.FileName != "" {
-					activeOutputFiles[asset.FileName] = true
-				}
+				files[asset.FileName] = true
 			}
 		}
+	}
+	delete(files, "")
+	return files
+}
+
+// removeGenerations 删除指定历史版本，并物理删除不再被任何记录使用的音频；调用方需持有编辑锁。
+func (w *Workbench) removeGenerations(ids map[string]bool, report *CleanupReport) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	var files []string
+	for _, g := range w.Store.Read().History {
+		if ids[g.ID] && g.FileName != "" {
+			files = append(files, g.FileName)
+		}
+	}
+	if err := w.Store.Update(func(state *schema.State) {
+		state.History = slices.DeleteFunc(state.History, func(g schema.Generation) bool { return ids[g.ID] })
+	}, true); err != nil {
+		return err
+	}
+	active := referencedOutputs(w.Store.Read())
+	for _, name := range files {
+		if active[name] {
+			continue
+		}
+		path, err := w.Store.MediaPath("outputs", name)
+		if err != nil {
+			continue
+		}
+		if info, err := os.Stat(path); err == nil && os.Remove(path) == nil && report != nil {
+			report.CleanedCount++
+			report.FreedBytes += info.Size()
+		}
+	}
+	return nil
+}
+
+// removeStaleFiles 删除目录中未被引用且超过保留期的普通文件。
+func removeStaleFiles(dir string, cutoff time.Time, keep func(name string) bool, report *CleanupReport) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() || strings.HasPrefix(name, ".") || keep(name) {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil || !info.ModTime().Before(cutoff) {
+			continue
+		}
+		if os.Remove(filepath.Join(dir, name)) == nil {
+			report.CleanedCount++
+			report.FreedBytes += info.Size()
+		}
+	}
+}
+
+// CleanupResiduals 回收超过 24 小时的孤儿历史版本与未引用的磁盘文件。
+func (w *Workbench) CleanupResiduals() (CleanupReport, error) {
+	w.edit.Lock()
+	defer w.edit.Unlock()
+
+	var report CleanupReport
+	cutoff := time.Now().Add(-orphanHistoryGrace)
+
+	// 1. 孤儿历史：所属作品已删除且没有时间线使用；接口刚生成的结果保留 24 小时供客户端下载。
+	stale := map[string]bool{}
+	for _, g := range orphanGenerations(w.Store.Read()) {
+		if g.CreatedAt.Before(cutoff) {
+			stale[g.ID] = true
+		}
+	}
+	if err := w.removeGenerations(stale, &report); err != nil {
+		return report, err
 	}
 
-	// 孤儿历史的物理文件若已无其他引用，立即物理删除（无需再等待 24 小时）
-	for fileName := range orphanGenFiles {
-		if !activeOutputFiles[fileName] && !activeVoiceFiles[fileName] {
-			if path, err := w.Store.MediaPath("outputs", fileName); err == nil {
-				if info, err := os.Stat(path); err == nil {
-					if os.Remove(path) == nil {
-						report.CleanedCount++
-						report.FreedBytes += info.Size()
-					}
-				}
-			}
-		}
+	// 2. 未被引用的磁盘文件：只清理超过 24 小时的，避免误删正在写入的结果。
+	s := w.Store.Read()
+	outputs := referencedOutputs(s)
+	voices := map[string]bool{}
+	for _, v := range s.Voices {
+		voices[v.FileName] = true
 	}
+	removeStaleFiles(filepath.Join(w.Store.Root, "outputs"), cutoff, func(name string) bool { return outputs[name] }, &report)
+	removeStaleFiles(filepath.Join(w.Store.Root, "voices"), cutoff, func(name string) bool { return voices[name] }, &report)
 
-	// 4. 清理 outputs/ 下未引用的孤儿文件（只清理超过 24 小时的）
-	outputsDir := filepath.Join(w.Store.Root, "outputs")
-	if entries, err := os.ReadDir(outputsDir); err == nil {
-		for _, entry := range entries {
-			name := entry.Name()
-			if entry.IsDir() || strings.HasPrefix(name, ".") {
-				continue
-			}
-			if !activeOutputFiles[name] {
-				path := filepath.Join(outputsDir, name)
-				if info, err := entry.Info(); err == nil && info.ModTime().Before(cutoff) {
-					if os.Remove(path) == nil {
-						report.CleanedCount++
-						report.FreedBytes += info.Size()
-					}
-				}
-			}
-		}
-	}
-
-	// 5. 清理 voices/ 下未引用的孤儿文件（只清理超过 24 小时的）
-	voicesDir := filepath.Join(w.Store.Root, "voices")
-	if entries, err := os.ReadDir(voicesDir); err == nil {
-		for _, entry := range entries {
-			name := entry.Name()
-			if entry.IsDir() || strings.HasPrefix(name, ".") {
-				continue
-			}
-			if !activeVoiceFiles[name] {
-				path := filepath.Join(voicesDir, name)
-				if info, err := entry.Info(); err == nil && info.ModTime().Before(cutoff) {
-					if os.Remove(path) == nil {
-						report.CleanedCount++
-						report.FreedBytes += info.Size()
-					}
-				}
-			}
-		}
-	}
-
-	// 6. 清理 downloads/ 下超过 24 小时的临时或残留分片
-	downloadsDir := filepath.Join(w.Store.Root, "downloads")
-	if entries, err := os.ReadDir(downloadsDir); err == nil {
-		for _, entry := range entries {
-			name := entry.Name()
-			if entry.IsDir() || strings.HasPrefix(name, ".") {
-				continue
-			}
-			if strings.HasSuffix(name, ".part") || strings.HasPrefix(name, "upload-") || strings.HasPrefix(name, "audio-") {
-				path := filepath.Join(downloadsDir, name)
-				if info, err := entry.Info(); err == nil && info.ModTime().Before(cutoff) {
-					if os.Remove(path) == nil {
-						report.CleanedCount++
-						report.FreedBytes += info.Size()
-					}
-				}
-			}
-		}
-	}
+	// 3. downloads/ 下超过 24 小时的临时或残留分片。
+	removeStaleFiles(filepath.Join(w.Store.Root, "downloads"), cutoff, func(name string) bool {
+		return !strings.HasSuffix(name, ".part") && !strings.HasPrefix(name, "upload-") && !strings.HasPrefix(name, "audio-")
+	}, &report)
 
 	return report, nil
 }

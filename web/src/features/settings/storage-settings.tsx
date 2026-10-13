@@ -89,7 +89,7 @@ export function StorageSettings({ state, run, busy }: { state: State; run: (task
         size="sm"
         label={t('@yovoice.settings.changeLocation')}
         icon={<FolderCog size={16} />}
-        isDisabled={busy || relocating}
+        isDisabled={busy || relocating || !!info.pendingPath}
         isLoading={relocating}
         onClick={changeLocation}
       />
