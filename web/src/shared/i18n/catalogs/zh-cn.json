@@ -2827,5 +2827,20 @@
   },
   "@yovoice.error.localApiPortInUse": {
     "defaultMessage": "端口 {port} 已被其他程序占用，请换一个端口。"
+  },
+  "@yovoice.import.file": {
+    "defaultMessage": "导入文件配音"
+  },
+  "@yovoice.import.unsupported": {
+    "defaultMessage": "只支持导入 TXT、Markdown 文本或 SRT、VTT、ASS 字幕。"
+  },
+  "@yovoice.import.empty": {
+    "defaultMessage": "文件里没有可朗读的文字。"
+  },
+  "@yovoice.import.tooLong": {
+    "defaultMessage": "文本超过 12000 字，请拆分成几个文件后分别导入。"
+  },
+  "@yovoice.import.tooLarge": {
+    "defaultMessage": "文件超过 2 MB，请拆分后再导入。"
   }
 }

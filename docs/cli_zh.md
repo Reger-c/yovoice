@@ -89,6 +89,20 @@ yovoice score from-midi song.mid --output score.json
 
 乐谱格式、混音约定和 MIDI 导入规则见[编曲](score_zh.md)。
 
+## 以 stdio 方式提供 MCP
+
+Claude Desktop、Cursor、Claude Code 等本机 MCP 客户端可以把 yovoice 作为子进程启动，无需令牌和端口：
+
+```json
+{
+  "mcpServers": {
+    "yovoice": {"command": "yovoice", "args": ["mcp"]}
+  }
+}
+```
+
+可执行文件不在客户端的 PATH 中时请写完整路径；在 `args` 中加上 `"--data-dir", "DIR"` 可使用独立目录。工具与[远程 MCP](api_zh.md#连接-mcp-客户端) 相同，区别有两点：结果返回生成 WAV 的本机路径 `path` 而不是 `downloadPath`；`upload_voice` 也可以传本机音频文件的 `path`。与其他命令一样，`yovoice mcp` 独占数据目录；桌面应用打开时，请改为连接它的[本机接口](api_zh.md#在同一台电脑上使用桌面应用) `http://127.0.0.1:8080/mcp`。
+
 ## 数据目录
 
 默认目录为 `~/.yovoice`，同一时间只能由一个 App、CLI 命令或服务使用。请退出 App，或在每条命令中通过 `--data-dir DIR` 指定独立目录：

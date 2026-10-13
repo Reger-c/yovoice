@@ -1,16 +1,17 @@
-import { useState, type ReactNode, type ComponentProps } from 'react';
+import { useRef, useState, type ReactNode, type ComponentProps } from 'react';
 import { formatNotice } from '../../shared/i18n/format';
 import { Button } from '@astryxdesign/core/Button';
 import { VStack } from '@astryxdesign/core/Layout';
 import { DropdownMenu } from '@astryxdesign/core/DropdownMenu';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { useTranslator } from '@astryxdesign/core/i18n';
-import { Copy, FileMusic, FolderInput, History, Mic, MoreHorizontal, Music, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Copy, FileMusic, FileText, FolderInput, History, Mic, MoreHorizontal, Music, Pencil, Plus, Trash2 } from 'lucide-react';
 import { AppDialog } from '../../shared/ui/app-dialog';
 import { createDraft, formatTime, projectKind, type Draft, type UiLocale } from '../../shared/workbench';
 import { call, isDesktop } from '../../shared/lib/client';
 import { noticeMessage } from '../../shared/lib/call-error';
 import { SpeakerAvatar } from '../create/subtitles';
+import { importAccept, readImport } from '../create/file-import';
 import { createMusicDraft } from '../music/music-draft';
 import { createScoreDraft, scoreDuration } from '../score/score-draft';
 import { RecordCover } from './record-cover';
@@ -24,6 +25,18 @@ export function NewProject({ locale, modelId, create, onError, button, kind }: {
 }) {
   const t = useTranslator();
   const [busy, setBusy] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
+  // 导入文本或字幕后直接进入对应作品，沿用当前默认模型配音。
+  async function importFile(file: File) {
+    setBusy(true);
+    try {
+      const imported = await readImport(file);
+      const base = { ...createDraft(false, locale, modelId), title: imported.title };
+      await create(imported.kind === 'text' ? { ...base, kind: 'text', text: imported.text }
+        : { ...base, kind: 'story', text: imported.subtitles.cues.map(c => c.text).join('\n'), subtitles: imported.subtitles });
+    } catch (error) { onError(noticeMessage(error)); }
+    finally { setBusy(false); }
+  }
   async function start(kind: 'text' | 'story' | 'music' | 'score') {
     setBusy(true);
     const next: Draft = kind === 'music' ? createMusicDraft(locale, false) : kind === 'score' ? createScoreDraft(locale, false) : { ...createDraft(false, locale, modelId), kind };
@@ -33,7 +46,7 @@ export function NewProject({ locale, modelId, create, onError, button, kind }: {
     finally { setBusy(false); }
   }
   if (kind) return <Button label={t(`@yovoice.project.new.${kind}`)} icon={<Plus />} size="sm" {...button} isLoading={busy} onClick={() => void start(kind)} />;
-  return <DropdownMenu data-testid={button?.['data-testid']} presentation="popover" hasChevron={false}
+  return <><DropdownMenu data-testid={button?.['data-testid']} presentation="popover" hasChevron={false}
     button={{ label: t('@yovoice.project.new'), icon: <Plus />, size: 'sm', ...button, isLoading: busy }}
     items={[
       // 图标与侧栏导航一致。
@@ -41,8 +54,14 @@ export function NewProject({ locale, modelId, create, onError, button, kind }: {
       { id: 'story', label: t('@yovoice.project.story'), icon: <Pencil className="project-menu-icon" strokeWidth={1.5} />, onClick: () => void start('story') },
       { id: 'music', label: t('@yovoice.project.music'), icon: <Music className="project-menu-icon" strokeWidth={1.5} />, onClick: () => void start('music') },
       { id: 'score', label: t('@yovoice.project.score'), icon: <FileMusic className="project-menu-icon" strokeWidth={1.5} />, onClick: () => void start('score') },
+      { id: 'file', label: t('@yovoice.import.file'), icon: <FileText className="project-menu-icon" strokeWidth={1.5} />, onClick: () => fileInput.current?.click() },
       ...(isDesktop ? [{ id: 'import', label: t('@yovoice.timeline.importProject'), icon: <FolderInput className="project-menu-icon" strokeWidth={1.5} />, onClick: () => { setBusy(true); void call<Draft | null>('project.import').then(d => d ? create(d) : undefined).catch(e => onError(noticeMessage(e))).finally(() => setBusy(false)); } }] : []),
-    ]} />;
+    ]} />
+    <input ref={fileInput} hidden type="file" accept={importAccept} aria-label={t('@yovoice.import.file')} onChange={event => {
+      const file = event.target.files?.[0]; event.target.value = '';
+      if (file) void importFile(file);
+    }} />
+  </>;
 }
 
 export function Projects({ drafts, kind, open, create, copy, save, remove, history, onError }: { onError: (error: string) => void;

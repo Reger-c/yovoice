@@ -2827,5 +2827,20 @@
   },
   "@yovoice.error.localApiPortInUse": {
     "defaultMessage": "Port {port} is already used by another program. Choose a different port."
+  },
+  "@yovoice.import.file": {
+    "defaultMessage": "Import a file to voice"
+  },
+  "@yovoice.import.unsupported": {
+    "defaultMessage": "Import a TXT or Markdown text file, or an SRT, VTT or ASS subtitle file."
+  },
+  "@yovoice.import.empty": {
+    "defaultMessage": "The file has no text to read aloud."
+  },
+  "@yovoice.import.tooLong": {
+    "defaultMessage": "The text is longer than 12,000 characters. Split it into several files and import them separately."
+  },
+  "@yovoice.import.tooLarge": {
+    "defaultMessage": "The file is larger than 2 MB. Split it before importing."
   }
 }

@@ -20,6 +20,8 @@ import (
 	"yovoice/internal/schema"
 	"yovoice/internal/store"
 	"yovoice/internal/workbench"
+
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 var version = "dev"
@@ -27,6 +29,7 @@ var version = "dev"
 const usage = `yovoice：独立本地语音生成，无需桌面 App。
 用法：
   yovoice serve [--listen 127.0.0.1:8080] [--tls-cert FILE --tls-key FILE] [--generation-timeout 30m]
+  yovoice mcp [--generation-timeout 30m]（以 stdio 提供 MCP，供本机客户端作为子进程启动）
   yovoice status [--data-dir DIR] [--json]
   yovoice setup [--backend metal|cpu|vulkan|cuda|cuda13]
   yovoice models list
@@ -48,6 +51,7 @@ OmniVoice / Qwen3-TTS 支持 --language；OmniVoice 支持 --speed、--guidance-
 Kokoro：--speaker zf_xiaobei（v1.0）或 zf_001（v1.1-zh），语言随音色选择，无需参考音频。
 高级选项：--option 'text_chunk_size=512'、--option 'text_chunk_mode="tag_aware"'，可重复。
 serve 同时提供 HTTP API 与 /mcp，启动前设置至少 32 字符的 YOVOICE_API_TOKEN。
+mcp 独占数据目录，无需令牌；结果返回本机 WAV 路径，upload_voice 可传本机音频路径。
 所有命令支持 --data-dir DIR、--json。stdout 输出 JSON，进度写 stderr。
 生成与下载阻塞至完成；Ctrl-C 取消并清理推理进程。已有输出文件不会被覆盖。
 `
@@ -90,7 +94,7 @@ func run(ctx context.Context, args []string, out, progress io.Writer) error {
 		}
 	}
 	switch command {
-	case "serve", "status", "setup", "models list", "models download", "models import", "voices list", "voices import", "generate":
+	case "serve", "mcp", "status", "setup", "models list", "models download", "models import", "voices list", "voices import", "generate":
 	default:
 		return fmt.Errorf("未知命令 %q；使用 --help 查看用法", command)
 	}
@@ -111,11 +115,13 @@ func run(ctx context.Context, args []string, out, progress io.Writer) error {
 	emotionReference, emotionVector := "", ""
 	textFile, reference, voice, output := "", "", "", ""
 	switch command {
-	case "serve":
+	case "serve", "mcp":
 		fs.DurationVar(&generationTimeout, "generation-timeout", 30*time.Minute, "单次生成最长时间，包含模型加载")
-		fs.StringVar(&address, "listen", "127.0.0.1:8080", "HTTP API 监听地址")
-		fs.StringVar(&cert, "tls-cert", "", "TLS 证书")
-		fs.StringVar(&key, "tls-key", "", "TLS 私钥")
+		if command == "serve" {
+			fs.StringVar(&address, "listen", "127.0.0.1:8080", "HTTP API 监听地址")
+			fs.StringVar(&cert, "tls-cert", "", "TLS 证书")
+			fs.StringVar(&key, "tls-key", "", "TLS 私钥")
+		}
 	case "setup":
 		initial := "cpu"
 		if runtime.GOOS == "darwin" {
@@ -370,6 +376,8 @@ func run(ctx context.Context, args []string, out, progress io.Writer) error {
 	switch command {
 	case "serve":
 		return serveAPI(ctx, w, address, os.Getenv("YOVOICE_API_TOKEN"), cert, key, generationTimeout, out)
+	case "mcp":
+		return serveMCP(ctx, w, generationTimeout, &mcp.StdioTransport{})
 	case "status":
 		result = map[string]any{"dataDirectory": abs, "state": w.Store.Read(), "engineVersion": catalog.EngineVersion, "engineMinimum": catalog.EngineMinimum, "ready": workbench.RuntimeReady(w.Store.Read())}
 	case "models list":

@@ -9,6 +9,7 @@ import { Plus, Clock3 } from 'lucide-react';
 import { Selector } from '../../shared/selector';
 import { cueAudioStatus, type Generation, type Character, type Draft, type SubtitleDocument } from '../../shared/workbench';
 import { SubtitleParser } from './subtitle-parser';
+import { fileTitle, readTextFile, subtitleAccept } from './file-import';
 
 const SeededAvatar = lazy(() => import('../../shared/ui/seeded-avatar').then(module => ({ default: module.SeededAvatar })));
 
@@ -44,19 +45,12 @@ export function SubtitleImport({ onImport, onError, trigger }: { trigger?: (open
   const [loading, setLoading] = useState(false);
   return <>
     {trigger ? trigger(() => input.current?.click(), loading) : <Button size="sm" variant="secondary" label={t('@yovoice.subtitle.import')} isLoading={loading} onClick={() => input.current?.click()} />}
-    <input ref={input} hidden type="file" accept=".srt,.vtt,.ass,.ssa" aria-label={t('@yovoice.subtitle.file')} onChange={async event => {
+    <input ref={input} hidden type="file" accept={subtitleAccept} aria-label={t('@yovoice.subtitle.file')} onChange={async event => {
       const file = event.target.files?.[0]; event.target.value = '';
       if (!file) return;
       setLoading(true);
       try {
-        if (file.size > 2 * 1024 * 1024) throw new Error('@yovoice.subtitle.invalid');
-        const buffer = await file.arrayBuffer();
-        const bytes = new Uint8Array(buffer);
-        const encoding = bytes[0] === 0xff && bytes[1] === 0xfe ? 'utf-16le' : bytes[0] === 0xfe && bytes[1] === 0xff ? 'utf-16be' : 'utf-8';
-        let content: string;
-        try { content = new TextDecoder(encoding, { fatal: true }).decode(buffer); }
-        catch { throw new Error('@yovoice.subtitle.encoding'); }
-        await onImport(file.name.replace(/\.[^.]+$/, '').slice(0, 120), new SubtitleParser().parse(file.name, content));
+        await onImport(fileTitle(file.name), new SubtitleParser().parse(file.name, await readTextFile(file, '@yovoice.subtitle.invalid')));
       } catch (error) { onError((error as Error).message); }
       finally { setLoading(false); }
     }} />

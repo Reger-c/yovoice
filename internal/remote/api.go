@@ -24,11 +24,13 @@ type API struct {
 	Token             string
 	Context           context.Context
 	GenerationTimeout time.Duration
-	jobsMu            sync.Mutex
-	jobs              map[string]*generationJob
-	busy              sync.Mutex
-	mcpOnce           sync.Once
-	mcpHandler        http.Handler
+	// Local 表示本机 stdio 模式：结果给出本机 WAV 路径，参考音频可按路径导入。
+	Local      bool
+	jobsMu     sync.Mutex
+	jobs       map[string]*generationJob
+	busy       sync.Mutex
+	mcpOnce    sync.Once
+	mcpHandler http.Handler
 }
 
 func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
