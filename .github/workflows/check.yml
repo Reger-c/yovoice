@@ -67,9 +67,9 @@ jobs:
           echo "YOVOICE_BUILD_NUMBER=$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
       - run: pnpm --dir web install --frozen-lockfile
       - run: pnpm --dir web exec playwright install chromium
-        if: ${{ !inputs.release }}
+        if: ${{ !inputs.release && runner.os == 'Windows' }}
       - run: pnpm --dir web run lint
-        if: ${{ !inputs.release }}
+        if: ${{ !inputs.release && runner.os == 'Windows' }}
       - run: go test -race ./...
         if: ${{ !inputs.release }}
       - run: python3 scripts/desktop/check-signing.py
@@ -80,7 +80,7 @@ jobs:
           swift test --package-path desktop/macos
           python3 scripts/desktop/check-macos-update.py
       - run: pnpm --dir web test
-        if: ${{ !inputs.release }}
+        if: ${{ !inputs.release && runner.os == 'Windows' }}
       - name: Cache audio.cpp runtime
         uses: actions/cache@v4
         with:
@@ -212,7 +212,7 @@ jobs:
           path: artifacts/yovoice-ffmpeg-source.tar.gz
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
-        if: failure()
+        if: failure() && runner.os == 'Windows'
         with:
           name: test-results-${{ matrix.platform }}
           path: web/test-results/
