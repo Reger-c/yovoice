@@ -340,7 +340,7 @@ test('Breeze TTS 2 在设计与克隆间切换描述用途，并以短分段为�
 
 
 
-test('作品音频无法读取时不主动报错，点击播放才提示', async ({ page }) => {
+test('作品音频读不到时播放器直接显示不可用，不主动弹出提示', async ({ page }) => {
   const state = emptyState();
   const draft = state.drafts[0];
   state.history = [{ id: 'broken', title: draft.title, fileName: 'broken.wav', createdAt: '2026-09-15T10:00:00Z', duration: 1, settings: { ...draft } }];
@@ -355,8 +355,7 @@ test('作品音频无法读取时不主动报错，点击播放才提示', async
   });
   await seedState(page, state); await page.reload();
   await expect(page.getByRole('combobox', { name: '当前作品历史' })).toContainText('版本 1');
-  await page.waitForTimeout(800);
+  await expect(page.locator('.player .waveform-unavailable')).toHaveText('音频文件不存在或无法读取');
+  await expect(page.locator('.player').getByRole('button', { name: '播放', exact: true })).toBeDisabled();
   await expect(page.getByRole('alert')).toHaveCount(0);
-  await page.locator('.player').getByRole('button', { name: '播放', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('音频无法播放');
 });

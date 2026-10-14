@@ -785,6 +785,9 @@
   "@yovoice.player.skipStart": {
     "defaultMessage": "Go to start"
   },
+  "@yovoice.player.unavailable": {
+    "defaultMessage": "Audio file is missing or unreadable"
+  },
   "@yovoice.player.unmute": {
     "defaultMessage": "Unmute"
   },
