@@ -105,7 +105,7 @@ Use the full path to the executable if it is not on the client's PATH, and add `
 
 ## Data directory
 
-The default directory is `~/.yovoice`. Only one app, CLI command, or server can use a directory at a time. Quit the app, or use a separate directory with `--data-dir DIR` on every command:
+The default directory is the same as the desktop app's: `~/.yovoice`, or the new location if you moved it in Settings › Storage. Only one app, CLI command, or server can use a directory at a time. Quit the app, or use a separate directory with `--data-dir DIR` on every command:
 
 ```sh
 yovoice setup --data-dir ./voice-data

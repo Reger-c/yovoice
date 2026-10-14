@@ -17,7 +17,8 @@ permissions:
 env:
   PYTHONUTF8: "1"
 concurrency:
-  group: build-${{ github.workflow }}-${{ inputs.tag || github.head_ref || github.ref_name }}
+  # PR 按编号分组：fork 里同名分支（如 main）的 PR 不会取消主仓库 main 的运行，同名分支的不同 PR 也互不取消。
+  group: build-${{ github.workflow }}-${{ inputs.tag || (github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number)) || github.ref }}
   cancel-in-progress: ${{ !inputs.release }}
 jobs:
   package:
@@ -116,8 +117,9 @@ jobs:
           # 仅正式发布签名；未配置证书时脚本跳过签名。
           WINDOWS_SIGN_PFX_BASE64: ${{ inputs.release && secrets.WINDOWS_SIGN_PFX_BASE64 || '' }}
           WINDOWS_SIGN_PASSWORD: ${{ inputs.release && secrets.WINDOWS_SIGN_PASSWORD || '' }}
+        # PR 构建跳过 CUDA 版以提速；合并到 main 后仍打包 CUDA 版，避免发布时才第一次发现 CUDA 打包问题。
         run: |
-          if ('${{ inputs.release }}' -eq 'true') {
+          if ('${{ inputs.release || github.event_name == 'push' }}' -eq 'true') {
             ./scripts/desktop/build-windows.ps1 -Package -Cuda
           } else {
             ./scripts/desktop/build-windows.ps1 -Package

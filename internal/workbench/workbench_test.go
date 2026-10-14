@@ -425,3 +425,28 @@ func TestSetModelDirectoryAdoptsModels(t *testing.T) {
 		t.Fatalf("文件齐全的多文件模型应登记: %+v", w.Store.Read().Models)
 	}
 }
+
+// 接口生成被取消时只取消自己那次操作，界面随后开始的生成不受影响。
+func TestCancelOperationOnlyCancelsOwnRun(t *testing.T) {
+	w, err := New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer w.Close()
+	cancelled := false
+	ours, other := make(chan struct{}), make(chan struct{})
+	w.mu.Lock()
+	w.cancel, w.done = func() { cancelled = true }, other
+	w.mu.Unlock()
+	w.cancelOperation(ours)
+	if cancelled {
+		t.Fatal("不应取消其他操作")
+	}
+	w.cancelOperation(other)
+	if !cancelled {
+		t.Fatal("应取消本次操作")
+	}
+	w.mu.Lock()
+	w.cancel, w.done = nil, nil
+	w.mu.Unlock()
+}

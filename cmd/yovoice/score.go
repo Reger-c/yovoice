@@ -14,7 +14,6 @@ import (
 	"yovoice/internal/catalog"
 	"yovoice/internal/platform"
 	"yovoice/internal/score"
-	"yovoice/internal/store"
 	"yovoice/internal/workbench"
 )
 
@@ -43,7 +42,7 @@ func runScore(ctx context.Context, args []string, out, progress io.Writer) error
 	}
 	fs := flag.NewFlagSet("score "+command, flag.ContinueOnError)
 	fs.SetOutput(progress)
-	root := fs.String("data-dir", "", "数据目录，默认 ~/.yovoice")
+	root := fs.String("data-dir", "", "数据目录，默认与桌面应用相同（未迁移时为 ~/.yovoice）")
 	fs.Bool("json", false, "JSON 输出（默认）")
 	output := fs.String("output", "", "输出文件，不覆盖已有文件")
 	stems, soundFont := "", "musescore-general-sf2"
@@ -120,7 +119,7 @@ func installedSoundFont(root, id string) (string, error) {
 	}
 	if root == "" {
 		var err error
-		if root, err = store.DefaultDirectory(); err != nil {
+		if root, err = defaultDataDir(); err != nil {
 			return "", err
 		}
 	}

@@ -10,18 +10,27 @@ import { Check, Copy, RefreshCw } from 'lucide-react';
 import { call, parseCallError } from '../../shared/lib/client';
 import { formatCallError } from '../../shared/i18n/format';
 import type { LocalAPIStatus } from '../../shared/workbench';
-import { SettingsGroup, SettingsRow } from './settings-group';
+import { SettingsGroup, SettingsRow } from '../../shared/ui/settings-group';
 
 // 设置 › 通用里的“本机接口”：在 127.0.0.1 上开放 HTTP / MCP 接口，供本机其他软件调用语音生成。
 export function LocalAPISettings({ run }: { run: (task: () => Promise<unknown>) => void }) {
   const t = useTranslator();
   const [status, setStatus] = useState<LocalAPIStatus | null>(null);
+  // 读取失败时保留分组并显示原因与重试，而不是让整组设置悄悄消失。
+  const [loadError, setLoadError] = useState<unknown>(null);
   const [port, setPort] = useState('');
   const [saving, setSaving] = useState(false);
   const { copy, isCopied } = useClipboard({ announce: t('@yovoice.settings.localApiCopied') });
   const apply = (next: LocalAPIStatus) => { setStatus(next); setPort(String(next.port)); };
-  useEffect(() => { void call<LocalAPIStatus>('localApi.get').then(apply).catch(() => setStatus(null)); }, []);
-  if (!status) return null;
+  const load = () => call<LocalAPIStatus>('localApi.get').then(next => { setStatus(next); setPort(String(next.port)); setLoadError(null); }).catch(setLoadError);
+  useEffect(() => { void call<LocalAPIStatus>('localApi.get').then(next => { setStatus(next); setPort(String(next.port)); }).catch(setLoadError); }, []);
+  if (!status) {
+    return loadError ? <SettingsGroup title={t('@yovoice.settings.localApi')}>
+      <SettingsRow label={t('@yovoice.settings.localApiEnabled')} hint={formatCallError(t, parseCallError(loadError))}>
+        <Button size="sm" label={t('@yovoice.app.pageError.retry')} icon={<RefreshCw size={16} />} onClick={() => { void load(); }} />
+      </SettingsRow>
+    </SettingsGroup> : null;
+  }
   const save = (method: string, data: unknown = {}) => run(async () => {
     setSaving(true);
     try { apply(await call<LocalAPIStatus>(method, data)); }
