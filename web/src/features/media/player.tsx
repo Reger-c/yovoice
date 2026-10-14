@@ -6,7 +6,7 @@ import { ResizeHandle } from '@astryxdesign/core/Resizable';
 import { useAudioPanel } from './use-audio-panel';
 import { useTranslator } from '@astryxdesign/core/i18n';
 import { Play, Pause, Square, FolderOpen, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react';
-import { call, mediaUrl, CallError } from '../../shared/lib/client';
+import { call, mediaUrl } from '../../shared/lib/client';
 import { noticeMessage } from '../../shared/lib/call-error';
 import { formatTime } from '../../shared/workbench';
 import type { Track } from '../../shared/workbench';
@@ -19,44 +19,70 @@ export function Player({ track, onError, suspended, compact = false, historyCont
   const resizable = !compact && !avatar && !inline && !!laneActions;
   const panel = useAudioPanel(!!track || !!historyControl, resizable ? 'audio-player-compact-height' : undefined);
   const audio = useRef<HTMLAudioElement>(null);
-  const autoplay = useRef(false);
   const lane = useRef<HTMLElement>(null);
   const [zoom, setZoom] = useState(1);
-  useEffect(() => { setZoom(1); if (lane.current) lane.current.scrollLeft = 0; }, [track?.id]);
   const [volume, setVolume] = useState(1);
-  const [url, setUrl] = useState(''); const [playing, setPlaying] = useState(false);
+  const [playing, setPlaying] = useState(false);
   const [time, setTime] = useState(0); const [duration, setDuration] = useState(0); const [peaks, setPeaks] = useState<number[]>([]);
-  const reportError = useEffectEvent((message: string) => onError(message));
-  // 只在切换音频或重新请求播放时重新加载；精简样式不绘制波形。
-  const trackId = track?.id, kind = track?.kind, fileName = track?.fileName, playRequest = track?.playRequest;
+  const kind = track?.kind, fileName = track?.fileName, playRequest = track?.playRequest;
+  const key = track && kind && fileName ? `${kind}/${track.id}/${fileName}` : '';
   const waveform = !(avatar || compact || inline);
+  // 音频地址与读取失败原因只认当前音频的结果，切换音频时不会沿用上一份的状态。
+  // 读不到文件是播放器自身的状态（正文播放器直接显示不可用），不主动弹出提示；只有用户请求播放时才说明原因。
+  const [source, setSource] = useState({ key: '', url: '', failure: '' });
+  const { url, failure } = source.key === key ? source : { url: '', failure: '' };
+  const markFailed = (message: string) => setSource(current => current.key === key ? { ...current, failure: message } : current);
+  // 用户请求了播放（试听、选择版本），音频还没准备好时先记下，地址就绪后再开始。
+  const pending = useRef(false);
+
+  // 1. 加载只跟随音频本身变化：再次请求播放或切换页面都不会重新读取。
   useEffect(() => {
+    setTime(0); setDuration(0); setPeaks([]); setPlaying(false); setZoom(1);
+    if (lane.current) lane.current.scrollLeft = 0;
+    if (!key || !kind || !fileName) return;
     let disposed = false; let resource = '';
-    autoplay.current = !!playRequest;
-    setUrl(''); setTime(0); setDuration(0); setPeaks([]); setPlaying(false);
-    if (trackId && kind && fileName) void (async () => {
-      try {
-        resource = await mediaUrl(kind, fileName);
-        if (disposed) { if (resource.startsWith('blob:')) URL.revokeObjectURL(resource); return; }
-        setUrl(resource);
-        if (!waveform) return;
-        const context = new AudioContext();
-        try {
-          const response = await fetch(resource); if (!response.ok) throw new CallError('@yovoice.error.audioReadFailed');
-          const buffer = await context.decodeAudioData(await response.arrayBuffer());
-          const data = buffer.getChannelData(0); const stride = Math.ceil(data.length / 3200);
-          const next = Array.from({ length: 3200 }, (_, i) => {
-            let peak = 0; for (let j = i * stride; j < Math.min(data.length, (i + 1) * stride); j += 8) peak = Math.max(peak, Math.abs(data[j]));
-            return peak;
-          });
-          if (!disposed) { setPeaks(next); setDuration(buffer.duration); }
-        } finally { await context.close(); }
-      } catch (error) { if (!disposed) reportError((error as Error).message); }
-    })();
+    mediaUrl(kind, fileName).then(value => {
+      resource = value;
+      if (disposed) revoke(value); else setSource({ key, url: value, failure: '' });
+    }, (error: Error) => { if (!disposed) setSource({ key, url: '', failure: error.message }); });
     const element = audio.current;
-    return () => { element?.pause(); disposed = true; if (resource.startsWith('blob:')) URL.revokeObjectURL(resource); };
-  }, [trackId, kind, fileName, playRequest, waveform]);
-  useEffect(() => { if (suspended) { autoplay.current = false; audio.current?.pause(); } }, [suspended]);
+    // 地址可能是随即释放的 blob，结果随清理一并作废，避免同一音频再次出现时用到已失效的地址。
+    return () => { disposed = true; element?.pause(); revoke(resource); setSource(current => current.key === key ? { key: '', url: '', failure: '' } : current); };
+  }, [key, kind, fileName]);
+  // 2. 正文播放器读取整份文件绘制波形。波形只是辅助显示，读取失败时不画；能否播放以 <audio> 为准。
+  useEffect(() => {
+    if (!url || !waveform) return;
+    let disposed = false;
+    void (async () => {
+      const context = new AudioContext();
+      try {
+        const response = await fetch(url); if (!response.ok) return;
+        const buffer = await context.decodeAudioData(await response.arrayBuffer());
+        if (!disposed) { setPeaks(waveformPeaks(buffer)); setDuration(buffer.duration); }
+      } catch { /* 见上，不画波形即可 */ } finally { await context.close(); }
+    })();
+    return () => { disposed = true; };
+  }, [url, waveform]);
+  // 播放失败时：音频读不到则记为不可用并说明；浏览器拦截自动播放时请用户点击播放；被暂停打断等情况忽略。
+  const play = async (element: HTMLAudioElement) => {
+    try { await element.play(); } catch (error) {
+      if (element.error) { markFailed('@yovoice.error.audioPlayFailed'); onError('@yovoice.error.audioPlayFailed'); }
+      else if ((error as DOMException).name === 'NotAllowedError') onError('@yovoice.error.audioPlayClick');
+    }
+  };
+  // 3. 播放请求：同一音频再次请求时从头播放；音频已确认读不到时直接说明原因。
+  const startPending = useEffectEvent(() => {
+    const element = audio.current;
+    if (!pending.current || !element || !(url || failure)) return;
+    pending.current = false;
+    if (suspended) return;
+    if (failure) { onError(failure); return; }
+    element.currentTime = 0;
+    void play(element);
+  });
+  useEffect(() => { pending.current = !!playRequest; }, [playRequest, key]);
+  useEffect(() => startPending(), [playRequest, key, url, failure]);
+  useEffect(() => { if (suspended) { pending.current = false; audio.current?.pause(); } }, [suspended]);
   // 缩放后让播放位置保持在视口中央，播放进度变化本身不触发滚动。
   const centerPlayhead = useEffectEvent(() => {
     const viewport = lane.current;
@@ -80,15 +106,17 @@ export function Player({ track, onError, suspended, compact = false, historyCont
   const reportProgress = useEffectEvent(() => onProgress?.(time, playing));
   useEffect(() => reportProgress(), [time, playing]);
   useEffect(() => { if (seekRequest && audio.current) { audio.current.currentTime = seekRequest.time; setTime(seekRequest.time); } }, [seekRequest]);
-  const toggle = async () => {
-    if (!audio.current) return;
+  const toggle = () => {
+    const element = audio.current;
+    if (!element) return;
     if (playing) {
-      audio.current.pause();
-      if (avatar) { audio.current.currentTime = 0; setTime(0); }
-    } else try {
-      if (avatar) { audio.current.currentTime = 0; setTime(0); }
-      await audio.current.play();
-    } catch { onError('@yovoice.error.audioPlayFailed'); }
+      element.pause();
+      if (avatar) { element.currentTime = 0; setTime(0); }
+      return;
+    }
+    if (failure) { onError(failure); return; }
+    if (avatar) { element.currentTime = 0; setTime(0); }
+    void play(element);
   };
   const seek = (value: number) => {
     if (audio.current) audio.current.currentTime = value;
@@ -98,27 +126,27 @@ export function Player({ track, onError, suspended, compact = false, historyCont
   const tickBase = 10 ** Math.floor(Math.log10(scale / zoom / 10));
   const tickStep = [1, 2, 5, 10].map(n => n * tickBase).find(n => n >= scale / zoom / 10)!;
   const ticks = Array.from({ length: Math.ceil(scale / tickStep) }, (_, i) => i * tickStep);
-  const media = <audio hidden ref={audio} src={url || undefined}
-    onCanPlay={() => { if (autoplay.current && !suspended) { autoplay.current = false; void audio.current?.play().catch(() => onError('@yovoice.error.audioPlayClick')); } }}
+  // 只预读时长等元数据，整段音频在播放时再读取。
+  const media = <audio hidden ref={audio} src={url || undefined} preload="metadata"
     onLoadedMetadata={() => { const value = audio.current?.duration; if (value && Number.isFinite(value)) setDuration(value); }}
     onTimeUpdate={() => setTime(audio.current?.currentTime ?? 0)}
     onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => setPlaying(false)}
-    onError={() => { if (url) onError('@yovoice.error.audioPlayFailed'); }} />;
+    onError={() => { if (url) markFailed('@yovoice.error.audioPlayFailed'); }} />;
   if (inline) return <>
     {media}
     <Button label={playing ? t('@yovoice.player.pause') : inline.label} size="sm" variant="ghost" isIconOnly
       icon={playing ? <Pause size={16} /> : <Play size={16} />} isDisabled={suspended}
-      onClick={() => { if (track && url) void toggle(); else inline.select(); }} />
+      onClick={() => { if (track && (url || failure)) toggle(); else inline.select(); }} />
   </>;
   if (avatar) return <HStack className="avatar-player" data-playing={playing} gap={0}>
     {media}
     <Button className="avatar-toggle" label={playing ? t('@yovoice.player.stop') : avatar.label} isIconOnly variant="ghost" isDisabled={avatar.disabled || suspended}
       icon={<HStack className="avatar-art" gap={0}><Suspense fallback={null}><SeededAvatar seed={avatar.seed} /></Suspense>{playing ? <Square className="avatar-symbol" size={20} fill="currentColor" /> : <Play className="avatar-symbol" size={20} fill="currentColor" />}</HStack>}
-      onClick={() => { if (track && url) void toggle(); else avatar.select(); }} />
+      onClick={() => { if (track && (url || failure)) toggle(); else avatar.select(); }} />
   </HStack>;
   if (compact) return <HStack className="library-preview" role="group" aria-label={t('@yovoice.player.audition', { name: track?.name ?? '' })} gap={3} vAlign="center">
     {media}
-    <Button label={playing ? t('@yovoice.player.pause') : t('@yovoice.player.play')} isIconOnly icon={playing ? <Pause size={16} /> : <Play size={16} fill="currentColor" />} size="sm" variant="ghost" className="preview-play" isDisabled={!url || suspended} onClick={() => void toggle()} />
+    <Button label={playing ? t('@yovoice.player.pause') : t('@yovoice.player.play')} isIconOnly icon={playing ? <Pause size={16} /> : <Play size={16} fill="currentColor" />} size="sm" variant="ghost" className="preview-play" isDisabled={(!url && !failure) || suspended} onClick={toggle} />
     <small className="preview-time">{formatTime(time)}</small>
     <input className="preview-progress" aria-label={t('@yovoice.player.progress')} aria-valuetext={t('@yovoice.player.progressValue', { current: formatTime(time), total: formatTime(duration) })} type="range" min={0} max={duration || 1} step={0.01} value={time} disabled={!duration} onChange={e => seek(Number(e.target.value))} style={{ background: `linear-gradient(to right, var(--app-wave) ${duration ? time / duration * 100 : 0}%, var(--app-line) 0%)` }} />
     <small className="preview-time">{formatTime(duration)}</small>
@@ -127,8 +155,8 @@ export function Player({ track, onError, suspended, compact = false, historyCont
   return <VStack as="footer" className={`player audio-panel ${resizable ? '' : 'player-single'}`.trim()} gap={0} style={resizable ? { height: panel.size } : undefined}>
     {resizable ? <ResizeHandle label={t('@yovoice.timeline.resize')} direction="vertical" pillPlacement="center" isReversed resizable={panel.props} /> : null}
     {media}
-    <PlaybackToolbar time={time} duration={duration} playing={playing} disabled={!url || suspended} toggle={() => void toggle()}
-      beforePlay={<Button label={t('@yovoice.player.skipStart')} isIconOnly icon={<SkipBack size={16} />} size="sm" variant="ghost" isDisabled={!url} onClick={() => seek(0)} />}
+    <PlaybackToolbar time={time} duration={duration} playing={playing} disabled={!url || !!failure || suspended} toggle={toggle}
+      beforePlay={<Button label={t('@yovoice.player.skipStart')} isIconOnly icon={<SkipBack size={16} />} size="sm" variant="ghost" isDisabled={!url || !!failure} onClick={() => seek(0)} />}
       afterPlay={<Button label={t('@yovoice.player.skipEnd')} isIconOnly icon={<SkipForward size={16} />} size="sm" variant="ghost" isDisabled={!duration} onClick={() => seek(duration)} />}>
         <HStack className="volume-control" gap={2} vAlign="center">
           <Button label={volume === 0 ? t('@yovoice.player.unmute') : t('@yovoice.player.mute')} isIconOnly icon={volume === 0 ? <VolumeX size={16} /> : <Volume2 size={16} />} size="sm" variant="ghost" onClick={() => { const next = volume === 0 ? 1 : 0; setVolume(next); if (audio.current) audio.current.volume = next; }} />
@@ -147,7 +175,7 @@ export function Player({ track, onError, suspended, compact = false, historyCont
       <VStack className="timeline-lane" ref={lane} gap={0}>
         <VStack className="timeline-content" gap={0} style={{ width: `${zoom * 100}%` }}>
         <HStack className="time-ruler" aria-hidden="true">{ticks.map(tick => <small key={tick} style={{ left: `${tick / scale * 100}%` }}>{Number(tick.toFixed(2))}s</small>)}</HStack>
-        {peaks.length ? <VStack className="waveform" gap={0}>
+        {failure ? <p className="waveform waveform-unavailable" role="status">{t('@yovoice.player.unavailable')}</p> : peaks.length ? <VStack className="waveform" gap={0}>
           <svg viewBox={`0 0 ${visiblePeaks.length * 2.5} 40`} preserveAspectRatio="none" aria-hidden="true">{visiblePeaks.map((p, i) => <line key={i} x1={i * 2.5 + 1.25} x2={i * 2.5 + 1.25} y1={20 - Math.max(1, p * 19)} y2={20 + Math.max(1, p * 19)} className={i / visiblePeaks.length < time / duration ? 'played' : ''} />)}</svg>
           <i className="playhead" style={{ left: `${duration ? time / duration * 100 : 0}%` }} aria-hidden="true" />
           <input aria-label={t('@yovoice.player.progress')} aria-valuetext={t('@yovoice.player.progressValue', { current: formatTime(time), total: formatTime(duration) })} type="range" min={0} max={duration || 1} step={0.01} value={time} onChange={e => seek(Number(e.target.value))} />
@@ -156,4 +184,17 @@ export function Player({ track, onError, suspended, compact = false, historyCont
       </VStack>
     </HStack>
   </VStack>;
+}
+
+function revoke(url: string) {
+  if (url.startsWith('blob:')) URL.revokeObjectURL(url);
+}
+
+// 取第一声道每段的峰值，供正文播放器绘制 3200 个采样点的波形。
+function waveformPeaks(buffer: AudioBuffer): number[] {
+  const data = buffer.getChannelData(0); const stride = Math.ceil(data.length / 3200);
+  return Array.from({ length: 3200 }, (_, i) => {
+    let peak = 0; for (let j = i * stride; j < Math.min(data.length, (i + 1) * stride); j += 8) peak = Math.max(peak, Math.abs(data[j]));
+    return peak;
+  });
 }
