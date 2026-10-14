@@ -1,32 +1,42 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@astryxdesign/core/Button';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
+import { ProgressBar } from '@astryxdesign/core/ProgressBar';
 import { StatusDot } from '@astryxdesign/core/StatusDot';
 import { useTranslator } from '@astryxdesign/core/i18n';
-import { FolderCog, FolderOpen, Trash2 } from 'lucide-react';
-import { call } from '../../shared/lib/client';
+import { FolderCog, FolderOpen, RefreshCw, Trash2 } from 'lucide-react';
+import { call, parseCallError } from '../../shared/lib/client';
+import { formatCallError } from '../../shared/i18n/format';
 import { formatBytes, type CleanupReport, type StorageInfo, type State } from '../../shared/workbench';
 import { overflowTitle } from '../../shared/ui/overflow-title';
 import { AppDialog } from '../../shared/ui/app-dialog';
-import { SettingsGroup, SettingsRow } from './settings-group';
+import { SettingsGroup, SettingsRow } from '../../shared/ui/settings-group';
 
 // 设置 › 常规里的“存储”：数据目录路径、各类占用明细、更改存储位置、打开目录和清理残留。
 export function StorageSettings({ state, run, busy }: { state: State; run: (task: () => Promise<unknown>) => void; busy?: boolean }) {
   const t = useTranslator();
   const [info, setInfo] = useState<StorageInfo | null>(null);
+  // 读取失败时保留分组并显示原因与重试，而不是让整组设置悄悄消失。
+  const [loadError, setLoadError] = useState<unknown>(null);
   const [cleaning, setCleaning] = useState(false);
   const [relocating, setRelocating] = useState(false);
   const [cleanupMessage, setCleanupMessage] = useState<string | null>(null);
 
   const refresh = () => {
-    call<StorageInfo>('storage.info').then(setInfo).catch(() => setInfo(null));
+    call<StorageInfo>('storage.info').then(next => { setInfo(next); setLoadError(null); }).catch(setLoadError);
   };
 
   useEffect(() => {
     refresh();
   }, []);
 
-  if (!info) return null;
+  if (!info) {
+    return loadError ? <SettingsGroup title={t('@yovoice.settings.storageGroup')}>
+      <SettingsRow label={t('@yovoice.settings.storageDirectory')} hint={formatCallError(t, parseCallError(loadError))}>
+        <Button size="sm" label={t('@yovoice.app.pageError.retry')} icon={<RefreshCw size={16} />} onClick={refresh} />
+      </SettingsRow>
+    </SettingsGroup> : null;
+  }
 
   const changeLocation = () => run(async () => {
     setRelocating(true);
@@ -70,7 +80,9 @@ export function StorageSettings({ state, run, busy }: { state: State; run: (task
   });
 
   const activity = state.activity;
-  const showRelocateDialog = relocating || activity?.kind === 'relocate';
+  // 只在服务端真正开始复制后显示进度弹窗；选择目录的系统对话框打开期间不遮挡界面。
+  const showRelocateDialog = activity?.kind === 'relocate' && activity.status === 'running';
+  const relocateTotal = activity?.total && activity.total > 0 ? activity.total : 0;
 
   return <SettingsGroup title={t('@yovoice.settings.storageGroup')} description={t('@yovoice.settings.storageRelocateHint')}>
     <SettingsRow
@@ -125,14 +137,10 @@ export function StorageSettings({ state, run, busy }: { state: State; run: (task
     >
       <VStack gap={3}>
         <p>{t('@yovoice.settings.relocatingHint')}</p>
-        <progress
-          value={activity?.total && activity.total > 0 ? activity.received : undefined}
-          max={activity?.total && activity.total > 0 ? activity.total : 1}
-          style={{ width: '100%' }}
-        />
-        {activity?.total && activity.total > 0 ? <HStack hAlign="between">
-          <small>{formatBytes(activity.received)} / {formatBytes(activity.total)}</small>
-          <small>{Math.round((activity.received / activity.total) * 100)}%</small>
+        <ProgressBar label={t('@yovoice.settings.relocatingTitle')} isLabelHidden value={activity?.received ?? 0} max={relocateTotal || 1} isIndeterminate={!relocateTotal} />
+        {relocateTotal ? <HStack hAlign="between">
+          <small>{formatBytes(activity?.received ?? 0)} / {formatBytes(relocateTotal)}</small>
+          <small>{Math.round(((activity?.received ?? 0) / relocateTotal) * 100)}%</small>
         </HStack> : null}
       </VStack>
     </AppDialog> : null}

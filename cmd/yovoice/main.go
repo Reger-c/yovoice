@@ -102,7 +102,7 @@ func run(ctx context.Context, args []string, out, progress io.Writer) error {
 	}
 	fs := flag.NewFlagSet(command, flag.ContinueOnError)
 	fs.SetOutput(progress)
-	root := fs.String("data-dir", "", "数据目录，默认 ~/.yovoice")
+	root := fs.String("data-dir", "", "数据目录，默认与桌面应用相同（未迁移时为 ~/.yovoice）")
 	fs.Bool("json", false, "JSON 输出（默认）")
 	backend, source, name := "", "", ""
 	address, cert, key := "", "", ""
@@ -349,7 +349,7 @@ func run(ctx context.Context, args []string, out, progress io.Writer) error {
 	}
 	if *root == "" {
 		var err error
-		*root, err = store.DefaultDirectory()
+		*root, err = defaultDataDir()
 		if err != nil {
 			return err
 		}
@@ -464,6 +464,15 @@ func run(ctx context.Context, args []string, out, progress io.Writer) error {
 }
 
 // 订阅前后都读取状态，避免短任务结束时丢失通知；取消会等待核心收尾。
+// defaultDataDir 返回与桌面应用相同的数据目录：在“设置 › 存储”迁移过数据目录时使用迁移后的位置，
+// 否则为 ~/.yovoice。迁移后旧目录会被删除，命令行若仍用旧路径会在空目录中重新开始。
+func defaultDataDir() (string, error) {
+	if cfg, err := store.ReadConfig(); err == nil && cfg.DataPath != "" {
+		return cfg.DataPath, nil
+	}
+	return store.DefaultDirectory()
+}
+
 func waitOperation(ctx context.Context, w *workbench.Workbench, out io.Writer, activity func(schema.State) *schema.Activity) error {
 	events, unsubscribe := w.Store.Subscribe()
 	defer unsubscribe()

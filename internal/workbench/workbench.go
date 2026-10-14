@@ -234,6 +234,15 @@ func (w *Workbench) Cancel() {
 	}
 }
 
+// cancelOperation 只取消 done 对应的那次主操作；它已结束、换成了其他操作（例如界面随后开始的生成）时不做任何事。
+func (w *Workbench) cancelOperation(done <-chan struct{}) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.cancel != nil && w.done != nil && (<-chan struct{})(w.done) == done {
+		w.cancel()
+	}
+}
+
 // CancelModel 暂停模型下载或取消导入，不影响正在进行的生成。
 func (w *Workbench) CancelModel() {
 	diag.Log(w.Store.Root, "model.cancel_requested")

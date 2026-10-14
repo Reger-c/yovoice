@@ -30,7 +30,7 @@ description: 使用 yovoice 本地 CLI 或远程 HTTP API／MCP 生成语音，�
 ## 准备
 
 - 仅支持 Apple Silicon macOS、Windows x64 和 Linux x64。所有命令的选项放在命令及位置参数之后。
-- 默认数据目录 `~/.yovoice`。如果被 App 或另一个 CLI 占用，不终止用户任务；使用用户指定的独立 `--data-dir`，所有后续命令保持同一路径。新目录需要独立准备运行时和登记模型。
+- 默认数据目录与 App 相同（`~/.yovoice`，App 中迁移过则为迁移后的位置）。如果被 App 或另一个 CLI 占用，不终止用户任务；使用用户指定的独立 `--data-dir`，所有后续命令保持同一路径。新目录需要独立准备运行时和登记模型。
 - `yovoice models list --json` 查看真实模型 ID 和安装状态；`yovoice voices list --json` 查看可用音色 ID。
 - 安装引擎、选择 CPU/GPU、下载或登记模型时，阅读[引擎与模型参考](references/setup.md)。
 - 用户提供参考文件时用 `--reference`。常见音频格式内部自动转换；格式、时长限制和复用方式见[音频参考](references/audio.md)。IndexTTS 需要参考音色；VoxCPM2 可无需参考音频进行声音设计，模式与参数见同一参考文档。

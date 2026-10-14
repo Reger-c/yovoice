@@ -88,7 +88,8 @@ export function WorkbenchChrome({ state, catalog, engine, ready, session, error,
   }), []);
   // 窗口右上角的右侧面板开关：创作区较窄时检查器已自动收起（见 styles.css 的 studio 容器查询），开关改为展开或收回检查器。
   const toggleInspectorPanel = useCallback(() => {
-    const studio = document.querySelector('.studio');
+    // 角色编辑器离开后只隐藏不卸载，它的 .studio 宽度为 0，需取当前可见的创作区。
+    const studio = Array.from(document.querySelectorAll<HTMLElement>('.studio')).find(element => element.clientWidth > 0);
     if (studio && studio.clientWidth <= 860) setShowInspector(current => !current);
     else toggleInspector();
   }, [toggleInspector]);

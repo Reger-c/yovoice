@@ -1,7 +1,7 @@
 import { Button } from '@astryxdesign/core/Button';
 import { useLocale, useTranslator } from '@astryxdesign/core/i18n';
 import { RefreshCw } from 'lucide-react';
-import { SettingsGroup, SettingsRow } from '../settings/settings-group';
+import { SettingsGroup, SettingsRow } from '../../shared/ui/settings-group';
 import { checkForUpdate, installUpdate, showUpdateDialog, useAppUpdate } from './app-update';
 import { UpdateProgress } from './update-dialog';
 

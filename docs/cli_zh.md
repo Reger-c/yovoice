@@ -105,7 +105,7 @@ Claude Desktop、Cursor、Claude Code 等本机 MCP 客户端可以把 yovoice �
 
 ## 数据目录
 
-默认目录为 `~/.yovoice`，同一时间只能由一个 App、CLI 命令或服务使用。请退出 App，或在每条命令中通过 `--data-dir DIR` 指定独立目录：
+默认目录与桌面应用相同：`~/.yovoice`，在“设置 › 存储”中迁移过时为迁移后的位置。同一时间只能由一个 App、CLI 命令或服务使用。请退出 App，或在每条命令中通过 `--data-dir DIR` 指定独立目录：
 
 ```sh
 yovoice setup --data-dir ./voice-data

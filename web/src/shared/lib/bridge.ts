@@ -9,7 +9,7 @@ export const isDesktop = !!native;
 export const isMac = window.__workbenchPlatform === 'macos';
 
 const listeners = new Set<(state: State) => void>();
-const pending = new Map<string, { resolve: (value: unknown) => void; reject: (reason: Error) => void; timer: ReturnType<typeof setTimeout> }>();
+const pending = new Map<string, { resolve: (value: unknown) => void; reject: (reason: Error) => void; timer: ReturnType<typeof setTimeout> | undefined }>();
 const updateListeners = new Set<(update: unknown) => void>();
 native?.addEventListener('message', ({ data }) => {
   if (data.event === 'state') { listeners.forEach(fn => fn(data.state)); return; }
@@ -25,10 +25,14 @@ export function subscribeDesktop(listener: (state: State) => void) { listeners.a
 // 宿主推送的应用更新状态，结构见 features/update/app-update.ts。
 export function subscribeDesktopUpdate(listener: (update: unknown) => void) { updateListeners.add(listener); return () => { updateListeners.delete(listener); }; }
 
+// 数据目录迁移在同一次调用里等待用户选择目录并同步复制全部数据，几 GB 模型远超 120 秒；
+// 超时会先报未知错误而后台仍在复制，结束后又提示重启，因此只由宿主侧限时。
+const longCalls = new Set(['storage.directory']);
+
 export function desktopCall<T>(method: string, data: unknown): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const id = crypto.randomUUID();
-    const timer = setTimeout(() => {
+    const timer = longCalls.has(method) ? undefined : setTimeout(() => {
       pending.delete(id); reportDesktop('timeout', method, 'no reply within 120s');
       reject(new CallError('@yovoice.error.unknown', { detail: 'desktop timeout' }));
     }, 120000);
