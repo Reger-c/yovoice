@@ -86,7 +86,8 @@
   .astryx-button:not(:disabled):active { filter: brightness(.95); }
   .app-dialog-layout, .app-dialog-layout > * { max-height: 75vh; max-height: 75dvh; }
   /* 弹窗遮罩：半透明加虚化，底层界面仍隐约可见。 */
-  .app-dialog::backdrop { background-color: color-mix(in srgb, var(--color-text-primary) 12%, transparent); backdrop-filter: blur(calc(var(--spacing-1) / 2)); }
+  /* 不用 backdrop-filter：WebKit（macOS 窗口）合成弹窗阴影时会在模糊背景上留下一圈矩形边线。 */
+  .app-dialog::backdrop { background-color: color-mix(in srgb, var(--color-text-primary) 16%, transparent); }
   .app-dialog-header > div > div { align-items: center; }
   .app-dialog-header > div > div > div { margin-block: 0; }
   .dialog-error { padding: var(--spacing-3); border-radius: var(--radius-element); background: var(--color-error-muted); color: var(--color-text-primary); font-size: var(--app-ui-font); }
@@ -183,6 +184,7 @@
   .multitrack-clip[aria-pressed="true"] { outline: var(--border-width) solid var(--app-wave); outline-offset: calc(var(--border-width) * -1); background: color-mix(in srgb, var(--app-wave) 8%, var(--color-background-surface)); }
   .multitrack-clip .subtitle-avatar { width: var(--spacing-4); height: var(--spacing-4); flex-shrink: 0; }
   .multitrack-clip .clip-waveform { position: absolute; inset: 50% 0 0; width: 100%; height: 50%; opacity: 0.4; stroke: var(--color-text-secondary); pointer-events: none; }
+  .multitrack-clip[data-unavailable] { background: var(--color-error-muted); }
   .multitrack-trim.astryx-button { position: absolute; top: 0; bottom: 0; width: min(var(--spacing-3), 30%); min-width: 0; height: 100%; padding: 0; border-radius: var(--radius-inner); color: var(--color-text-primary); cursor: ew-resize; touch-action: none; opacity: 0; }
   .multitrack-trim[data-edge="start"] { left: 0; }
   .multitrack-trim[data-edge="end"] { right: 0; }
@@ -245,6 +247,7 @@
   .time-ruler small { position: absolute; top: 0; height: var(--spacing-4); border-left: 1px solid var(--app-line); padding-left: var(--spacing-1); font-size: var(--font-size-xs); font-variant-numeric: tabular-nums; }
   .waveform { width: 100%; position: relative; height: var(--spacing-10); margin-block: var(--spacing-1); flex-shrink: 0; background: color-mix(in srgb, var(--app-wave) 12%, var(--app-white)); border: 1px solid color-mix(in srgb, var(--app-wave) 25%, var(--app-white)); border-radius: var(--radius-element); }
   .waveform svg { width: 100%; height: 100%; padding-block: var(--spacing-2); }
+  .waveform-unavailable { display: flex; align-items: center; justify-content: center; color: var(--app-muted); font-size: var(--font-size-xs); background: var(--color-background-surface); border-color: var(--app-line); }
   .waveform line { stroke: color-mix(in srgb, var(--app-wave) 45%, var(--app-white)); stroke-width: 1; stroke-linecap: round; }
   .waveform line.played { stroke: var(--app-wave); }
   .playhead { position: absolute; top: calc(-1 * (var(--audio-ruler-height) + var(--spacing-1))); bottom: 0; width: 1px; background: var(--app-ink); pointer-events: none; }

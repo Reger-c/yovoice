@@ -110,29 +110,23 @@ func orphanGenerations(s schema.State) []schema.Generation {
 	return orphans
 }
 
-// referencedOutputs 返回 outputs/ 下仍被历史、角色试听、未保存试听或时间线素材使用的文件名。
-func referencedOutputs(s schema.State) map[string]bool {
-	files := map[string]bool{}
-	for _, g := range s.History {
-		files[g.FileName] = true
-	}
-	for _, c := range s.Characters {
-		if c.Preview != nil {
-			files[c.Preview.FileName] = true
+// deleteUnreferenced 物理删除 names 中已不被任何记录引用的 kind 目录文件，引用以 State.MediaRefs 为唯一依据。
+// 调用方需持有编辑锁，并且已提交移除记录的状态修改。
+func (w *Workbench) deleteUnreferenced(kind string, names []string, report *CleanupReport) {
+	active := w.Store.Read().MediaRefs()[kind]
+	for _, name := range names {
+		if name == "" || active[name] {
+			continue
+		}
+		path, err := w.Store.MediaPath(kind, name)
+		if err != nil {
+			continue
+		}
+		if info, err := os.Stat(path); err == nil && os.Remove(path) == nil && report != nil {
+			report.CleanedCount++
+			report.FreedBytes += info.Size()
 		}
 	}
-	for _, p := range s.Previews {
-		files[p.FileName] = true
-	}
-	for _, d := range s.Drafts {
-		if d.Timeline != nil {
-			for _, asset := range d.Timeline.Assets {
-				files[asset.FileName] = true
-			}
-		}
-	}
-	delete(files, "")
-	return files
 }
 
 // removeGenerations 删除指定历史版本，并物理删除不再被任何记录使用的音频；调用方需持有编辑锁。
@@ -151,20 +145,7 @@ func (w *Workbench) removeGenerations(ids map[string]bool, report *CleanupReport
 	}, true); err != nil {
 		return err
 	}
-	active := referencedOutputs(w.Store.Read())
-	for _, name := range files {
-		if active[name] {
-			continue
-		}
-		path, err := w.Store.MediaPath("outputs", name)
-		if err != nil {
-			continue
-		}
-		if info, err := os.Stat(path); err == nil && os.Remove(path) == nil && report != nil {
-			report.CleanedCount++
-			report.FreedBytes += info.Size()
-		}
-	}
+	w.deleteUnreferenced("outputs", files, report)
 	return nil
 }
 
@@ -252,14 +233,10 @@ func (w *Workbench) CleanupResiduals() (CleanupReport, error) {
 	}
 
 	// 3. 未被引用的磁盘文件：只清理超过 24 小时的，避免误删正在写入的结果。
-	s := w.Store.Read()
-	outputs := referencedOutputs(s)
-	voices := map[string]bool{}
-	for _, v := range s.Voices {
-		voices[v.FileName] = true
+	refs := w.Store.Read().MediaRefs()
+	for _, kind := range []string{"outputs", "voices"} {
+		removeStaleFiles(filepath.Join(w.Store.Root, kind), cutoff, func(name string) bool { return refs[kind][name] }, &report)
 	}
-	removeStaleFiles(filepath.Join(w.Store.Root, "outputs"), cutoff, func(name string) bool { return outputs[name] }, &report)
-	removeStaleFiles(filepath.Join(w.Store.Root, "voices"), cutoff, func(name string) bool { return voices[name] }, &report)
 
 	// 4. downloads/ 只存放临时文件与内核安装包缓存，超过 24 小时的全部回收（内核已解压到 runtime/）。
 	removeStaleFiles(filepath.Join(w.Store.Root, "downloads"), cutoff, func(string) bool { return false }, &report)

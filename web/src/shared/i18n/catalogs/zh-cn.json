@@ -785,6 +785,9 @@
   "@yovoice.player.skipStart": {
     "defaultMessage": "回到开头"
   },
+  "@yovoice.player.unavailable": {
+    "defaultMessage": "音频文件不存在或无法读取"
+  },
   "@yovoice.player.unmute": {
     "defaultMessage": "取消静音"
   },

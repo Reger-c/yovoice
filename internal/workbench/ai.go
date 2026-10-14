@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/url"
-	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -17,7 +15,7 @@ import (
 	"yovoice/internal/schema"
 )
 
-// AI 服务为可选功能：配置写入状态（不含密钥），密钥单独存于 secrets.json；
+// AI 服务为可选功能：配置写入状态（不含密钥），密钥存于状态库的私有设置，不随状态广播；
 // 调用不占用下载、推理所用的后台操作，同一时间只运行一个 AI 请求，可单独取消。
 
 // AIProviderInput 是界面提交的服务配置；Key 为 nil 时保留原密钥，空串表示清除。
@@ -42,24 +40,18 @@ type aiState struct {
 	connect *connectSession
 }
 
-func (w *Workbench) secretsPath() string { return filepath.Join(w.Store.Root, "secrets.json") }
+// aiKeysPrivate 是状态库私有设置中保存 AI 服务密钥的键，值为服务 ID 到密钥的映射。
+const aiKeysPrivate = "aiKeys"
 
 func (w *Workbench) readSecrets() (map[string]string, error) {
 	keys := map[string]string{}
-	b, e := os.ReadFile(w.secretsPath())
-	if errors.Is(e, os.ErrNotExist) {
-		return keys, nil
-	}
-	if e != nil {
+	if _, e := w.Store.Private(aiKeysPrivate, &keys); e != nil {
 		return nil, e
-	}
-	if e = json.Unmarshal(b, &keys); e != nil {
-		return nil, msg.Err(msg.ErrStateCorrupt, nil)
 	}
 	return keys, nil
 }
 
-// writeSecret 先写临时文件再替换，权限 0600。value 为空时删除该项。
+// writeSecret 保存或删除（value 为空）一个服务的密钥。
 func (w *Workbench) writeSecret(id, value string) error {
 	w.ai.secrets.Lock()
 	defer w.ai.secrets.Unlock()
@@ -72,18 +64,7 @@ func (w *Workbench) writeSecret(id, value string) error {
 	} else {
 		keys[id] = value
 	}
-	b, e := json.MarshalIndent(keys, "", "  ")
-	if e != nil {
-		return e
-	}
-	temp := w.secretsPath() + ".part"
-	if e = os.WriteFile(temp, b, 0600); e != nil {
-		return e
-	}
-	if e = os.Rename(temp, w.secretsPath()); e != nil {
-		_ = os.Remove(temp)
-	}
-	return e
+	return w.Store.SetPrivate(aiKeysPrivate, keys)
 }
 
 func validEndpoint(raw string) bool {

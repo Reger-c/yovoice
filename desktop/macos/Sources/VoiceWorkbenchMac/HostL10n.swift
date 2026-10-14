@@ -17,7 +17,7 @@ enum HostUiLocale: String {
     }
 }
 
-/// Native string table keyed by stable ids. Follows preferences.uiLocale from state.json / SSE.
+/// Native string table keyed by stable ids. Follows preferences.uiLocale from host-preferences.json / SSE.
 enum HostL10n {
     // Updated from MainActor when preferences change; read from host error paths too.
     nonisolated(unsafe) private(set) static var locale: HostUiLocale = {
@@ -43,8 +43,9 @@ enum HostL10n {
 
     nonisolated private static func readStoredUiLocale() -> HostUiLocale? {
         let root = DataRoot.resolve()
-        let stateURL = root.appendingPathComponent("state.json")
-        guard let data = try? Data(contentsOf: stateURL),
+        // 服务把界面语言写在 host-preferences.json；尚未被新版服务打开过的数据目录仍读旧版 state.json。
+        let candidates = ["host-preferences.json", "state.json"].map { root.appendingPathComponent($0) }
+        guard let data = candidates.lazy.compactMap({ try? Data(contentsOf: $0) }).first,
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let preferences = json["preferences"] as? [String: Any],
               let raw = preferences["uiLocale"] as? String else { return nil }
@@ -101,6 +102,7 @@ enum HostL10n {
             "err.modelDirOpen": "无法打开模型保存目录。",
             "err.serviceNotReady": "本地服务尚未就绪。",
             "err.serviceRequest": "本地服务请求失败。",
+            "alert.storageConfigBroken.title": "无法读取存储配置",
             "alert.dataRootMissing.title": "找不到数据目录",
             "alert.dataRootMissing.body": "%@ 不存在。可能是外置磁盘未连接，或目录已被移动、删除。\n\n连接磁盘后点“重试”；确认不再需要原数据时，可在原位置新建空的数据目录。",
             "alert.dataRootMissing.retry": "重试",
@@ -114,6 +116,10 @@ enum HostL10n {
             "alert.exitSaveFailed.return": "返回编辑",
             "alert.exitSaveFailed.quit": "直接退出",
             "alert.exitSaveFailed.backupFailed": "备份失败",
+            "alert.quitFailed.title": "未能安全退出",
+            "alert.quitFailed.body": "%@\n\n可以稍后重试，或直接结束本地服务后退出；未保存的编辑可能丢失。",
+            "alert.quitFailed.force": "仍要退出",
+            "alert.quitFailed.back": "返回",
             "alert.serviceStopped.title": "本地服务已停止",
             "alert.serviceStopped.restart": "重新启动",
             "alert.serviceStopped.quit": "退出",
@@ -191,6 +197,7 @@ enum HostL10n {
             "err.modelDirOpen": "Could not open the model save folder.",
             "err.serviceNotReady": "Local service is not ready yet.",
             "err.serviceRequest": "Local service request failed.",
+            "alert.storageConfigBroken.title": "Could Not Read Storage Settings",
             "alert.dataRootMissing.title": "Data Folder Not Found",
             "alert.dataRootMissing.body": "%@ does not exist. The external drive may be disconnected, or the folder was moved or deleted.\n\nConnect the drive and click Retry. If you no longer need the original data, create a new empty data folder at this location.",
             "alert.dataRootMissing.retry": "Retry",
@@ -204,6 +211,10 @@ enum HostL10n {
             "alert.exitSaveFailed.return": "Return to Editing",
             "alert.exitSaveFailed.quit": "Quit Without Saving",
             "alert.exitSaveFailed.backupFailed": "Backup Failed",
+            "alert.quitFailed.title": "Couldn't Quit Safely",
+            "alert.quitFailed.body": "%@\n\nTry again later, or stop the local service and quit now; unsaved edits may be lost.",
+            "alert.quitFailed.force": "Quit Anyway",
+            "alert.quitFailed.back": "Back",
             "alert.serviceStopped.title": "Local Service Stopped",
             "alert.serviceStopped.restart": "Restart",
             "alert.serviceStopped.quit": "Quit",

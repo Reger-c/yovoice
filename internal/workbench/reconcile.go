@@ -2,6 +2,7 @@ package workbench
 
 import (
 	"os"
+	"path/filepath"
 	"slices"
 	"yovoice/internal/diag"
 	"yovoice/internal/schema"
@@ -33,13 +34,23 @@ func (w *Workbench) Reconcile() (ReconcileReport, error) {
 	for _, g := range s.History {
 		generations[g.ID] = true
 	}
+	// 只有确认文件不存在才算缺失：权限不足、外置盘部分不可读等暂时性错误一律视为仍存在，
+	// outputs 目录本身不可访问时整体跳过文件检查，避免把暂时读不到的素材永久移除。
+	outputsReadable := true
+	if _, err := os.ReadDir(filepath.Join(w.Store.Root, "outputs")); err != nil {
+		outputsReadable = false
+		diag.Log(w.Store.Root, "state.reconcile_skipped_files", "error", diag.Error(err))
+	}
 	exists := func(name string) bool {
+		if !outputsReadable {
+			return true
+		}
 		path, err := w.Store.MediaPath("outputs", name)
 		if err != nil {
 			return false
 		}
 		_, err = os.Stat(path)
-		return err == nil
+		return !os.IsNotExist(err)
 	}
 	missingAssets := map[string]map[string]bool{}
 	for _, d := range s.Drafts {
@@ -147,6 +158,13 @@ func (w *Workbench) Reconcile() (ReconcileReport, error) {
 	if !report.changed() {
 		return report, nil
 	}
+	// 修复前留存一份完整快照：被移除的片段与素材可从快照中找回。
+	snapshot, err := w.Store.Snapshot("reconcile")
+	if err != nil {
+		diag.Log(w.Store.Root, "state.reconcile_snapshot_failed", "error", diag.Error(err))
+		return report, err
+	}
+	diag.Log(w.Store.Root, "state.reconcile_snapshot", "path", snapshot)
 	if err := w.Store.Update(func(state *schema.State) { fix(state, false) }, true); err != nil {
 		return report, err
 	}

@@ -110,6 +110,6 @@ test('存储设置：展示数据目录与占用明细，可更改位置与清�
   await page.getByRole('button', { name: '清理残留' }).click();
   await expect(page.getByText('没有发现超过 24 小时的残留文件。')).toBeVisible();
   await page.getByRole('button', { name: '更改位置' }).click();
-  await expect(page.getByText('数据已迁移至新目录，请从系统托盘完全退出 yovoice 并重新打开应用生效。')).toBeVisible();
+  await expect(page.getByText(/^数据已复制到新目录。请完全退出 yovoice 并重新打开应用生效/)).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('storage-settings.png'), animations: 'disabled' });
 });

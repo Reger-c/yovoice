@@ -34,24 +34,32 @@ public sealed class LocalService : IDisposable
         }
         return path;
     }
+    private static string ServiceExecutable => Path.Combine(AppContext.BaseDirectory, "service", "yovoice-service.exe");
+
+    // 同步运行服务的辅助命令并返回标准输出；退出码非零时以服务的错误信息抛出。
+    private static string RunService(params string[] arguments)
+    {
+        if (!File.Exists(ServiceExecutable)) throw new IOException(HostL10n.T("本地服务缺失，请重新构建或安装应用。", "The local service is missing. Rebuild or reinstall the app."));
+        var start = new ProcessStartInfo(ServiceExecutable) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
+        foreach (string argument in arguments) start.ArgumentList.Add(argument);
+        using var process = Process.Start(start) ?? throw new IOException(HostL10n.T("无法启动本地服务。", "Could not start the local service."));
+        var error = process.StandardError.ReadToEndAsync();
+        string output = process.StandardOutput.ReadToEnd();
+        process.WaitForExit();
+        if (process.ExitCode != 0) throw new IOException(HostL10n.T("存储配置无法读取或写入：", "The storage settings could not be read or written: ") + error.Result.Trim());
+        return output;
+    }
+
     private static string DetermineDataRoot()
     {
         string? env = Environment.GetEnvironmentVariable("WORKBENCH_DATA");
         if (!string.IsNullOrWhiteSpace(env)) return Path.GetFullPath(env);
 
-        string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        string configFile = Path.Combine(appData, "yovoice", "storage.json");
-        if (File.Exists(configFile))
+        // 存储配置只由服务解析：配置损坏时直接报错退出，不静默回退到默认目录，也不会被宿主覆盖。
+        using (var config = JsonDocument.Parse(RunService("--data-root")))
         {
-            try
-            {
-                using var doc = JsonDocument.Parse(File.ReadAllText(configFile));
-                if (doc.RootElement.TryGetProperty("dataPath", out var p) && p.GetString() is { Length: > 0 } customPath)
-                {
-                    return ConfirmAvailable(Path.GetFullPath(customPath));
-                }
-            }
-            catch (Exception error) when (error is IOException or JsonException or UnauthorizedAccessException or ArgumentException or NotSupportedException) { }
+            if (config.RootElement.TryGetProperty("dataPath", out var p) && p.GetString() is { Length: > 0 } customPath)
+                return ConfirmAvailable(Path.GetFullPath(customPath));
         }
 
         string defaultUserData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".yovoice");
@@ -73,12 +81,9 @@ public sealed class LocalService : IDisposable
             {
                 string chosen = Path.Combine(parent, "yovoice-data");
                 // 记录自动选择的目录：之后即使 ~/.yovoice 被命令行等工具创建，桌面应用也不会悄悄切回系统盘。
-                try
-                {
-                    Directory.CreateDirectory(Path.GetDirectoryName(configFile)!);
-                    File.WriteAllText(configFile, JsonSerializer.Serialize(new { dataPath = chosen }));
-                }
-                catch { }
+                // 由服务原子写入并保留配置中的其他内容；记录失败不影响本次启动。
+                try { RunService("--set-data-root", chosen); }
+                catch (IOException error) { HostLog.Write(chosen, "storage.config_write_failed", error); }
                 return chosen;
             }
         }
@@ -115,8 +120,14 @@ public sealed class LocalService : IDisposable
         }
         catch
         {
-            process.StandardInput.Close();
-            await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10));
+            // 服务没在限时内给出地址：结束它再报告原始错误，避免残留进程让重试误判为已启动。
+            try
+            {
+                process.StandardInput.Close();
+                try { await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10)); }
+                catch (TimeoutException) { process.Kill(true); }
+            }
+            catch (Exception error) when (error is InvalidOperationException or IOException or System.ComponentModel.Win32Exception) { HostLog.Write(Root, "service.start_cleanup_failed", error); }
             throw;
         }
         HostLog.Write(Root, "service.ready");
@@ -170,12 +181,13 @@ public sealed class LocalService : IDisposable
         request.Headers.Add("Cookie", CookieName + "=" + Token);
         return request;
     }
-    public async Task<JsonElement> CallAsync(string method, object data)
+    // 默认 120 秒超时；迁移数据目录等同步复制大量文件的调用需由调用方放宽，与 macOS 宿主保持一致。
+    public async Task<JsonElement> CallAsync(string method, object data, TimeSpan? limit = null)
     {
         using var request = Request(HttpMethod.Post, "api/call");
         request.Content = new StringContent(ServiceWire.Request(method, data), Encoding.UTF8, "application/json");
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(stopped.Token);
-        timeout.CancelAfter(TimeSpan.FromSeconds(120));
+        timeout.CancelAfter(limit ?? TimeSpan.FromSeconds(120));
         using var response = await client.SendAsync(request, timeout.Token);
         response.EnsureSuccessStatusCode();
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(timeout.Token));
@@ -207,9 +219,16 @@ public sealed class LocalService : IDisposable
         using var request = Request(HttpMethod.Post, "shutdown");
         using var response = await client.SendAsync(request).WaitAsync(TimeSpan.FromSeconds(30));
         response.EnsureSuccessStatusCode();
+        // 服务已接受关停并完成保存，此后不能再让退出失败：事件循环与调用通道已取消，返回编辑会留下无法使用的窗口。
         stopped.Cancel();
         process.StandardInput.Close();
-        await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10));
+        try { await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10)); }
+        catch (TimeoutException)
+        {
+            HostLog.Write(Root, "service.shutdown_timeout");
+            try { process.Kill(true); }
+            catch (Exception error) when (error is InvalidOperationException or System.ComponentModel.Win32Exception) { HostLog.Write(Root, "service.stop_failed", error); }
+        }
         HostLog.Write(Root, "service.shutdown_completed");
     }
     // 正常关停失败时使用：先关闭标准输入让服务自行退出，超时则结束进程。

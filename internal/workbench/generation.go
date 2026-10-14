@@ -35,21 +35,16 @@ func (w *Workbench) Synthesize(ctx context.Context, d schema.Draft) (schema.Gene
 	select {
 	case <-done:
 	case <-ctx.Done():
-		w.Cancel()
+		w.cancelOperation(done)
 		<-done
 		return schema.Generation{}, ctx.Err()
 	}
 	if err := ctx.Err(); err != nil {
 		return schema.Generation{}, err
 	}
+	// 本机接口与桌面界面共用引擎：本次生成结束后界面可能立刻开始新的操作并改写 Activity，
+	// 因此先按本次作品 ID 查找结果，只有找不到时才用 Activity 解释失败原因。
 	state := w.Store.Read()
-	if activity := state.Activity; activity == nil || activity.Status != "completed" {
-		// 保留稳定错误码，远程客户端无需读取服务端日志即可区分原因。
-		if activity != nil && activity.ErrorCode != nil {
-			return schema.Generation{}, fmt.Errorf("语音生成失败：%s", errorText(*activity.ErrorCode, activity.ErrorParams))
-		}
-		return schema.Generation{}, fmt.Errorf("语音生成失败，请检查服务端日志")
-	}
 	for _, g := range state.History {
 		if g.Settings.ID == d.ID {
 			// 自动修剪无所属作品的 API 历史记录，最多保留 50 条
@@ -57,10 +52,15 @@ func (w *Workbench) Synthesize(ctx context.Context, d schema.Draft) (schema.Gene
 			return g, nil
 		}
 	}
-	return schema.Generation{}, fmt.Errorf("生成结果未找到")
+	if activity := state.Activity; activity != nil && activity.Status == "failed" && activity.ErrorCode != nil {
+		// 保留稳定错误码，远程客户端无需读取服务端日志即可区分原因。
+		return schema.Generation{}, fmt.Errorf("语音生成失败：%s", errorText(*activity.ErrorCode, activity.ErrorParams))
+	}
+	return schema.Generation{}, fmt.Errorf("语音生成失败，请检查服务端日志")
 }
 
 // pruneOrphanHistory 只保留最新的 max 条孤儿历史（接口生成不建作品），时间线仍在使用的版本不计入也不删除。
+// 与 CleanupResiduals 一致，24 小时内的结果始终保留，远程客户端可能稍后才下载音频。
 func (w *Workbench) pruneOrphanHistory(max int) {
 	w.edit.Lock()
 	defer w.edit.Unlock()
@@ -68,9 +68,12 @@ func (w *Workbench) pruneOrphanHistory(max int) {
 	if len(orphans) <= max {
 		return
 	}
+	cutoff := time.Now().Add(-orphanHistoryGrace)
 	ids := map[string]bool{}
 	for _, g := range orphans[max:] {
-		ids[g.ID] = true
+		if g.CreatedAt.Before(cutoff) {
+			ids[g.ID] = true
+		}
 	}
 	_ = w.removeGenerations(ids, nil)
 }

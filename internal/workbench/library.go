@@ -230,11 +230,9 @@ func (w *Workbench) UpdateVoice(id, name, referenceText string) error {
 	}, true)
 }
 
+// removePreviewFile 删除不再被任何记录引用的试听文件；调用方需已提交移除记录的状态修改。
 func (w *Workbench) removePreviewFile(p *schema.CharacterPreview) {
-	if p == nil {
-		return
-	}
-	if path, err := w.Store.MediaPath("outputs", p.FileName); err == nil {
-		_ = os.Remove(path)
+	if p != nil {
+		w.deleteUnreferenced("outputs", []string{p.FileName}, nil)
 	}
 }

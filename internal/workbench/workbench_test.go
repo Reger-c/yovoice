@@ -109,9 +109,9 @@ func TestMediaPersistenceAndRollback(t *testing.T) {
 	d.VoiceID = nil
 	d.EmotionVoiceID = nil
 	must(t, w.SaveDraft(d))
-	// 强制状态提交失败，文件和内存状态必须一起恢复。
-	must(t, os.Remove(filepath.Join(root, "state.json")))
-	must(t, os.Mkdir(filepath.Join(root, "state.json"), 0700))
+	// 强制状态提交失败（回滚日志无法创建），文件和内存状态必须一起恢复。
+	journal := filepath.Join(root, store.DatabaseFile+"-journal")
+	must(t, os.Mkdir(journal, 0700))
 	if w.DeleteMedia("voices", v.ID) == nil {
 		t.Fatal("应写入失败")
 	}
@@ -121,7 +121,7 @@ func TestMediaPersistenceAndRollback(t *testing.T) {
 	if len(w.Store.Read().Voices) != 1 {
 		t.Fatal("状态被错误修改")
 	}
-	must(t, os.Remove(filepath.Join(root, "state.json")))
+	must(t, os.Remove(journal))
 	must(t, w.DeleteMedia("voices", v.ID))
 	if _, e = os.Stat(path); !os.IsNotExist(e) {
 		t.Fatal("音频未删除")
@@ -156,12 +156,13 @@ func TestMediaPersistenceAndRollback(t *testing.T) {
 	if _, e = w.MediaFile("voices", "../invalid"); e == nil {
 		t.Fatal("非法 ID")
 	}
-	must(t, os.Remove(filepath.Join(root, "state.backup.json")))
-	must(t, os.WriteFile(filepath.Join(root, "state.json"), []byte("broken"), 0600))
+	// 没有备份时拒绝打开损坏的状态库，也不改动原文件。
+	must(t, os.Remove(filepath.Join(root, "yovoice.backup.db")))
+	must(t, os.WriteFile(filepath.Join(root, store.DatabaseFile), []byte("broken"), 0600))
 	if _, e = store.New(root); e == nil {
 		t.Fatal("损坏状态被接受")
 	}
-	b, e := os.ReadFile(filepath.Join(root, "state.json"))
+	b, e := os.ReadFile(filepath.Join(root, store.DatabaseFile))
 	must(t, e)
 	if string(b) != "broken" {
 		t.Fatal("损坏状态被覆盖")
@@ -424,4 +425,29 @@ func TestSetModelDirectoryAdoptsModels(t *testing.T) {
 	if len(w.Store.Read().Models) != 2 {
 		t.Fatalf("文件齐全的多文件模型应登记: %+v", w.Store.Read().Models)
 	}
+}
+
+// 接口生成被取消时只取消自己那次操作，界面随后开始的生成不受影响。
+func TestCancelOperationOnlyCancelsOwnRun(t *testing.T) {
+	w, err := New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer w.Close()
+	cancelled := false
+	ours, other := make(chan struct{}), make(chan struct{})
+	w.mu.Lock()
+	w.cancel, w.done = func() { cancelled = true }, other
+	w.mu.Unlock()
+	w.cancelOperation(ours)
+	if cancelled {
+		t.Fatal("不应取消其他操作")
+	}
+	w.cancelOperation(other)
+	if !cancelled {
+		t.Fatal("应取消本次操作")
+	}
+	w.mu.Lock()
+	w.cancel, w.done = nil, nil
+	w.mu.Unlock()
 }

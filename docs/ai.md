@@ -23,7 +23,7 @@ Type a model name, or **Sync model list** and pick one. After **Add service** or
 ## Where data goes
 
 - Requests go straight from this computer to the service you chose, through the proxy set in Settings › General. Local addresses skip the proxy.
-- Keys are stored in `secrets.json` in the data folder with owner-only permissions (`0600`), separate from projects and `state.json`. The settings page only shows a masked key. Deleting a service removes its key.
+- Keys are stored in a private table of the data folder's database (`yovoice.db`, owner-only permissions `0600`). They are never included in the state sent to the interface. The settings page only shows a masked key. Deleting a service removes its key.
 - What is sent is the request you type plus a fixed instruction describing the score or lyrics format. Error messages are cleaned of keys before they are shown or logged.
 
 ## AI compose

@@ -18,7 +18,7 @@ import (
 	"yovoice/internal/schema"
 )
 
-// 服务配置写入状态但密钥只在 secrets.json；清除与删除同步移除密钥。
+// 服务配置写入状态，密钥只在状态库的私有设置中；清除与删除同步移除密钥。
 func TestAIProviderKeysStayOutOfState(t *testing.T) {
 	w, err := New(t.TempDir())
 	must(t, err)
@@ -32,15 +32,13 @@ func TestAIProviderKeysStayOutOfState(t *testing.T) {
 	if w.Store.Read().AIProviderID != p.ID {
 		t.Fatal("第一个服务应成为当前服务")
 	}
-	state, err := os.ReadFile(filepath.Join(w.Store.Root, "state.json"))
-	must(t, err)
-	if strings.Contains(string(state), key) {
-		t.Fatal("密钥不应写入 state.json")
+	if state, _ := json.Marshal(w.Store.Read()); strings.Contains(string(state), key) {
+		t.Fatal("密钥不应出现在广播给界面的状态中")
 	}
-	info, err := os.Stat(filepath.Join(w.Store.Root, "secrets.json"))
+	info, err := os.Stat(filepath.Join(w.Store.Root, "yovoice.db"))
 	must(t, err)
 	if info.Mode().Perm()&0077 != 0 && os.PathSeparator == '/' {
-		t.Fatal("secrets.json 权限应为 0600", info.Mode())
+		t.Fatal("状态库权限应为 0600", info.Mode())
 	}
 	// 不传 Key 时保留密钥。
 	p, err = w.SaveAIProvider(AIProviderInput{ID: p.ID, Preset: "deepseek", Name: "我的 DeepSeek", Model: "deepseek-reasoner"})

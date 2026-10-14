@@ -64,6 +64,8 @@ export function TimelineEditor({ draft, busy, regenerate, exportProject, selectC
   const [playing, setPlaying] = useState(false);
   const [loading, setLoading] = useState(false);
   const [peaks, setPeaks] = useState<Record<string, number[]>>({});
+  // 读不到的音频源：片段上直接标出，不主动弹出提示；播放时仍会读取并说明原因。
+  const [unavailable, setUnavailable] = useState<Record<string, boolean>>({});
   const [zoom, setZoom] = useState(1);
   const context = useRef<AudioContext | null>(null);
   const buffers = useRef(new Map<string, AudioBuffer>());
@@ -203,9 +205,8 @@ export function TimelineEditor({ draft, busy, regenerate, exportProject, selectC
     } finally { if (url.startsWith('blob:')) URL.revokeObjectURL(url); }
   };
   const sourceIds = [...new Set(value.tracks.flatMap(track => track.clips.map(c => Timeline.sourceKey(c))))].sort().join(',');
-  // 波形只随音频源与缩放级别重算，加载与报错使用最新的回调。
+  // 波形只随音频源与缩放级别重算，加载使用最新的回调。
   const loadSource = useEffectEvent((id: string, audio: AudioContext) => load(id, audio));
-  const reportError = useEffectEvent((message: string) => onError(message));
   useEffect(() => {
     let active = true;
     const audio = context.current ??= new AudioContext();
@@ -222,7 +223,8 @@ export function TimelineEditor({ draft, busy, regenerate, exportProject, selectC
             return peak;
           });
           setPeaks(previous => ({ ...previous, [id]: waveform }));
-        } catch (error) { if (active) reportError((error as Error).message); }
+          setUnavailable(previous => previous[id] ? { ...previous, [id]: false } : previous);
+        } catch { if (active) setUnavailable(previous => ({ ...previous, [id]: true })); }
       }
     })();
     return () => { active = false; };
@@ -450,7 +452,7 @@ export function TimelineEditor({ draft, busy, regenerate, exportProject, selectC
             }, start);
           }}>
             {track.clips.map(c => <HStack key={c.id} className="multitrack-region" gap={0} data-clip-id={c.id} data-selected={selectedIds.includes(c.id)} style={{ left: `${c.start / scale * 100}%`, width: `${c.duration / scale * 100}%`, opacity: track.muted ? 0.5 : 1 }}>
-              <Button size="sm" variant="secondary" className="multitrack-clip" label={audioSources.get(Timeline.sourceKey(c))?.title ?? t('@yovoice.timeline.missing')} aria-pressed={selectedIds.includes(c.id)} icon={<>{history.find(g => g.id === c.generationId)?.segment ? <SpeakerAvatar seed={`${draft.id}:${history.find(g => g.id === c.generationId)!.segment!.speakerId}`} /> : null}{peaks[Timeline.sourceKey(c)] ? <svg className="clip-waveform" viewBox="0 0 400 40" preserveAspectRatio="none" aria-hidden="true">{peaks[Timeline.sourceKey(c)].slice(Math.floor(c.offset / buffers.current.get(Timeline.sourceKey(c))!.duration * peaks[Timeline.sourceKey(c)].length), Math.ceil((c.offset + c.duration) / buffers.current.get(Timeline.sourceKey(c))!.duration * peaks[Timeline.sourceKey(c)].length)).map((peak, i, values) => <line key={i} x1={i / values.length * 400} x2={i / values.length * 400} y1={20 - peak * 18} y2={20 + peak * 18} />)}</svg> : null}</>} onPointerDown={e => {
+              <Button size="sm" variant="secondary" className="multitrack-clip" data-unavailable={unavailable[Timeline.sourceKey(c)] || undefined} label={audioSources.get(Timeline.sourceKey(c))?.title ?? t('@yovoice.timeline.missing')} aria-pressed={selectedIds.includes(c.id)} icon={<>{history.find(g => g.id === c.generationId)?.segment ? <SpeakerAvatar seed={`${draft.id}:${history.find(g => g.id === c.generationId)!.segment!.speakerId}`} /> : null}{peaks[Timeline.sourceKey(c)] ? <svg className="clip-waveform" viewBox="0 0 400 40" preserveAspectRatio="none" aria-hidden="true">{peaks[Timeline.sourceKey(c)].slice(Math.floor(c.offset / buffers.current.get(Timeline.sourceKey(c))!.duration * peaks[Timeline.sourceKey(c)].length), Math.ceil((c.offset + c.duration) / buffers.current.get(Timeline.sourceKey(c))!.duration * peaks[Timeline.sourceKey(c)].length)).map((peak, i, values) => <line key={i} x1={i / values.length * 400} x2={i / values.length * 400} y1={20 - peak * 18} y2={20 + peak * 18} />)}</svg> : null}</>} onPointerDown={e => {
                 if (e.metaKey || e.ctrlKey || e.shiftKey || track.locked) return;
                 const ids = selectedIds.includes(c.id) ? selectedIds : [c.id];
                 if (!selectedIds.includes(c.id)) selectClip(c);
