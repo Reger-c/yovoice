@@ -86,7 +86,8 @@
   .astryx-button:not(:disabled):active { filter: brightness(.95); }
   .app-dialog-layout, .app-dialog-layout > * { max-height: 75vh; max-height: 75dvh; }
   /* 弹窗遮罩：半透明加虚化，底层界面仍隐约可见。 */
-  .app-dialog::backdrop { background-color: color-mix(in srgb, var(--color-text-primary) 12%, transparent); backdrop-filter: blur(calc(var(--spacing-1) / 2)); }
+  /* 不用 backdrop-filter：WebKit（macOS 窗口）合成弹窗阴影时会在模糊背景上留下一圈矩形边线。 */
+  .app-dialog::backdrop { background-color: color-mix(in srgb, var(--color-text-primary) 16%, transparent); }
   .app-dialog-header > div > div { align-items: center; }
   .app-dialog-header > div > div > div { margin-block: 0; }
   .dialog-error { padding: var(--spacing-3); border-radius: var(--radius-element); background: var(--color-error-muted); color: var(--color-text-primary); font-size: var(--app-ui-font); }

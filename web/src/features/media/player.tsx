@@ -20,6 +20,8 @@ export function Player({ track, onError, suspended, compact = false, historyCont
   const panel = useAudioPanel(!!track || !!historyControl, resizable ? 'audio-player-compact-height' : undefined);
   const audio = useRef<HTMLAudioElement>(null);
   const autoplay = useRef(false);
+  // 只有用户正在播放或刚请求播放时，加载失败才提示；后台加载（如作品音频已被删除）静默失败，等用户点播放时再说明。
+  const wanted = useRef(false);
   const lane = useRef<HTMLElement>(null);
   const [zoom, setZoom] = useState(1);
   useEffect(() => { setZoom(1); if (lane.current) lane.current.scrollLeft = 0; }, [track?.id]);
@@ -32,7 +34,7 @@ export function Player({ track, onError, suspended, compact = false, historyCont
   const waveform = !(avatar || compact || inline);
   useEffect(() => {
     let disposed = false; let resource = '';
-    autoplay.current = !!playRequest;
+    autoplay.current = !!playRequest; wanted.current = !!playRequest;
     setUrl(''); setTime(0); setDuration(0); setPeaks([]); setPlaying(false);
     if (trackId && kind && fileName) void (async () => {
       try {
@@ -51,12 +53,12 @@ export function Player({ track, onError, suspended, compact = false, historyCont
           });
           if (!disposed) { setPeaks(next); setDuration(buffer.duration); }
         } finally { await context.close(); }
-      } catch (error) { if (!disposed) reportError((error as Error).message); }
+      } catch (error) { if (!disposed && wanted.current) { wanted.current = false; reportError((error as Error).message); } }
     })();
     const element = audio.current;
     return () => { element?.pause(); disposed = true; if (resource.startsWith('blob:')) URL.revokeObjectURL(resource); };
   }, [trackId, kind, fileName, playRequest, waveform]);
-  useEffect(() => { if (suspended) { autoplay.current = false; audio.current?.pause(); } }, [suspended]);
+  useEffect(() => { if (suspended) { autoplay.current = false; wanted.current = false; audio.current?.pause(); } }, [suspended]);
   // 缩放后让播放位置保持在视口中央，播放进度变化本身不触发滚动。
   const centerPlayhead = useEffectEvent(() => {
     const viewport = lane.current;
@@ -83,12 +85,16 @@ export function Player({ track, onError, suspended, compact = false, historyCont
   const toggle = async () => {
     if (!audio.current) return;
     if (playing) {
+      wanted.current = false;
       audio.current.pause();
       if (avatar) { audio.current.currentTime = 0; setTime(0); }
     } else try {
       if (avatar) { audio.current.currentTime = 0; setTime(0); }
+      wanted.current = true;
+      // 之前加载失败（文件当时不可读）时重新加载一次，文件恢复后可直接播放。
+      if (audio.current.error) audio.current.load();
       await audio.current.play();
-    } catch { onError('@yovoice.error.audioPlayFailed'); }
+    } catch { wanted.current = false; onError('@yovoice.error.audioPlayFailed'); }
   };
   const seek = (value: number) => {
     if (audio.current) audio.current.currentTime = value;
@@ -99,11 +105,11 @@ export function Player({ track, onError, suspended, compact = false, historyCont
   const tickStep = [1, 2, 5, 10].map(n => n * tickBase).find(n => n >= scale / zoom / 10)!;
   const ticks = Array.from({ length: Math.ceil(scale / tickStep) }, (_, i) => i * tickStep);
   const media = <audio hidden ref={audio} src={url || undefined}
-    onCanPlay={() => { if (autoplay.current && !suspended) { autoplay.current = false; void audio.current?.play().catch(() => onError('@yovoice.error.audioPlayClick')); } }}
+    onCanPlay={() => { if (autoplay.current && !suspended) { autoplay.current = false; void audio.current?.play().catch(() => { wanted.current = false; onError('@yovoice.error.audioPlayClick'); }); } }}
     onLoadedMetadata={() => { const value = audio.current?.duration; if (value && Number.isFinite(value)) setDuration(value); }}
     onTimeUpdate={() => setTime(audio.current?.currentTime ?? 0)}
-    onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => setPlaying(false)}
-    onError={() => { if (url) onError('@yovoice.error.audioPlayFailed'); }} />;
+    onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => { wanted.current = false; setPlaying(false); }}
+    onError={() => { if (url && wanted.current) { wanted.current = false; autoplay.current = false; onError('@yovoice.error.audioPlayFailed'); } }} />;
   if (inline) return <>
     {media}
     <Button label={playing ? t('@yovoice.player.pause') : inline.label} size="sm" variant="ghost" isIconOnly

@@ -339,3 +339,24 @@ test('Breeze TTS 2 在设计与克隆间切换描述用途，并以短分段为�
 });
 
 
+
+test('作品音频无法读取时不主动报错，点击播放才提示', async ({ page }) => {
+  const state = emptyState();
+  const draft = state.drafts[0];
+  state.history = [{ id: 'broken', title: draft.title, fileName: 'broken.wav', createdAt: '2026-09-15T10:00:00Z', duration: 1, settings: { ...draft } }];
+  await page.goto('/');
+  await page.evaluate(async () => {
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open('voice-workbench-audio', 1);
+      request.onupgradeneeded = () => request.result.createObjectStore('audio');
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => { const db = request.result; const tx = db.transaction('audio', 'readwrite'); tx.objectStore('audio').put(new Blob([new Uint8Array(64)], { type: 'audio/wav' }), 'broken.wav'); tx.oncomplete = () => { db.close(); resolve(); }; };
+    });
+  });
+  await seedState(page, state); await page.reload();
+  await expect(page.getByRole('combobox', { name: '当前作品历史' })).toContainText('版本 1');
+  await page.waitForTimeout(800);
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await page.locator('.player').getByRole('button', { name: '播放', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('音频无法播放');
+});
