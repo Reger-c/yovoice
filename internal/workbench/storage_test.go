@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 	"yovoice/internal/msg"
+	"yovoice/internal/platform"
 	"yovoice/internal/schema"
 	"yovoice/internal/store"
 	"yovoice/internal/testkit"
@@ -167,8 +168,8 @@ func TestStorageInfoAndRelocate(t *testing.T) {
 		t.Fatalf("PendingPath 应更新为 %s，实际为 %s", target, infoAfter.PendingPath)
 	}
 
-	if _, err := os.Stat(filepath.Join(target, "state.json")); err != nil {
-		t.Fatal("新目录缺少 state.json", err)
+	if _, err := os.Stat(filepath.Join(target, "yovoice.db")); err != nil {
+		t.Fatal("新目录缺少状态库", err)
 	}
 }
 
@@ -199,12 +200,12 @@ func TestRelocateCopiesWithoutTouchingSourceAndFreezes(t *testing.T) {
 	must(t, w.RelocateStorage(target))
 
 	// 旧目录保持完整，重启前仍可回退使用。
-	for _, p := range []string{voice, model, filepath.Join(root, "state.json")} {
+	for _, p := range []string{voice, model, filepath.Join(root, "yovoice.db")} {
 		if _, err := os.Stat(p); err != nil {
 			t.Fatalf("迁移后旧目录文件被改动: %s %v", p, err)
 		}
 	}
-	for _, rel := range []string{"voices/keep.wav", "models/m/weights.gguf", "state.json"} {
+	for _, rel := range []string{"voices/keep.wav", "models/m/weights.gguf", "yovoice.db"} {
 		if _, err := os.Stat(filepath.Join(target, filepath.FromSlash(rel))); err != nil {
 			t.Fatalf("新目录缺少 %s: %v", rel, err)
 		}
@@ -225,7 +226,7 @@ func TestRelocateCopiesWithoutTouchingSourceAndFreezes(t *testing.T) {
 
 	cfg, err := store.ReadConfig()
 	must(t, err)
-	if cfg.DataPath != target || cfg.PreviousPath != root {
+	if cfg.DataPath != target || len(cfg.PreviousPaths) != 1 || cfg.PreviousPaths[0] != root {
 		t.Fatalf("存储配置不正确: %+v", cfg)
 	}
 
@@ -260,12 +261,13 @@ func TestCleanupPreviousRemovesOldRootOnlyAfterSwitch(t *testing.T) {
 	must(t, os.WriteFile(filepath.Join(previous, "state.json"), []byte("{}"), 0600))
 	must(t, os.MkdirAll(filepath.Join(previous, "models"), 0700))
 	target := t.TempDir()
+	// 旧版配置只有 previousPath 字段，读取时并入列表。
 	must(t, store.WriteConfig(store.StorageConfig{DataPath: target, PreviousPath: previous}))
 
 	// 宿主仍在旧目录启动时绝不删除。
 	removed, err := store.CleanupPrevious(previous)
 	must(t, err)
-	if removed != "" {
+	if len(removed) != 0 {
 		t.Fatal("当前目录不是迁移目标时不应删除旧目录")
 	}
 	if _, err := os.Stat(previous); err != nil {
@@ -274,7 +276,7 @@ func TestCleanupPreviousRemovesOldRootOnlyAfterSwitch(t *testing.T) {
 
 	removed, err = store.CleanupPrevious(target)
 	must(t, err)
-	if removed != previous {
+	if len(removed) != 1 || removed[0] != previous {
 		t.Fatalf("应删除旧目录，实际: %q", removed)
 	}
 	if _, err := os.Stat(previous); !os.IsNotExist(err) {
@@ -282,8 +284,54 @@ func TestCleanupPreviousRemovesOldRootOnlyAfterSwitch(t *testing.T) {
 	}
 	cfg, err := store.ReadConfig()
 	must(t, err)
-	if cfg.PreviousPath != "" || cfg.DataPath != target {
+	if len(cfg.PreviousPaths) != 0 || cfg.PreviousPath != "" || cfg.DataPath != target {
 		t.Fatalf("清理后配置不正确: %+v", cfg)
+	}
+}
+
+// 连续两次迁移时，第一次未清理的旧目录仍在待清理列表中；清理只删除应用创建的内容。
+func TestCleanupPreviousKeepsEveryOldRootAndUserFiles(t *testing.T) {
+	isolateConfig(t)
+	first, second, target := t.TempDir(), t.TempDir(), t.TempDir()
+	for _, dir := range []string{first, second} {
+		s, err := store.New(dir)
+		must(t, err)
+		must(t, s.Close())
+	}
+	must(t, os.WriteFile(filepath.Join(first, "我的笔记.txt"), []byte("keep"), 0600))
+	must(t, store.RecordRelocation(first, second))
+	// 第一次迁移后旧目录仍被占用，清理推迟。
+	lock, err := platform.Lock(filepath.Join(first, "service.lock"))
+	must(t, err)
+	removed, err := store.CleanupPrevious(second)
+	if err == nil || len(removed) != 0 {
+		t.Fatal("旧目录被占用时应推迟清理", removed, err)
+	}
+	must(t, lock.Close())
+	must(t, store.RecordRelocation(second, target))
+	cfg, err := store.ReadConfig()
+	must(t, err)
+	if cfg.DataPath != target || len(cfg.PreviousPaths) != 2 {
+		t.Fatalf("再次迁移不应覆盖待清理的旧目录: %+v", cfg)
+	}
+	removed, err = store.CleanupPrevious(target)
+	must(t, err)
+	if len(removed) != 2 {
+		t.Fatal("两个旧目录都应清理", removed)
+	}
+	if _, err := os.Stat(filepath.Join(first, "我的笔记.txt")); err != nil {
+		t.Fatal("旧目录中用户自己的文件被删除", err)
+	}
+	for _, name := range []string{"yovoice.db", "voices", "logs"} {
+		if _, err := os.Stat(filepath.Join(first, name)); !os.IsNotExist(err) {
+			t.Fatal("应用创建的内容未清理", name)
+		}
+	}
+	if _, err := os.Stat(second); !os.IsNotExist(err) {
+		t.Fatal("清空的旧目录应删除")
+	}
+	if cfg, _ = store.ReadConfig(); len(cfg.PreviousPaths) != 0 {
+		t.Fatal("清理后应移出待清理列表", cfg)
 	}
 }
 

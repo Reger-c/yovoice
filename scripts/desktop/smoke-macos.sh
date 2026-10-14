@@ -14,11 +14,12 @@ if kill -0 "$pid" 2>/dev/null; then echo '原生测试或退出超时'; exit 1; 
 wait "$pid"
 if [[ -f "$result/smoke-error.txt" ]]; then cat "$result/smoke-error.txt"; exit 1; fi
 python3 - "$result" <<'PY'
-import json,pathlib,sys
+import json,pathlib,sqlite3,sys
 root=pathlib.Path(sys.argv[1])
 result=json.loads((root/'smoke-result.json').read_text())
-state=json.loads((root/'state.json').read_text())
+db=sqlite3.connect(root/'yovoice.db')
+draft=json.loads(db.execute('SELECT data FROM drafts ORDER BY pos LIMIT 1').fetchone()[0])
 assert result['desktop'] and result['platform']=='macos' and result['audioSeconds']==2
-assert state['drafts'][0]['text']==result['draft']
+assert draft['text']==result['draft']
 print('原生桥接、音频、草稿保存和退出通过。截图：'+str(root/'smoke.png'))
 PY

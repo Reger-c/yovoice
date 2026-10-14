@@ -60,6 +60,7 @@ func (w *Workbench) Synthesize(ctx context.Context, d schema.Draft) (schema.Gene
 }
 
 // pruneOrphanHistory 只保留最新的 max 条孤儿历史（接口生成不建作品），时间线仍在使用的版本不计入也不删除。
+// 与 CleanupResiduals 一致，24 小时内的结果始终保留，远程客户端可能稍后才下载音频。
 func (w *Workbench) pruneOrphanHistory(max int) {
 	w.edit.Lock()
 	defer w.edit.Unlock()
@@ -67,9 +68,12 @@ func (w *Workbench) pruneOrphanHistory(max int) {
 	if len(orphans) <= max {
 		return
 	}
+	cutoff := time.Now().Add(-orphanHistoryGrace)
 	ids := map[string]bool{}
 	for _, g := range orphans[max:] {
-		ids[g.ID] = true
+		if g.CreatedAt.Before(cutoff) {
+			ids[g.ID] = true
+		}
 	}
 	_ = w.removeGenerations(ids, nil)
 }

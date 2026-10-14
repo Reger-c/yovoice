@@ -159,7 +159,12 @@ func (w *Workbench) DeleteMedia(kind, id string) error {
 		return e
 	}
 	if exists && removed != "" {
-		_ = os.Remove(removed)
+		// 同一文件仍被其他记录引用（例如复制作品共享的素材）时放回原处，否则删除。
+		if w.Store.Read().MediaRefs()[kind][file] {
+			_ = os.Rename(removed, path)
+		} else {
+			_ = os.Remove(removed)
+		}
 	}
 	return nil
 }

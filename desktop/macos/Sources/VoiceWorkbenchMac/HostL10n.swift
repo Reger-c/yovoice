@@ -17,7 +17,7 @@ enum HostUiLocale: String {
     }
 }
 
-/// Native string table keyed by stable ids. Follows preferences.uiLocale from state.json / SSE.
+/// Native string table keyed by stable ids. Follows preferences.uiLocale from host-preferences.json / SSE.
 enum HostL10n {
     // Updated from MainActor when preferences change; read from host error paths too.
     nonisolated(unsafe) private(set) static var locale: HostUiLocale = {
@@ -43,8 +43,9 @@ enum HostL10n {
 
     nonisolated private static func readStoredUiLocale() -> HostUiLocale? {
         let root = DataRoot.resolve()
-        let stateURL = root.appendingPathComponent("state.json")
-        guard let data = try? Data(contentsOf: stateURL),
+        // 服务把界面语言写在 host-preferences.json；尚未被新版服务打开过的数据目录仍读旧版 state.json。
+        let candidates = ["host-preferences.json", "state.json"].map { root.appendingPathComponent($0) }
+        guard let data = candidates.lazy.compactMap({ try? Data(contentsOf: $0) }).first,
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let preferences = json["preferences"] as? [String: Any],
               let raw = preferences["uiLocale"] as? String else { return nil }
@@ -101,6 +102,7 @@ enum HostL10n {
             "err.modelDirOpen": "无法打开模型保存目录。",
             "err.serviceNotReady": "本地服务尚未就绪。",
             "err.serviceRequest": "本地服务请求失败。",
+            "alert.storageConfigBroken.title": "无法读取存储配置",
             "alert.dataRootMissing.title": "找不到数据目录",
             "alert.dataRootMissing.body": "%@ 不存在。可能是外置磁盘未连接，或目录已被移动、删除。\n\n连接磁盘后点“重试”；确认不再需要原数据时，可在原位置新建空的数据目录。",
             "alert.dataRootMissing.retry": "重试",
@@ -195,6 +197,7 @@ enum HostL10n {
             "err.modelDirOpen": "Could not open the model save folder.",
             "err.serviceNotReady": "Local service is not ready yet.",
             "err.serviceRequest": "Local service request failed.",
+            "alert.storageConfigBroken.title": "Could Not Read Storage Settings",
             "alert.dataRootMissing.title": "Data Folder Not Found",
             "alert.dataRootMissing.body": "%@ does not exist. The external drive may be disconnected, or the folder was moved or deleted.\n\nConnect the drive and click Retry. If you no longer need the original data, create a new empty data folder at this location.",
             "alert.dataRootMissing.retry": "Retry",
