@@ -14,7 +14,7 @@ Open Settings › AI services. The left column lists added and available service
 | Ollama, LM Studio | Defaults to this computer (`127.0.0.1`), editable | Usually not needed |
 | Custom | Any compatible address | Optional |
 
-OrcaRouter has free models and needs no key to copy: click **Connect OrcaRouter for free** (in the AI compose or AI lyrics panel, or on the OrcaRouter page in settings), sign in to OrcaRouter in your browser and approve. yovoice receives the key on this computer (`127.0.0.1`), adds the service with the free model `orcarouter/free` and uses it right away. Free models can be rate limited at busy times; wait a minute and retry, or pick another model.
+OrcaRouter has free models and needs no key to copy: click **Connect OrcaRouter for free** (on the OrcaRouter page in settings), sign in to OrcaRouter in your browser and approve. yovoice receives the key on this computer (`127.0.0.1`), adds the service with the free model `orcarouter/free` and uses it right away. Free models can be rate limited at busy times; wait a minute and retry, or pick another model.
 
 A custom service chooses one of three protocols: OpenAI Chat Completions, OpenAI Responses or Anthropic Messages, plus the path of its model list (for example `/models`; leave it empty if the service has none and type the model name).
 

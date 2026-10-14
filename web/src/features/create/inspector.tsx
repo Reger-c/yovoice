@@ -47,10 +47,10 @@ const advancedFields = [
   ['lengthPenalty', '@yovoice.create.lengthPenalty', -2, 2, 0.1],
 ] as const;
 
-export function Inspector({ draft, state, catalog, change, chooseVoice, chooseEmotion, play, generate, cancel, settings, advanced, setAdvanced, close, embedded = false, libraryActions, generationAction, allowModelManagement = true }: {
+export function Inspector({ draft, state, catalog, change, chooseVoice, chooseEmotion, play, generate, cancel, settings, advanced, setAdvanced, embedded = false, libraryActions, generationAction, allowModelManagement = true }: {
   embedded?: boolean; libraryActions?: ReactNode; generationAction?: ReactNode; allowModelManagement?: boolean;
   draft: Draft; state: State; catalog: ModelPackage[]; change: (patch: Partial<Draft>) => void; chooseVoice: () => void; chooseEmotion: () => void;
-  play: (track: Track) => void; generate: () => void; cancel: () => void; settings: () => void; close: () => void; advanced: boolean; setAdvanced: (v: boolean) => void;
+  play: (track: Track) => void; generate: () => void; cancel: () => void; settings: () => void; close?: () => void; advanced: boolean; setAdvanced: (v: boolean) => void;
 }) {
   const t = useTranslator();
   const voice = state.voices.find(v => v.id === draft.voiceId); const emotion = state.voices.find(v => v.id === draft.emotionVoiceId);
@@ -91,7 +91,7 @@ export function Inspector({ draft, state, catalog, change, chooseVoice, chooseEm
         onChange={modelId => { change({ modelId, speaker: catalog.find(model => model.id === modelId)?.family === catalog.find(model => model.id === draft.modelId)?.family && !modelId.startsWith('kokoro-') ? draft.speaker : '', synthesisLanguage: catalog.find(model => model.id === modelId)?.family === catalog.find(model => model.id === draft.modelId)?.family ? draft.synthesisLanguage : 'auto', voiceDescription: catalog.find(model => model.id === modelId)?.family === catalog.find(model => model.id === draft.modelId)?.family ? draft.voiceDescription : '', language: modelId.startsWith('index-2.5') || ['zh', 'en'].includes(draft.language) ? draft.language : 'zh' }); }} />
 
     </VStack>
-    <HStack className="inspector-heading" hAlign="between" vAlign="center"><h2 className="inspector-section-title">{t('@yovoice.create.voiceSettings')}</h2>{!embedded ? <Button label={t('@yovoice.create.backToScript')} className="inspector-toggle" variant="secondary" onClick={close} /> : null}</HStack>
+    <h2 className="inspector-section-title">{t('@yovoice.create.voiceSettings')}</h2>
       {catalog.find(model => model.id === draft.modelId)?.family === 'kokoro_tts' ? <KokoroControls advanced={advanced} setAdvanced={setAdvanced} draft={draft} model={catalog.find(model => model.id === draft.modelId)!} change={change} /> : isReferenceModel(draft.modelId) ? <ReferenceControls advanced={advanced} setAdvanced={setAdvanced} draft={draft} state={state} change={change} chooseVoice={chooseVoice} play={play} /> : isBreezeModel(draft.modelId) ? <BreezeControls draft={draft} state={state} change={change} chooseVoice={chooseVoice} play={play} advanced={advanced} setAdvanced={setAdvanced} /> : isVoxModel(draft.modelId) ? <VoxControls draft={draft} state={state} change={change} chooseVoice={chooseVoice} play={play} advanced={advanced} setAdvanced={setAdvanced} /> : <>
       <ReferenceVoice voice={voice} choose={chooseVoice} play={play} />
       <VStack gap={3}>

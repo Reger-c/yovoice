@@ -88,25 +88,31 @@ test('AI 写歌词：在后台运行，结束后在写作栏显示结果或失�
   await expect(composer.getByRole('textbox', { name: '描述想要的歌' })).toHaveValue('夏夜海边兜风');
 });
 
-test('OrcaRouter 一键连接：未配置时直接免费连接，设置页授权后切到新服务', async ({ page }, testInfo) => {
+test('OrcaRouter 一键连接：未配置时通过设置 AI 统一配置，默认打开首个服务，设置页授权后切到新服务', async ({ page }, testInfo) => {
   await page.goto('/');
   await page.getByTestId('nav-new').click();
   await page.getByRole('menuitem', { name: '音乐生成', exact: true }).click();
   const composer = page.locator('.ai-composer');
   await composer.screenshot({ path: testInfo.outputPath('orca-setup.png') });
-  // 预览后端模拟浏览器授权完成：自动添加服务并使用免费模型，写作栏随即可用。
-  await composer.getByRole('button', { name: '免费连接 OrcaRouter', exact: true }).click();
-  await expect(composer).toContainText('OrcaRouter · orcarouter/free');
-  await expect(composer.getByRole('textbox', { name: '描述想要的歌' })).toBeVisible();
+  // 写作栏移除快捷连接按钮，统一从“设置 AI”去配置。
+  await expect(composer.getByRole('button', { name: '免费连接 OrcaRouter', exact: true })).toHaveCount(0);
+  await composer.getByRole('button', { name: '设置 AI', exact: true }).click();
 
-  // 设置页默认展示当前服务；已连接时一键授权按钮仍可用于重新连接。
-  await page.getByTestId('nav-settings').click();
-  await page.getByRole('tab', { name: 'AI 服务' }).click();
+  // 打开 AI 设置，默认打开 provider 列表的第一个（OrcaRouter）。
   const panel = page.getByRole('tabpanel', { name: 'AI 服务' });
   await expect(panel.locator('.ai-detail h2')).toHaveText('OrcaRouter');
+  await expect(panel.getByRole('button', { name: '免费连接 OrcaRouter', exact: true })).toBeVisible();
+
+  // 点击“免费连接 OrcaRouter”，预览后端模拟浏览器授权完成：自动添加服务并使用免费模型。
+  await panel.getByRole('button', { name: '免费连接 OrcaRouter', exact: true }).click();
   await expect(panel.getByLabel('API 密钥')).toHaveText('••••••••');
   await expect(panel.getByRole('textbox', { name: '当前模型' })).toHaveValue('orcarouter/free');
-  await expect(panel.getByRole('button', { name: '免费连接 OrcaRouter', exact: true })).toBeVisible();
   await expect(panel.locator('.ai-nav').getByLabel('使用中')).toHaveCount(1);
   await page.screenshot({ path: testInfo.outputPath('orca-settings.png') });
+
+  // 切回音乐生成，写作栏随即可用。
+  await page.getByTestId('nav-new').click();
+  await page.getByRole('menuitem', { name: '音乐生成', exact: true }).click();
+  await expect(composer).toContainText('OrcaRouter · orcarouter/free');
+  await expect(composer.getByRole('textbox', { name: '描述想要的歌' })).toBeVisible();
 });

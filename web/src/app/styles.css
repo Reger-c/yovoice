@@ -123,7 +123,7 @@
   .sidebar .astryx-resize-handle-pill { display: none; }
   .sidebar-bottom { margin-top: auto; }
   .content-frame { height: 100%; min-height: 0; }
-  .studio { flex: 1; min-height: 0; height: 100%; overflow: hidden; }
+  .studio { flex: 1; min-height: 0; height: 100%; overflow: hidden; position: relative; }
   .document { flex: 1; min-width: 0; overflow: auto; }
   .document-heading { flex-shrink: 0; min-height: var(--spacing-10); }
   .document-heading .document-title { flex: 1; min-width: 0; }
@@ -385,10 +385,31 @@
   .settings-help { color: var(--app-muted); font-size: var(--app-small-font); }
   .settings-help summary { justify-content: start; gap: var(--spacing-3); }
   .time { font-variant-numeric: tabular-nums; }
-  /* 正文与检查器按创作区实际宽度排布（侧栏可拖宽），宽度不足时检查器改为与正文切换显示，正文不被挤压变形。 */
+  /* 正文与检查器按创作区实际宽度排布（侧栏可拖宽），宽度不足时检查器自动收起；展开时保持与宽屏一致的面板宽度浮出，正文不被全屏覆盖。 */
   .studio { container: studio / inline-size; }
   @container studio (min-width: 861px) { .collapse-inspector .inspector { display: none; } .collapse-inspector .document-heading > .inspector-collapsed-action { display: flex; } }
-  @container studio (max-width: 860px) { .inspector { display: none; } .inspector-toggle { display: inline-flex; } .inspector-collapse { display: none; } .document-heading > .inspector-collapsed-action { display: flex; } .show-inspector .document { display: none; } .show-inspector .inspector-document-actions { display: flex; } .show-inspector .inspector { display: grid; grid-template-rows: auto minmax(0, 1fr); width: 100%; border-left: 0; } }
+  @container studio (max-width: 860px) {
+    .inspector { display: none; }
+    .inspector-toggle { display: inline-flex; }
+    .inspector-collapse { display: none; }
+    .document-heading > .inspector-collapsed-action { display: flex; }
+    .show-inspector .inspector-document-actions { display: flex; }
+    .show-inspector .document-heading > .inspector-collapsed-action { display: none; }
+    .show-inspector .inspector {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: var(--app-inspector);
+      max-width: 100%;
+      border-left: 1px solid var(--app-line);
+      background: var(--app-white);
+      box-shadow: var(--shadow-high);
+      z-index: 10;
+    }
+  }
   @media (max-width: 1190px) { :root { --app-nav: calc(var(--spacing-10) * 4.5); --app-inspector: calc(var(--spacing-8) * 11); --app-editor-font: var(--font-size-lg); --app-title-font: var(--font-size-3xl); } .player { gap: var(--spacing-3); } }
   @media (max-width: 900px) { :root { --app-nav: calc(var(--spacing-10) * 4); --app-inspector: calc(var(--spacing-8) * 11); } .sidebar { padding-inline: var(--spacing-2); } .settings-page,.library-page { padding: var(--spacing-5) var(--spacing-6) var(--spacing-6); } }
   @media (max-width: 600px) { :root { --app-nav: calc(var(--spacing-8) * 2); --app-player: calc(var(--spacing-9) * 2); --app-title-font: var(--font-size-3xl); --app-editor-font: var(--font-size-lg); } .nav-item { font-size: 0; justify-content: center; padding: var(--spacing-2); gap: 0; } .new-project { font-size: 0; gap: 0; padding: var(--spacing-2); } .recent-projects { display: none; } .writing { min-height: calc(var(--spacing-10) * 14); padding-top: var(--spacing-5); } .sidebar { padding-bottom: var(--spacing-2); } .audio-panel { margin: var(--spacing-2); } .play-main { min-width: var(--spacing-10); min-height: var(--spacing-10); } .volume-control input { display: none; } .timeline .transport { min-height: var(--spacing-12); } .transport-time { font-size: var(--font-size-xs); } .transport { padding-inline: var(--spacing-2); } .time-ruler small:nth-child(even) { visibility: hidden; } .settings-page,.library-page { padding: var(--spacing-5); } }

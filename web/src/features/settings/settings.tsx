@@ -103,7 +103,7 @@ export function Settings({ state, catalog, engine, draft, run, focus }: { focus?
     </VStack> : tab === 'soundfonts' ? <VStack className="settings-panel" gap={6} id="soundfonts-panel" role="tabpanel" aria-label={t('@yovoice.settings.tabSoundfonts')}>
       <small className="settings-intro">{t('@yovoice.settings.soundfontIntro')}</small>
       <ModelGroups models={catalog.filter(model => model.family === 'soundfont')} state={state} draft={draft} run={run} />
-    </VStack> : tab === 'ai' ? <AISettings state={state} run={run} /> : <VStack className="settings-panel engine-settings" gap={6} id="engine-panel" role="tabpanel" aria-label={t('@yovoice.settings.tabEngine')}>
+    </VStack> : tab === 'ai' ? <AISettings state={state} run={run} focus={focus} /> : <VStack className="settings-panel engine-settings" gap={6} id="engine-panel" role="tabpanel" aria-label={t('@yovoice.settings.tabEngine')}>
       <SettingsGroup title={<>audio.cpp{runtimeVersion ? <small className="model-size">{runtimeVersion}</small> : null}</>}>
         <SettingsRow className="engine-setting-row" label={t('@yovoice.settings.computeDevice')}>
           <Selector size="sm" label={t('@yovoice.settings.computeDevice')} isLabelHidden value={preferences.backend} options={[{ value: 'cpu', label: 'CPU' }, ...(isMac ? [{ value: 'metal', label: 'Apple GPU · Metal' }] : [{ value: 'cuda', label: 'NVIDIA GPU · CUDA 12.4' }, { value: 'cuda13', label: 'NVIDIA GPU · CUDA 13.3' }, { value: 'vulkan', label: t('@yovoice.settings.backend.vulkan') }])]} onChange={backend => run(() => call('preferences.save', { ...preferences, backend }))} width="calc(var(--spacing-10) * 6)" className="compute-device" />

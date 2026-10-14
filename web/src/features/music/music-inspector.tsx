@@ -15,9 +15,9 @@ import { durationPresets, musicLanguages } from './music-draft';
 const optionValues = (key: string) => definitions.ace_step.find(spec => spec.key === key)?.values ?? [];
 
 // 音乐检查器：常用的时长和演唱语言放在外面，速度、调性、拍号等交给规划器自动决定，按需展开。
-export function MusicInspector({ draft, state, catalog, change, generate, cancel, settings, upgradeEngine, close, advanced, setAdvanced, header }: {
+export function MusicInspector({ draft, state, catalog, change, generate, cancel, settings, upgradeEngine, advanced, setAdvanced, header }: {
   draft: Draft; state: State; catalog: ModelPackage[]; change: (patch: Partial<Draft>) => void; header?: ReactNode;
-  generate: () => void; cancel: () => void; settings: () => void; upgradeEngine: () => void; close: () => void; advanced: boolean; setAdvanced: (value: boolean) => void;
+  generate: () => void; cancel: () => void; settings: () => void; upgradeEngine: () => void; close?: () => void; advanced: boolean; setAdvanced: (value: boolean) => void;
 }) {
   const t = useTranslator();
   const busy = state.activity?.status === 'running';
@@ -54,7 +54,7 @@ export function MusicInspector({ draft, state, catalog, change, generate, cancel
     <VStack className="inspector-scroll" gap={5}>
       {header}
       <VStack className="inspector-actions" gap={3}>
-        <HStack className="inspector-heading" hAlign="between" vAlign="center"><h2 className="inspector-section-title">{t('@yovoice.create.model')}</h2><Button label={t('@yovoice.create.backToScript')} className="inspector-toggle" variant="secondary" onClick={close} /></HStack>
+        <h2 className="inspector-section-title">{t('@yovoice.create.model')}</h2>
         <ModelSelector label={t('@yovoice.create.model')} models={models} state={state} value={draft.modelId} isDisabled={generating} manage={settings} onChange={modelId => change({ modelId, ...(isYuE(modelId) ? { instrumental: false } : {}) })} />
       </VStack>
       {yue ? <VStack gap={2}><h3>{t('@yovoice.music.duration')}</h3><small>{t('@yovoice.music.yueLength')}</small></VStack> : <>

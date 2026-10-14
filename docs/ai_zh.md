@@ -14,7 +14,7 @@ yovoice 可以选择接入大模型。配置 AI 服务后，编曲作品中的�
 | Ollama、LM Studio | 默认本机（`127.0.0.1`），可修改 | 通常不需要 |
 | 自定义 | 任意兼容地址 | 可选 |
 
-OrcaRouter 提供免费模型，而且不用复制密钥：点“免费连接 OrcaRouter”（在 AI 写谱、AI 写歌词栏，或设置里的 OrcaRouter 页），在浏览器登录 OrcaRouter 并同意授权。yovoice 在本机（`127.0.0.1`）接收密钥，自动添加服务、使用免费模型 `orcarouter/free` 并立即启用。免费模型高峰期可能限流，稍等一会儿重试或换一个模型即可。
+OrcaRouter 提供免费模型，而且不用复制密钥：点“免费连接 OrcaRouter”（在设置里的 OrcaRouter 页），在浏览器登录 OrcaRouter 并同意授权。yovoice 在本机（`127.0.0.1`）接收密钥，自动添加服务、使用免费模型 `orcarouter/free` 并立即启用。免费模型高峰期可能限流，稍等一会儿重试或换一个模型即可。
 
 自定义服务可选择三种协议：OpenAI Chat Completions、OpenAI Responses 或 Anthropic Messages，并填写模型列表路径（如 `/models`；服务没有模型列表时留空，直接填写模型名）。
 

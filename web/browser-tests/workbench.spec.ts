@@ -359,3 +359,28 @@ test('作品音频读不到时播放器直接显示不可用，不主动弹出�
   await expect(page.locator('.player').getByRole('button', { name: '播放', exact: true })).toBeDisabled();
   await expect(page.getByRole('alert')).toHaveCount(0);
 });
+
+test('窄屏下展开检查器：保持宽屏时的固定宽度，不覆盖全屏且不隐藏正文，无返回正文按钮', async ({ page }) => {
+  await page.setViewportSize({ width: 980, height: 720 });
+  await page.goto('/');
+  await expect(page.getByLabel('作品名称')).toHaveValue('清晨旁白');
+  const inspector = page.locator('.inspector');
+  const document = page.locator('.document');
+  const toggleBtn = page.locator('.browser-titlebar').getByRole('button', { name: /右侧面板/ });
+  await expect(toggleBtn).toBeVisible();
+
+  // 点击展开检查器
+  await toggleBtn.click();
+  await expect(page.locator('.studio')).toHaveClass(/show-inspector/);
+  await expect(inspector).toBeVisible();
+  // 正文仍然可见，没有被全屏覆盖
+  await expect(document).toBeVisible();
+  // 检查器中没有“返回正文”按钮
+  await expect(inspector.getByRole('button', { name: '返回正文' })).toHaveCount(0);
+
+  // 检查 inspector 宽度等于宽屏时的宽度（约 352px），而不是 100% 全屏
+  const box = await inspector.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box!.width).toBeLessThan(400);
+  expect(box!.width).toBeGreaterThan(300);
+});

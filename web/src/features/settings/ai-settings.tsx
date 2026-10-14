@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useEffectEvent, useState, type CSSProperties } from 'react';
 import { Badge } from '@astryxdesign/core/Badge';
 import { Button } from '@astryxdesign/core/Button';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
@@ -140,13 +140,22 @@ function ProviderDetail({ provider, preset, run, saved, removed }: {
 }
 
 // 设置 › AI 服务：左侧是已添加和可添加的服务，右侧直接编辑选中的服务。
-export function AISettings({ state, run }: { state: State; run: (task: () => Promise<unknown>) => void }) {
+export function AISettings({ state, run, focus }: {
+  state: State;
+  run: (task: () => Promise<unknown>) => void;
+  focus?: { tab: string; modelId: string; request: number };
+}) {
   const t = useTranslator();
   const providers = state.aiProviders ?? [];
-  const firstChoice = () => state.aiProviderID || providers[0]?.id || `preset:${presets[0].key}`;
+  // 默认打开 provider 列表的第一个：优先已添加列表的首项，未添加时为预设列表的首项。
+  const firstChoice = () => providers[0]?.id || `preset:${presets[0].key}`;
   // nonce 只在用户切换选中项时变化；保存新服务后选中项换成它的 ID，但编辑区不重建。
   const [selection, setSelection] = useState(() => ({ value: firstChoice(), nonce: 0 }));
   const select = (value: string) => setSelection(s => ({ value, nonce: s.nonce + 1 }));
+  const resetToFirst = useEffectEvent(() => select(firstChoice()));
+  useEffect(() => {
+    if (focus?.tab === 'ai') resetToFirst();
+  }, [focus?.request, focus?.tab]);
   // 在 OrcaRouter 预设页一键授权完成后，直接切到新添加的服务。
   const connected = selection.value === 'preset:orcarouter' ? providers.find(p => p.preset === 'orcarouter')?.id : undefined;
   const selected = connected ?? selection.value;

@@ -13,9 +13,9 @@ import { emptyScore, noteCount, scoreDuration } from './score-draft';
 const meters = [[4, 4], [3, 4], [2, 4], [6, 8], [12, 8]];
 
 // 编曲检查器只放设置：渲染、音色库、速度拍号与调性；段落显示在轨道区的标尺上。
-export function ScoreInspector({ draft, state, catalog, change, generate, cancel, settings, close, header }: {
+export function ScoreInspector({ draft, state, catalog, change, generate, cancel, settings, header }: {
   draft: Draft; state: State; catalog: ModelPackage[]; change: (patch: Partial<Draft>) => void; header?: ReactNode;
-  generate: () => void; cancel: () => void; settings: () => void; close: () => void;
+  generate: () => void; cancel: () => void; settings: () => void; close?: () => void;
 }) {
   const t = useTranslator();
   const score = draft.score ?? emptyScore();
@@ -49,7 +49,7 @@ export function ScoreInspector({ draft, state, catalog, change, generate, cancel
     <VStack className="inspector-scroll" gap={5}>
       {header}
       <VStack className="inspector-actions" gap={3}>
-        <HStack className="inspector-heading" hAlign="between" vAlign="center"><h2 className="inspector-section-title">{t('@yovoice.score.soundFont')}</h2><Button label={t('@yovoice.create.backToScript')} className="inspector-toggle" variant="secondary" onClick={close} /></HStack>
+        <h2 className="inspector-section-title">{t('@yovoice.score.soundFont')}</h2>
         <ModelSelector label={t('@yovoice.score.soundFont')} models={fonts} state={state} value={draft.modelId} isDisabled={generating} manage={settings} name={model => model.name} onChange={modelId => change({ modelId })} />
       </VStack>
       <VStack gap={3}>
