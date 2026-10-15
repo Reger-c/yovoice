@@ -2075,6 +2075,36 @@
   "@yovoice.music.stylePlaceholder": {
     "defaultMessage": "描述你想要的声音，例如 city pop, warm synths, chill, female vocals"
   },
+  "@yovoice.music.presets": {
+    "defaultMessage": "风格预设"
+  },
+  "@yovoice.music.moreStyles": {
+    "defaultMessage": "更多风格"
+  },
+  "@yovoice.music.collapseStyles": {
+    "defaultMessage": "收起风格"
+  },
+  "@yovoice.music.tuneElements": {
+    "defaultMessage": "微调元素"
+  },
+  "@yovoice.music.collapseElements": {
+    "defaultMessage": "收起微调"
+  },
+  "@yovoice.music.selectedTags": {
+    "defaultMessage": "已选 {count} 个标签"
+  },
+  "@yovoice.music.clearTags": {
+    "defaultMessage": "清空"
+  },
+  "@yovoice.music.elements": {
+    "defaultMessage": "微调元素"
+  },
+  "@yovoice.music.addTag": {
+    "defaultMessage": "添加风格标签"
+  },
+  "@yovoice.music.addTagPlaceholder": {
+    "defaultMessage": "输入标签或描述，按回车添加…"
+  },
   "@yovoice.music.tags": {
     "defaultMessage": "风格标签"
   },

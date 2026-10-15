@@ -687,11 +687,21 @@
   .release-link { font-size: var(--app-small-font); white-space: nowrap; }
   @media (max-width: 600px) { .sidebar-update { display: none; } }
 
-  /* 音乐：三个区块之间用细线分隔，选中的标签描边加勾，不再整块涂黑。 */
+  /* 音乐：区块分隔，风格标签采用一体化输入盒，右侧配置区与情绪预设统一。 */
   .music-block + .music-block { padding-top: var(--spacing-4); border-top: var(--border-width) solid var(--app-line); }
   .music-tag.astryx-button[aria-pressed="true"] { border-color: var(--app-ink); background: var(--app-surface); color: var(--app-ink); }
   .music-tag.astryx-button { transition: background var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard); }
   .music-block .astryx-segmented-control { flex: none; width: max-content; }
+  .music-style-box { position: relative; min-height: calc(var(--spacing-10) * 1.5); padding: var(--spacing-2) var(--spacing-3); border: var(--border-width) solid var(--app-line); border-radius: var(--radius-element); background: var(--app-paper); cursor: text; transition: border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard); }
+  .music-style-box:focus-within { border-color: var(--app-ink); box-shadow: 0 0 0 1px var(--app-ink); }
+  .music-style-field { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; margin: -1px; border: 0; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); }
+  .music-inline-input { border: none; background: transparent; outline: none; font-size: calc(var(--app-ui-font) + var(--spacing-0-5)); color: var(--app-ink); min-width: 140px; padding: var(--spacing-0-5) var(--spacing-1); font-family: inherit; }
+  .music-inline-input::placeholder { color: var(--app-muted); font-size: var(--app-ui-font); }
+  .music-style-header, .style-presets-header { min-height: var(--spacing-8); }
+  .music-inspector .style-presets { margin-top: var(--spacing-1); }
+  .music-inspector .music-tag-panel { padding: var(--spacing-2) var(--spacing-3); border-radius: var(--radius-element); background: var(--app-surface); border: var(--border-width) solid var(--app-line); }
+  .music-tag-group-col { width: 100%; margin-block: var(--spacing-1); }
+  .music-tag-group-title { color: var(--app-muted); font-size: var(--app-small-font); font-weight: var(--font-weight-medium); }
 
   /* 编曲轨道视图：单行轨头固定宽度，轨道向右延伸贴紧检查器，右侧音块与段落标尺共用时间轴。 */
   /* 轨道区放在底部全宽面板里，与下方播放器同宽，横向贯穿检查器下方。 */

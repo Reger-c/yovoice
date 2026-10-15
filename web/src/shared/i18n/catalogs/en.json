@@ -2075,6 +2075,36 @@
   "@yovoice.music.stylePlaceholder": {
     "defaultMessage": "Describe the sound, e.g. city pop, warm synths, chill, female vocals"
   },
+  "@yovoice.music.presets": {
+    "defaultMessage": "Style Presets"
+  },
+  "@yovoice.music.moreStyles": {
+    "defaultMessage": "More styles"
+  },
+  "@yovoice.music.collapseStyles": {
+    "defaultMessage": "Collapse styles"
+  },
+  "@yovoice.music.tuneElements": {
+    "defaultMessage": "Fine-tune elements"
+  },
+  "@yovoice.music.collapseElements": {
+    "defaultMessage": "Collapse elements"
+  },
+  "@yovoice.music.selectedTags": {
+    "defaultMessage": "{count} selected"
+  },
+  "@yovoice.music.clearTags": {
+    "defaultMessage": "Clear"
+  },
+  "@yovoice.music.elements": {
+    "defaultMessage": "Elements"
+  },
+  "@yovoice.music.addTag": {
+    "defaultMessage": "Add style tag"
+  },
+  "@yovoice.music.addTagPlaceholder": {
+    "defaultMessage": "Type a tag, press Enter..."
+  },
   "@yovoice.music.tags": {
     "defaultMessage": "Style tags"
   },

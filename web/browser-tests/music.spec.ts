@@ -11,16 +11,20 @@ test('新建音乐作品：示例、风格标签、段落标记、纯音乐与�
   await page.getByRole('button', { name: '填入示例', exact: true }).click();
   await expect(style).toHaveValue(/city pop/);
   await expect(page.getByRole('button', { name: '填入示例', exact: true })).toHaveCount(0);
+  // 风格预设与微调元素位于右侧检查器（纯文字无 emoji，与情绪预设一致）。
+  await expect(page.getByRole('button', { name: 'City Pop', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'City Pop', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.screenshot({ path: testInfo.outputPath('music-style-presets-top.png') });
 
-  // 标签与风格描述双向同步。
+  // 点击微调元素展开分类标签。
+  await page.getByRole('button', { name: '微调元素', exact: true }).click();
   const tags = page.getByRole('group', { name: '风格标签' });
   await expect(tags.getByRole('button', { name: 'city pop', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await expect(tags.getByRole('button', { name: 'piano', exact: true })).toHaveCount(0);
-  await tags.getByRole('button', { name: '全部标签', exact: true }).click();
   await tags.getByRole('button', { name: 'piano', exact: true }).click();
   await expect(style).toHaveValue(/, piano$/);
   await tags.getByRole('button', { name: 'city pop', exact: true }).click();
   await expect(style).not.toHaveValue(/city pop/);
+  await page.screenshot({ path: testInfo.outputPath('music-style-presets.png') });
 
   const lyrics = page.getByLabel('歌词', { exact: true });
   await lyrics.evaluate((el: HTMLTextAreaElement) => el.setSelectionRange(el.value.length, el.value.length));

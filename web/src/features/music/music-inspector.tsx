@@ -3,26 +3,29 @@ import { Button } from '@astryxdesign/core/Button';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/SegmentedControl';
 import { useTranslator } from '@astryxdesign/core/i18n';
-import { LoaderCircle } from 'lucide-react';
+import { Check, ChevronRight, ChevronUp, LoaderCircle } from 'lucide-react';
 import { Selector } from '../../shared/selector';
 import definitions from '../../shared/lib/generation-options.json';
 import { formatActivity } from '../../shared/i18n/format';
-import { formatTime, isMusicModel, isYuE, modelEngineReady, type Draft, type ModelPackage, type State } from '../../shared/workbench';
+import { formatTime, isMusicModel, isYuE, modelEngineReady, type Draft, type ModelPackage, type State, type UiLocale } from '../../shared/workbench';
 import { AdvancedSettings, SeedInput } from '../create/shared-controls';
 import { ModelSelector } from '../create/model-selector';
-import { durationPresets, musicLanguages } from './music-draft';
+import { applyPresetTags, durationPresets, isPresetActive, musicLanguages, splitTags, stylePresets, styleTags, tagTooltips } from './music-draft';
 
 const optionValues = (key: string) => definitions.ace_step.find(spec => spec.key === key)?.values ?? [];
 
-// 音乐检查器：常用的时长和演唱语言放在外面，速度、调性、拍号等交给规划器自动决定，按需展开。
-export function MusicInspector({ draft, state, catalog, change, generate, cancel, settings, upgradeEngine, advanced, setAdvanced, header }: {
+// 音乐检查器：常用的时长、演唱语言与风格预设放在右侧面板中，参照情绪预设的层级结构。
+export function MusicInspector({ draft, state, catalog, change, generate, cancel, settings, upgradeEngine, advanced, setAdvanced, header, locale = 'zh-CN' }: {
   draft: Draft; state: State; catalog: ModelPackage[]; change: (patch: Partial<Draft>) => void; header?: ReactNode;
   generate: () => void; cancel: () => void; settings: () => void; upgradeEngine: () => void; close?: () => void; advanced: boolean; setAdvanced: (value: boolean) => void;
+  locale?: UiLocale;
 }) {
   const t = useTranslator();
   const busy = state.activity?.status === 'running';
   const generating = busy && state.activity?.kind === 'generate' && state.activity.projectId === draft.id;
   const [elapsed, setElapsed] = useState(0);
+  const [moreStyles, setMoreStyles] = useState(false);
+  const [tuneStyles, setTuneStyles] = useState(false);
   useEffect(() => {
     if (!generating) { setElapsed(0); return; }
     const started = state.activity?.startedAt ? Date.parse(state.activity.startedAt) : Date.now();
@@ -41,6 +44,12 @@ export function MusicInspector({ draft, state, catalog, change, generate, cancel
   // YuE2 由歌词决定长度、也不接受 ACE-Step 的规划参数，只保留种子。
   const yue = isYuE(draft.modelId);
   const engineOutdated = !!state.runtimePath && !modelEngineReady(state, model);
+  const tags = splitTags(draft.text);
+  const groups = Object.keys(styleTags) as (keyof typeof styleTags)[];
+  const toggleTag = (tag: string) => {
+    const next = tags.includes(tag) ? tags.filter(item => item !== tag) : [...tags, tag];
+    change({ text: next.join(', ').slice(0, 512) });
+  };
   return <VStack as="aside" className="inspector music-inspector" gap={0}>
     <VStack className="generation-action" gap={3}>
       {generating ? <Button label={t('@yovoice.create.cancelGenerate')} onClick={cancel} width="100%" />
@@ -68,6 +77,92 @@ export function MusicInspector({ draft, state, catalog, change, generate, cancel
         <Selector label={t('@yovoice.music.language')} isLabelHidden width="calc(var(--spacing-10) * 3)" value={draft.synthesisLanguage || 'zh'} options={musicLanguages.map(value => ({ value, label: t(`@yovoice.music.languageName.${value}`) }))} onChange={synthesisLanguage => change({ synthesisLanguage })} />
       </HStack>
       </>}
+      {/* 风格预设（类似情绪预设 UI，纯文字无 emoji） */}
+      <VStack gap={2} className="style-presets">
+        <HStack className="style-presets-header" hAlign="between" vAlign="center">
+          <h3>{t('@yovoice.music.presets')}</h3>
+          <Button
+            label={t('@yovoice.action.reset')}
+            size="sm"
+            variant="secondary"
+            isDisabled={tags.length === 0}
+            onClick={() => change({ text: '' })}
+          />
+        </HStack>
+        <HStack className="emotion-preset-grid" gap={2} role="group" aria-label={t('@yovoice.music.presets')}>
+          {stylePresets.slice(0, 3).map(preset => (
+            <Button
+              key={preset.id}
+              label={preset.name[locale]}
+              size="sm"
+              variant="secondary"
+              aria-pressed={isPresetActive(preset, tags)}
+              onClick={() => change({ text: applyPresetTags(preset, tags).join(', ').slice(0, 512) })}
+            />
+          ))}
+        </HStack>
+        {moreStyles ? (
+          <HStack id="more-style-presets" className="emotion-preset-grid" gap={2} role="group" aria-label={t('@yovoice.music.moreStyles')}>
+            {stylePresets.slice(3).map(preset => (
+              <Button
+                key={preset.id}
+                label={preset.name[locale]}
+                size="sm"
+                variant="secondary"
+                aria-pressed={isPresetActive(preset, tags)}
+                onClick={() => change({ text: applyPresetTags(preset, tags).join(', ').slice(0, 512) })}
+              />
+            ))}
+          </HStack>
+        ) : null}
+        <Button
+          className="emotion-disclosure"
+          label={moreStyles ? t('@yovoice.music.collapseStyles') : t('@yovoice.music.moreStyles')}
+          size="sm"
+          variant="ghost"
+          icon={moreStyles ? <ChevronUp size={14} aria-hidden="true" /> : <ChevronRight size={14} aria-hidden="true" />}
+          aria-expanded={moreStyles}
+          aria-controls={moreStyles ? 'more-style-presets' : undefined}
+          onClick={() => setMoreStyles(!moreStyles)}
+        />
+      </VStack>
+      {/* 微调元素：按流派、情绪、乐器、人声分类折叠展开 */}
+      <VStack gap={2}>
+        <Button
+          className="emotion-disclosure"
+          label={tuneStyles ? t('@yovoice.music.collapseElements') : t('@yovoice.music.tuneElements')}
+          size="sm"
+          variant="ghost"
+          icon={tuneStyles ? <ChevronUp size={14} aria-hidden="true" /> : <ChevronRight size={14} aria-hidden="true" />}
+          aria-expanded={tuneStyles}
+          aria-controls={tuneStyles ? 'style-tags-panel' : undefined}
+          onClick={() => setTuneStyles(!tuneStyles)}
+        />
+        {tuneStyles ? (
+          <VStack id="style-tags-panel" gap={2} role="group" aria-label={t('@yovoice.music.tags')} className="music-tag-panel">
+            {groups.map(group => (
+              <VStack key={group} gap={1} className="music-tag-group-col">
+                <small className="music-tag-group-title">{t(`@yovoice.music.tagGroup.${group}`)}</small>
+                <HStack gap={1} vAlign="center" wrap="wrap">
+                  {styleTags[group].map(tag => (
+                    <Button
+                      key={tag}
+                      className="music-tag"
+                      size="sm"
+                      variant="secondary"
+                      icon={tags.includes(tag) ? <Check size={12} /> : undefined}
+                      aria-pressed={tags.includes(tag)}
+                      label={tag}
+                      tooltip={tagTooltips[tag]?.[locale] ?? tag}
+                      onClick={() => toggleTag(tag)}
+                    />
+                  ))}
+                </HStack>
+              </VStack>
+            ))}
+          </VStack>
+        ) : null}
+      </VStack>
       <AdvancedSettings open={advanced} onOpenChange={setAdvanced}>
         {yue ? null : <>
         <label className="number-field">{t('@yovoice.music.duration')}<input type="number" min={0} max={300} step={1} value={duration || ''} placeholder={t('@yovoice.music.auto')} onChange={event => update('duration_seconds', event.target.value ? Number(event.target.value) : 0)} /></label>
