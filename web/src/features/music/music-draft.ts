@@ -1,4 +1,4 @@
-import { createDraft, type Draft, type UiLocale } from '../../shared/workbench';
+import { createDraft, isUntitled, type Draft, type UiLocale } from '../../shared/workbench';
 
 export const musicModelId = 'ace-step-1.5-turbo-bf16';
 
@@ -101,5 +101,18 @@ export function createMusicDraft(locale: UiLocale, example = true): Draft {
     title: example ? text.title : createDraft(false, locale).title,
     text: example ? text.style : '', lyrics: example ? text.lyrics : '', instrumental: false, synthesisLanguage: text.language,
     modelOptions: { ace_step: { duration_seconds: 60 } },
+  };
+}
+
+interface Lyrics { title?: string; style?: string; lyrics?: string; language?: string }
+
+// AI 写歌词：填入风格与歌词；作品尚未命名（空标题或“未命名作品”）时一并起名，歌词语言只接受 ACE-Step 支持的。
+export function lyricsPatch(draft: Pick<Draft, 'title' | 'instrumental'>, value: unknown): Partial<Draft> {
+  const result = value as Lyrics;
+  return {
+    ...(result.style ? { text: result.style } : {}),
+    ...(!draft.instrumental && result.lyrics ? { lyrics: result.lyrics } : {}),
+    ...(result.language && (musicLanguages as readonly string[]).includes(result.language) ? { synthesisLanguage: result.language } : {}),
+    ...(result.title?.trim() && isUntitled(draft.title) ? { title: result.title.trim().slice(0, 120) } : {}),
   };
 }
