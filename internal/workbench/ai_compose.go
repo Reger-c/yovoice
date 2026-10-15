@@ -1,6 +1,7 @@
 package workbench
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -26,7 +27,7 @@ Return ONLY one JSON object, no prose, no Markdown:
 {"title":"Night Drive","tempo":100,"timeSignature":[4,4],"key":"D minor","sections":[{"name":"Intro","start":1,"end":4}],
  "tracks":[{"id":"piano","name":"Piano","role":"piano","program":0,"reverb":0.3,"pan":-0.1,
    "humanize":{"velocity":8,"timingMs":6},"dynamics":[{"start":1,"end":4,"from":0.5,"to":1}],
-   "notes":[[1,1,62,1,80],[1,2,65,0.5,72]]}]}
+   "notes":[[1,1,62,1,80],[1,2,65,0.5,72]],"repeats":[{"from":1,"to":4,"at":[9,13]}]}]}
 
 Rules:
 - notes are arrays [bar, beat, pitch, length, velocity]. bar and beat start at 1; beat may be fractional (1.5 = the off-beat of beat 1); beats are quarter notes (6/8 has 3 beats per bar); length is in beats; pitch is MIDI (60 = C4); velocity 1-127.
@@ -34,8 +35,9 @@ Rules:
 - role is one of melody, piano, strings, bass, drums, pad, arp, other; it sets the default level (melody and piano in front, pad and arp behind). Do not set level unless needed.
 - One instrument per track, 3-8 tracks, unique ids. Optional: pan -1..1, reverb 0..1, humanize {velocity 0-40, timingMs 0-50}, dynamics ramps {start bar, end bar, from 0-1, to 0-1}. Sections may set their own tempo for a slowdown.
 - Plan a chord progression first, then write bass, pad, melody and rhythm parts that follow it. Shape the piece with sections: introduce and drop parts, use dynamics for builds.
-- Keep it compact: at most 1500 notes in total. Sustained pads and long notes are cheaper than many short ones.
-- Seconds = bars x beats per bar x 60 / tempo. Match the requested length within about 10%%.
+- Keep it compact: write at most 1500 notes in total. Sustained pads and long notes are cheaper than many short ones.
+- repeats copy a track's own notes from bars from..to so the copy starts at each bar listed in at. Write a loop, groove or recurring phrase once and repeat it instead of writing it again; this is how long pieces stay within the note budget. Notes written directly in the target bars are kept too.
+- Seconds = bars x beats per bar x 60 / tempo. Match the requested length within about 10%%, and never exceed %d seconds.
 - title is a short name for the piece, at most 20 characters.
 - Write the title, section and track names in %s.`
 
@@ -58,8 +60,48 @@ type aiScore struct {
 	Title  string `json:"title"`
 	Tracks []struct {
 		schema.ScoreTrack
-		Notes []json.RawMessage `json:"notes"`
+		Notes   []json.RawMessage `json:"notes"`
+		Repeats []scoreRepeat     `json:"repeats"`
 	} `json:"tracks"`
+}
+
+// scoreRepeat 让模型只写一遍循环段落，由这里展开成音符，长曲子不必逐个写出。
+type scoreRepeat struct {
+	From int   `json:"from"`
+	To   int   `json:"to"`
+	At   []int `json:"at"`
+}
+
+// expandRepeats 把 From..To 小节的音符复制到每个 At 起点；展开后的总数仍受乐谱音符上限约束。
+func expandRepeats(track *schema.ScoreTrack, repeats []scoreRepeat, budget int) error {
+	written := track.Notes
+	for _, r := range repeats {
+		if r.From < 1 || r.To < r.From || r.To > schema.ScoreMaxBars {
+			return fmt.Errorf("track %q: repeats need 1 <= from <= to <= %d", track.ID, schema.ScoreMaxBars)
+		}
+		for _, at := range r.At {
+			if at < 1 || at > schema.ScoreMaxBars {
+				return fmt.Errorf("track %q: repeat targets must be bars 1-%d", track.ID, schema.ScoreMaxBars)
+			}
+			for _, n := range written {
+				if n.Bar < r.From || n.Bar > r.To {
+					continue
+				}
+				if len(track.Notes) >= budget {
+					return fmt.Errorf("score needs 1-%d notes after repeats", schema.ScoreMaxNotes)
+				}
+				n.Bar += at - r.From
+				track.Notes = append(track.Notes, n)
+			}
+		}
+	}
+	slices.SortStableFunc(track.Notes, func(a, b schema.ScoreNote) int {
+		if a.Bar != b.Bar {
+			return a.Bar - b.Bar
+		}
+		return cmp.Compare(a.Beat, b.Beat)
+	})
+	return nil
 }
 
 func decodeScore(text string) (ComposedScore, error) {
@@ -73,6 +115,7 @@ func decodeScore(text string) (ComposedScore, error) {
 	}
 	s := v.Score
 	s.Tracks = nil
+	notes := 0
 	for _, t := range v.Tracks {
 		track := t.ScoreTrack
 		track.Notes = make([]schema.ScoreNote, 0, len(t.Notes))
@@ -89,6 +132,10 @@ func decodeScore(text string) (ComposedScore, error) {
 			}
 			track.Notes = append(track.Notes, note)
 		}
+		if e := expandRepeats(&track, t.Repeats, schema.ScoreMaxNotes-notes); e != nil {
+			return ComposedScore{}, e
+		}
+		notes += len(track.Notes)
 		s.Tracks = append(s.Tracks, track)
 	}
 	if issue := schema.ScoreIssue(&s); issue != "" {
@@ -120,7 +167,7 @@ func (w *Workbench) ComposeScore(ctx context.Context, in ScoreBrief) (ComposedSc
 	if in.Seconds > 0 {
 		ask += fmt.Sprintf("\nTarget length: about %d seconds.", in.Seconds)
 	}
-	request := llm.Request{System: fmt.Sprintf(scorePrompt, scoreLanguage(in.Locale)), Messages: []llm.Message{{Role: "user", Content: ask}}, MaxTokens: 16000, Temperature: 0.7}
+	request := llm.Request{System: fmt.Sprintf(scorePrompt, int(schema.ScoreMaxSeconds), scoreLanguage(in.Locale)), Messages: []llm.Message{{Role: "user", Content: ask}}, MaxTokens: 16000, Temperature: 0.7}
 	var issue string
 	for attempt := 0; attempt < 2; attempt++ {
 		result, e := w.complete(ctx, request)

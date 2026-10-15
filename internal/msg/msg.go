@@ -113,6 +113,7 @@ const (
 	ErrMusicParams           Code = "@yovoice.error.musicParams"
 	ErrMusicLyricsRequired   Code = "@yovoice.error.musicLyricsRequired"
 	ErrScoreInvalid          Code = "@yovoice.error.scoreInvalid"
+	ErrScoreTooLong          Code = "@yovoice.error.scoreTooLong"
 	ErrMidiInvalid           Code = "@yovoice.error.midiInvalid"
 	ErrEngineUpgradeRequired Code = "@yovoice.error.engineUpgradeRequired"
 	// AI 服务（可选）：未配置、鉴权、限流、网络、响应异常与结果无效。
@@ -205,7 +206,7 @@ func All() []Code {
 		ErrCPUBundleInvalid, ErrBackendUnsupported, ErrPlatformArch, ErrMacBackend, ErrMacAppleSilicon,
 		ErrRequestInvalid, ErrMethodUnsupported,
 		ErrVoxModeInvalid, ErrVoxTextLimits, ErrVoxReferenceRequired, ErrVoxParams,
-		ErrMusicStyle, ErrMusicLyrics, ErrMusicParams, ErrMusicLyricsRequired, ErrEngineUpgradeRequired, ErrScoreInvalid, ErrMidiInvalid,
+		ErrMusicStyle, ErrMusicLyrics, ErrMusicParams, ErrMusicLyricsRequired, ErrEngineUpgradeRequired, ErrScoreInvalid, ErrScoreTooLong, ErrMidiInvalid,
 		ErrAIProviderInvalid, ErrAINotConfigured, ErrAIAuth, ErrAIRateLimit, ErrAINetwork, ErrAIResponse, ErrAIModelsPath, ErrAIResultInvalid, ErrAITimeout,
 		ErrAIFreeRate, ErrAIFreeBusy, ErrAIFreePromptCap, ErrAIFreeAccess,
 		ErrLocalAPIPort, ErrLocalAPIPortInUse,

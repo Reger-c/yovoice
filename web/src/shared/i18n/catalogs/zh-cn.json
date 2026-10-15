@@ -2219,6 +2219,9 @@
   "@yovoice.error.scoreInvalid": {
     "defaultMessage": "乐谱格式不正确：请检查速度、拍号、声部和音符位置（最多 512 小节、32 个声部、20000 个音符、10 分钟）。"
   },
+  "@yovoice.error.scoreTooLong": {
+    "defaultMessage": "乐谱太长：最多 {minutes} 分钟、{bars} 小节，请删减小节或调快速度后再试。"
+  },
   "@yovoice.error.midiInvalid": {
     "defaultMessage": "无法读取这个 MIDI 文件，请使用含音符的标准类型 0 或 1 MIDI。"
   },
