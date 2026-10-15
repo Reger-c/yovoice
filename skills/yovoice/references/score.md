@@ -48,6 +48,6 @@ yovoice score render score.json --output music.wav --stems stems/ --soundfont ge
 
 `--stems` 同时写出每个声部（对齐电平后、混音前）的 WAV，`--soundfont` 省略时用 `musescore-general-sf2`。
 
-stdout 输出 `{"path","duration","bars","tracks","stems"}`。乐谱错误返回 `scoreInvalid`，按上面的范围修正后重试。也可 `yovoice score midi score.json --output score.mid` 导出 MIDI，或 `yovoice score from-midi song.mid --output score.json` 把用户的 MIDI 转成乐谱再修改。远程服务使用 MCP 工具 `render_score`，参数为 `title`、`score` 和可选的 `soundFont`（远程实例上已安装的音色库 ID）。
+stdout 输出 `{"path","duration","bars","tracks","stems"}`。乐谱错误返回 `scoreInvalid`，超出 10 分钟或 512 小节返回 `scoreTooLong`，按上面的范围修正后重试。也可 `yovoice score midi score.json --output score.mid` 导出 MIDI，或 `yovoice score from-midi song.mid --output score.json` 把用户的 MIDI 转成乐谱再修改。远程服务使用 MCP 工具 `render_score`，参数为 `title`、`score` 和可选的 `soundFont`（远程实例上已安装的音色库 ID）。
 
 没有实际试听时，不宣称编曲效果或混音已经验证。

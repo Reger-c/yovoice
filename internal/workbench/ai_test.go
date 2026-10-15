@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -148,6 +150,30 @@ func TestComposeScoreRepairsOnce(t *testing.T) {
 	var ce *msg.CallError
 	if _, err = w.ComposeScore(context.Background(), ScoreBrief{Brief: "x"}); !errors.As(err, &ce) || ce.Code != msg.ErrAIResultInvalid {
 		t.Fatal("两次都不合规应返回 aiResultInvalid", err)
+	}
+}
+
+// 循环段落只写一遍，由 repeats 展开；展开后超出音符上限要报给模型修正。
+func TestDecodeScoreRepeats(t *testing.T) {
+	s, err := decodeScore(`{"tempo":120,"timeSignature":[4,4],"tracks":[{"id":"d","name":"鼓","role":"drums","drums":true,"notes":[[1,1,36,1,100],[2,3,38,1,90],[5,1,49,2,110]],"repeats":[{"from":1,"to":2,"at":[3,9]}]}]}`)
+	must(t, err)
+	notes := s.Tracks[0].Notes
+	if len(notes) != 7 || notes[2].Bar != 3 || notes[3].Bar != 4 || notes[3].Beat != 3 || notes[4].Bar != 5 || notes[6].Bar != 10 {
+		t.Fatalf("展开结果不对：%+v", notes)
+	}
+	if _, err = decodeScore(`{"tempo":120,"timeSignature":[4,4],"tracks":[{"id":"d","name":"鼓","notes":[[1,1,36,1,100]],"repeats":[{"from":2,"to":1,"at":[3]}]}]}`); err == nil || !strings.Contains(err.Error(), "from <= to") {
+		t.Fatal("非法的 repeats 应报错", err)
+	}
+	many := make([]string, 0, 400)
+	for i := range 400 {
+		many = append(many, fmt.Sprintf("[1,%g,60,0.01,80]", 1+float64(i)/100))
+	}
+	at := make([]string, 0, 60)
+	for i := range 60 {
+		at = append(at, strconv.Itoa(i+2))
+	}
+	if _, err = decodeScore(`{"tempo":120,"timeSignature":[4,4],"tracks":[{"id":"p","name":"钢琴","notes":[` + strings.Join(many, ",") + `],"repeats":[{"from":1,"to":1,"at":[` + strings.Join(at, ",") + `]}]}]}`); err == nil || !strings.Contains(err.Error(), "after repeats") {
+		t.Fatal("展开超出上限应报错", err)
 	}
 }
 

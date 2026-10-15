@@ -53,7 +53,6 @@ func TestValidateScore(t *testing.T) {
 		"重复声部": func(s *schema.Score) { s.Tracks[1].ID = "lead" },
 		"音高":   func(s *schema.Score) { s.Tracks[0].Notes[0].Pitch = 128 },
 		"没有音符": func(s *schema.Score) { s.Tracks[0].Notes, s.Tracks[1].Notes = nil, nil },
-		"过长":   func(s *schema.Score) { s.Tracks[0].Notes[0].Bar = 400; s.Tempo = 30 },
 	} {
 		c := sample()
 		c.Tracks = []schema.ScoreTrack{c.Tracks[0], c.Tracks[1]}
@@ -62,6 +61,23 @@ func TestValidateScore(t *testing.T) {
 		var ce *msg.CallError
 		if err := schema.ValidateScore(&c); !errors.As(err, &ce) || ce.Code != msg.ErrScoreInvalid {
 			t.Errorf("%s 应校验失败：%v", name, err)
+		}
+	}
+	// 超出时长或小节上限单独报 scoreTooLong，用户才知道要缩短。
+	for name, broken := range map[string]func(s *schema.Score){
+		"超过 10 分钟": func(s *schema.Score) { s.Tracks[0].Notes[0].Bar = 400; s.Tempo = 30 },
+		"超过小节上限":   func(s *schema.Score) { s.Tracks[0].Notes[0].Bar = schema.ScoreMaxBars + 1 },
+		"段落超出": func(s *schema.Score) {
+			s.Sections = []schema.ScoreSection{{Name: "尾声", Start: 1, End: schema.ScoreMaxBars + 1}}
+		},
+	} {
+		c := sample()
+		c.Tracks = []schema.ScoreTrack{c.Tracks[0], c.Tracks[1]}
+		c.Tracks[0].Notes = append([]schema.ScoreNote{}, c.Tracks[0].Notes...)
+		broken(&c)
+		var ce *msg.CallError
+		if err := schema.ValidateScore(&c); !errors.As(err, &ce) || ce.Code != msg.ErrScoreTooLong || ce.Params["minutes"] != 10 {
+			t.Errorf("%s 应返回 scoreTooLong：%v", name, err)
 		}
 	}
 }
