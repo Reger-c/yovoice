@@ -2965,5 +2965,14 @@
   },
   "@yovoice.app.pageError.reload": {
     "defaultMessage": "重新加载"
+  },
+  "@yovoice.app.deleteVersion": {
+    "defaultMessage": "删除版本 {n}"
+  },
+  "@yovoice.app.deleteVersionTitle": {
+    "defaultMessage": "删除版本 {n}？"
+  },
+  "@yovoice.app.deleteVersionConfirm": {
+    "defaultMessage": "删除版本"
   }
 }

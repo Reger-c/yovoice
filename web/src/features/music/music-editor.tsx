@@ -6,7 +6,7 @@ import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/Segme
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { Token } from '@astryxdesign/core/Token';
 import { useTranslator } from '@astryxdesign/core/i18n';
-import { AudioLines, Lightbulb, Play, RotateCcw } from 'lucide-react';
+import { AudioLines, Lightbulb, Play, RotateCcw, Trash2 } from 'lucide-react';
 import { call } from '../../shared/lib/client';
 import { AIComposer } from '../../shared/ui/ai-composer';
 import { formatTime, isYuE, type Draft, type Generation, type State, type UiLocale } from '../../shared/workbench';
@@ -18,9 +18,9 @@ interface Lyrics { title: string; style: string; lyrics: string; language: strin
 
 // 音乐创作区：参照 Suno、Udio 的写法，从上到下是“一句话交给 AI → 风格 → 歌词 → 版本”。
 // 一句话可以直接写出风格和歌词，也可以手动填写；纯音乐与填写歌词是并列的两种模式。
-export function MusicEditor({ draft, state, change, locale, takes, current, select, configureAI }: {
+export function MusicEditor({ draft, state, change, locale, takes, current, select, remove, configureAI }: {
   draft: Draft; state: State; change: (patch: Partial<Draft>) => void; locale: UiLocale;
-  takes: Generation[]; current?: string; select: (take: Generation) => void; configureAI: () => void;
+  takes: Generation[]; current?: string; select: (take: Generation) => void; remove: (take: Generation) => void; configureAI: () => void;
 }) {
   const t = useTranslator();
   // YuE2 只能生成带人声的歌曲，选中时隐藏纯音乐切换。
@@ -158,6 +158,7 @@ export function MusicEditor({ draft, state, change, locale, takes, current, sele
               </HStack>
             </Button>
             <Button variant="ghost" size="sm" isIconOnly icon={<RotateCcw />} label={t('@yovoice.music.reuseTake')} tooltip={t('@yovoice.music.reuseTake')} onClick={() => change({ text: take.settings.text, lyrics: take.settings.lyrics, instrumental: take.settings.instrumental, synthesisLanguage: take.settings.synthesisLanguage, modelOptions: take.settings.modelOptions, seed: take.settings.seed })} />
+            <Button variant="ghost" size="sm" isIconOnly icon={<Trash2 />} label={t('@yovoice.app.deleteVersion', { n: takes.length - index })} tooltip={t('@yovoice.app.deleteVersion', { n: takes.length - index })} onClick={() => remove(take)} />
           </HStack>;
         })}
       </VStack> : <p className="music-empty">{t('@yovoice.music.noTakes')}</p>}
