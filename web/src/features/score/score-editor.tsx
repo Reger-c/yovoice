@@ -11,7 +11,7 @@ import { formatTime, type Draft, type Score, type State, type UiLocale } from '.
 import { emptyScore, exampleScore, noteCount, scoreBars, scoreDuration } from './score-draft';
 import { midiToScore, scoreToMidi } from './score-midi';
 
-const lengths = [30, 60, 90, 120, 180, 300];
+const lengths = [30, 60, 90, 120, 180, 300, 480, 600];
 
 // 浏览器预览只做最基本的结构检查，完整校验在保存时由 Go 完成。
 function parseScore(text: string): Score {

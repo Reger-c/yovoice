@@ -280,7 +280,11 @@ func FromMIDI(data []byte) (schema.Score, error) {
 			return 0
 		})
 	}
+	// 太长的 MIDI 如实说明，其余问题仍按无法读取处理。
 	if e := schema.ValidateScore(&s); e != nil {
+		if ce, ok := e.(*msg.CallError); ok && ce.Code == msg.ErrScoreTooLong {
+			return schema.Score{}, e
+		}
 		return schema.Score{}, bad
 	}
 	return s, nil
