@@ -8,7 +8,7 @@ import { Selector } from '../../shared/selector';
 import { AIComposer } from '../../shared/ui/ai-composer';
 import { call, isDesktop } from '../../shared/lib/client';
 import { formatTime, type Draft, type Score, type State, type UiLocale } from '../../shared/workbench';
-import { emptyScore, exampleScore, noteCount, scoreBars, scoreDuration } from './score-draft';
+import { composedScorePatch, emptyScore, exampleScore, noteCount, scoreBars, scoreDuration } from './score-draft';
 import { midiToScore, scoreToMidi } from './score-midi';
 
 const lengths = [30, 60, 90, 120, 180, 300, 480, 600];
@@ -47,7 +47,8 @@ export function ScoreEditor({ draft, state, change, locale, onError, configureAI
       else download(JSON.stringify(score, null, 2), 'application/json', `${fileName}.json`);
     } catch (error) { onError((error as Error).message); }
   }
-  const composer = <AIComposer kind="score" projectId={draft.id} state={state} overwrite={notes > 0} configure={configureAI} apply={result => replace(result as Score)}
+  const applyScore = (result: unknown) => change(composedScorePatch(draft.title, result));
+  const composer = <AIComposer kind="score" projectId={draft.id} state={state} overwrite={notes > 0} configure={configureAI} apply={applyScore}
     placeholder={t('@yovoice.ai.scorePlaceholder')} submitLabel={t('@yovoice.ai.scoreSubmit')}
     start={brief => call('ai.score', { projectId: draft.id, brief, seconds, locale })}
     extra={<Selector label={t('@yovoice.ai.scoreSeconds')} isLabelHidden size="sm" width="calc(var(--spacing-10) * 2.5)" value={String(seconds)} options={lengths.map(value => ({ value: String(value), label: t('@yovoice.ai.scoreLength', { time: formatTime(value) }) }))} onChange={value => setSeconds(Number(value))} />} />;

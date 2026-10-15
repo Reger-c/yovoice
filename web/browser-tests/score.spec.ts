@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { seedState } from './seed';
 import { emptyState } from '../src/shared/workbench';
-import { createScoreDraft, exampleScore, scoreDuration } from '../src/features/score/score-draft';
+import { composedScorePatch, createScoreDraft, exampleScore, scoreDuration } from '../src/features/score/score-draft';
+import { lyricsPatch } from '../src/features/music/music-draft';
 import { midiToScore, scoreToMidi } from '../src/features/score/score-midi';
 
 test('新建编曲作品：示例乐谱、音块总览、声部调整与持久化', async ({ page }, testInfo) => {
@@ -170,4 +171,18 @@ test('缺少乐谱的旧编曲作品可以正常打开，不再白屏', async ({
   await page.getByTestId('nav-score').click();
   await expect(page.locator('.project-library-row').filter({ hasText: '旧编曲' })).toBeVisible();
   expect(errors).toEqual([]);
+});
+
+test('AI 写谱与写歌词顺带起名：空标题或“未命名作品”采用 AI 标题，已命名作品保留', () => {
+  const score = { ...exampleScore('zh-CN'), title: ' 晨光序曲 ' };
+  for (const title of ['', '  ', '未命名作品', 'Untitled']) {
+    const patch = composedScorePatch(title, score);
+    expect(patch.title).toBe('晨光序曲');
+    expect(patch.score).not.toHaveProperty('title');
+    expect(patch.score?.tracks.length).toBe(score.tracks.length);
+    expect(lyricsPatch({ title, instrumental: false }, { title: '夏夜', style: 'city pop', lyrics: '[verse]' }).title).toBe('夏夜');
+  }
+  expect(composedScorePatch('我的片头', score)).not.toHaveProperty('title');
+  expect(composedScorePatch('未命名作品', exampleScore('zh-CN'))).not.toHaveProperty('title');
+  expect(lyricsPatch({ title: '我的歌', instrumental: false }, { title: '夏夜', style: 'city pop' })).toEqual({ text: 'city pop' });
 });

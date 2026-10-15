@@ -1,8 +1,14 @@
-import { createDraft, emptyScore, type Draft, type Score, type ScoreRole, type ScoreTrack, type UiLocale } from '../../shared/workbench';
+import { createDraft, emptyScore, isUntitled, type Draft, type Score, type ScoreRole, type ScoreTrack, type UiLocale } from '../../shared/workbench';
 
 export { emptyScore };
 
 export const soundFontId = 'musescore-general-sf2';
+
+// AI 写谱结果带着曲名：乐谱整体替换，作品尚未命名（空标题或“未命名作品”）时一并采用曲名。
+export function composedScorePatch(title: string, result: unknown): Partial<Draft> {
+  const { title: named, ...score } = result as Score & { title?: string };
+  return { score, ...(named?.trim() && isUntitled(title) ? { title: named.trim().slice(0, 120) } : {}) };
+}
 
 // 与 Go 的 schema.ScoreRoles 一致：主奏在前，铺底和琶音退后。
 export const roleLevels: Record<ScoreRole, number> = { melody: -21, piano: -21, strings: -23, bass: -25, drums: -25, pad: -29, arp: -29, other: -24 };

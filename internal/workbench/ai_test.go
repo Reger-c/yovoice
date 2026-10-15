@@ -124,14 +124,14 @@ func TestAIModelsAndTest(t *testing.T) {
 // AI 写谱：接受紧凑数组音符；首次结果不合规时把问题发回，第二次合规即返回。
 func TestComposeScoreRepairsOnce(t *testing.T) {
 	bad := `{"tempo":100,"timeSignature":[4,4],"tracks":[{"id":"p","name":"钢琴","role":"piano","program":0,"notes":[[1,5,60,1,80]]}]}`
-	good := "好的：\n```json\n" + `{"tempo":100,"timeSignature":[4,4],"key":"C 大调","sections":[{"name":"主歌","start":1,"end":2}],"tracks":[{"id":"p","name":"钢琴","role":"piano","program":0,"notes":[[1,1,60,1,80],[2,1.5,64,0.5,70]]},{"id":"d","name":"鼓","role":"drums","program":0,"drums":true,"notes":[{"bar":1,"beat":1,"pitch":36,"length":0.25,"velocity":100}]}]}` + "\n```"
+	good := "好的：\n```json\n" + `{"title":" 暖光钢琴 ","tempo":100,"timeSignature":[4,4],"key":"C 大调","sections":[{"name":"主歌","start":1,"end":2}],"tracks":[{"id":"p","name":"钢琴","role":"piano","program":0,"notes":[[1,1,60,1,80],[2,1.5,64,0.5,70]]},{"id":"d","name":"鼓","role":"drums","program":0,"drums":true,"notes":[{"bar":1,"beat":1,"pitch":36,"length":0.25,"velocity":100}]}]}` + "\n```"
 	server, requests := fakeLLM(t, bad, good)
 	w := aiWorkbench(t, server)
 	_, err := w.AIModels(context.Background(), "")
 	must(t, err)
 	s, err := w.ComposeScore(context.Background(), ScoreBrief{Brief: "温暖的钢琴小品", Seconds: 10, Locale: schema.UiLocaleZhCN})
 	must(t, err)
-	if len(s.Tracks) != 2 || s.Tracks[0].Notes[1].Beat != 1.5 || !s.Tracks[1].Drums {
+	if len(s.Tracks) != 2 || s.Tracks[0].Notes[1].Beat != 1.5 || !s.Tracks[1].Drums || s.Title != "暖光钢琴" {
 		t.Fatalf("乐谱解析不对：%+v", s)
 	}
 	if len(*requests) != 2 {

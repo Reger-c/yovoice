@@ -6,21 +6,19 @@ import { SegmentedControl, SegmentedControlItem } from '@astryxdesign/core/Segme
 import { TextArea } from '@astryxdesign/core/TextArea';
 import { Token } from '@astryxdesign/core/Token';
 import { useTranslator } from '@astryxdesign/core/i18n';
-import { AudioLines, Lightbulb, Play, RotateCcw } from 'lucide-react';
+import { AudioLines, Lightbulb, Play, RotateCcw, Trash2 } from 'lucide-react';
 import { call } from '../../shared/lib/client';
 import { AIComposer } from '../../shared/ui/ai-composer';
-import { formatTime, isYuE, type Draft, type Generation, type State, type UiLocale } from '../../shared/workbench';
-import { createMusicDraft, lyricSections, musicLanguages, splitTags } from './music-draft';
+import { formatTime, isUntitled, isYuE, type Draft, type Generation, type State, type UiLocale } from '../../shared/workbench';
+import { createMusicDraft, lyricSections, lyricsPatch, splitTags } from './music-draft';
 
 import { SongCover } from './song-cover';
 
-interface Lyrics { title: string; style: string; lyrics: string; language: string }
-
 // 音乐创作区：参照 Suno、Udio 的写法，从上到下是“一句话交给 AI → 风格 → 歌词 → 版本”。
 // 一句话可以直接写出风格和歌词，也可以手动填写；纯音乐与填写歌词是并列的两种模式。
-export function MusicEditor({ draft, state, change, locale, takes, current, select, configureAI }: {
+export function MusicEditor({ draft, state, change, locale, takes, current, select, remove, configureAI }: {
   draft: Draft; state: State; change: (patch: Partial<Draft>) => void; locale: UiLocale;
-  takes: Generation[]; current?: string; select: (take: Generation) => void; configureAI: () => void;
+  takes: Generation[]; current?: string; select: (take: Generation) => void; remove: (take: Generation) => void; configureAI: () => void;
 }) {
   const t = useTranslator();
   // YuE2 只能生成带人声的歌曲，选中时隐藏纯音乐切换。
@@ -72,16 +70,7 @@ export function MusicEditor({ draft, state, change, locale, takes, current, sele
     requestAnimationFrame(() => { element?.focus(); element?.setSelectionRange(start + tag.length, start + tag.length); });
   };
   const empty = !draft.text.trim() && !draft.lyrics?.trim();
-  // AI 写歌词：填入风格与歌词；标题仍是默认值时一并替换，歌词语言只接受 ACE-Step 支持的。
-  function applyLyrics(value: unknown) {
-    const result = value as Lyrics;
-    change({
-      ...(result.style ? { text: result.style } : {}),
-      ...(!draft.instrumental && result.lyrics ? { lyrics: result.lyrics } : {}),
-      ...((musicLanguages as readonly string[]).includes(result.language) ? { synthesisLanguage: result.language } : {}),
-      ...(result.title && draft.title === createMusicDraft(locale, false).title ? { title: result.title } : {}),
-    });
-  }
+  const applyLyrics = (value: unknown) => change(lyricsPatch(draft, value));
   return <VStack className="music-editor" gap={5}>
     <AIComposer kind="lyrics" projectId={draft.id} state={state} overwrite={!empty} configure={configureAI} apply={applyLyrics}
       placeholder={t(draft.instrumental ? '@yovoice.ai.lyricsPlaceholderInstrumental' : '@yovoice.ai.lyricsPlaceholder')} submitLabel={t('@yovoice.ai.lyricsSubmit')}
@@ -89,7 +78,7 @@ export function MusicEditor({ draft, state, change, locale, takes, current, sele
     <VStack className="music-block" gap={3}>
       <HStack className="music-style-header" hAlign="between" vAlign="center" gap={2}>
         <h2>{t('@yovoice.music.style')}</h2>
-        {empty ? <Button size="sm" variant="secondary" icon={<Lightbulb />} label={t('@yovoice.music.example')} onClick={() => { const example = createMusicDraft(locale); change({ text: example.text, lyrics: example.lyrics, synthesisLanguage: example.synthesisLanguage, ...(draft.title === createMusicDraft(locale, false).title ? { title: example.title } : {}) }); }} /> : null}
+        {empty ? <Button size="sm" variant="secondary" icon={<Lightbulb />} label={t('@yovoice.music.example')} onClick={() => { const example = createMusicDraft(locale); change({ text: example.text, lyrics: example.lyrics, synthesisLanguage: example.synthesisLanguage, ...(isUntitled(draft.title) ? { title: example.title } : {}) }); }} /> : null}
       </HStack>
 
       {/* 风格标签输入区：展示已选Token胶囊，并在行内支持直接打字、回车/逗号追加、退格删除 */}
@@ -158,6 +147,7 @@ export function MusicEditor({ draft, state, change, locale, takes, current, sele
               </HStack>
             </Button>
             <Button variant="ghost" size="sm" isIconOnly icon={<RotateCcw />} label={t('@yovoice.music.reuseTake')} tooltip={t('@yovoice.music.reuseTake')} onClick={() => change({ text: take.settings.text, lyrics: take.settings.lyrics, instrumental: take.settings.instrumental, synthesisLanguage: take.settings.synthesisLanguage, modelOptions: take.settings.modelOptions, seed: take.settings.seed })} />
+            <Button variant="ghost" size="sm" isIconOnly icon={<Trash2 />} label={t('@yovoice.app.deleteVersion', { n: takes.length - index })} tooltip={t('@yovoice.app.deleteVersion', { n: takes.length - index })} onClick={() => remove(take)} />
           </HStack>;
         })}
       </VStack> : <p className="music-empty">{t('@yovoice.music.noTakes')}</p>}
