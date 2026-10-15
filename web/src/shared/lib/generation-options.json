@@ -24,9 +24,9 @@
     {
       "key": "text_chunk_size",
       "type": "number",
-      "default": 2048,
+      "default": 200,
       "min": 0,
-      "max": 12000,
+      "max": 400,
       "step": 1
     },
     {

@@ -127,6 +127,11 @@ func BuildRequest(d schema.Draft, voice, emotion string) (map[string]any, error)
 			steps = 10
 		}
 		o, _ := d.GenerationOptions(m.Family)
+		// VoxCPM2 以 6.25 帧/秒自回归生成；audio.cpp 默认每段 2048 字，千字长文会整段一次生成，
+		// 远超训练长度后音色发散甚至爆音，长段内也会逐渐走调。默认改为每段 200 字，续写时上下文约两段。
+		if _, ok := o["text_chunk_size"]; !ok {
+			o["text_chunk_size"] = 200
+		}
 		o["guidance_scale"], o["num_inference_steps"] = guidance, steps
 		if d.Seed != nil {
 			o["seed"] = *d.Seed
@@ -144,6 +149,8 @@ func BuildRequest(d schema.Draft, voice, emotion string) (map[string]any, error)
 			r["voice_ref"] = voice
 		}
 		if d.VoxMode == "continuation" {
+			// 精细克隆需要参考音频同时作为续写提示（audio）；只给 voice_ref 时引擎会忽略原文，退化为普通克隆。
+			r["audio"] = voice
 			r["reference_text"] = strings.TrimSpace(d.ReferenceText)
 		}
 		return map[string]any{"model": "index", "request": r}, nil
