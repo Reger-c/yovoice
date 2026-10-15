@@ -23,12 +23,14 @@ func TestVoxCPMRequest(t *testing.T) {
 			must(t, err)
 			r := p["request"].(map[string]any)
 			o := r["options"].(map[string]any)
-			if len(o) != 2 || o["guidance_scale"] != float64(2) || o["num_inference_steps"] != 10 {
+			if len(o) != 3 || o["guidance_scale"] != float64(2) || o["num_inference_steps"] != 10 || o["text_chunk_size"] != 200 {
 				t.Fatal(o)
 			}
 			_, voice := r["voice_ref"]
 			_, transcript := r["reference_text"]
-			if voice != (mode != "design") || transcript != (mode == "continuation") {
+			// 精细克隆必须同时把参考音频作为续写提示，否则引擎不使用原文。
+			_, prompt := r["audio"]
+			if voice != (mode != "design") || transcript != (mode == "continuation") || prompt != (mode == "continuation") || (prompt && r["audio"] != "voice.wav") {
 				t.Fatal(r)
 			}
 			want := "(" + d.VoiceDescription + ")" + d.Text
@@ -49,6 +51,9 @@ func TestVoxCPMRequest(t *testing.T) {
 		func(d *schema.Draft) { d.VoxMode = "continuation"; d.ReferenceText = " " },
 		func(d *schema.Draft) { d.GuidanceScale = math.NaN() },
 		func(d *schema.Draft) { d.InferenceSteps = 51 },
+		func(d *schema.Draft) {
+			d.ModelOptions = map[string]map[string]any{"voxcpm2": {"text_chunk_size": float64(4096)}}
+		},
 	} {
 		invalid := d
 		patch(&invalid)
@@ -118,6 +123,9 @@ func TestModelVariantsAndOptions(t *testing.T) {
 			d.ModelID = m.ID
 			d.VoiceDescription = "female, young adult"
 			d.ModelOptions = map[string]map[string]any{m.Family: {"text_chunk_size": float64(512), "text_chunk_mode": "tag_aware"}}
+			if m.Family == "voxcpm2" {
+				d.ModelOptions[m.Family]["text_chunk_size"] = float64(300)
+			}
 			if m.Family == "kokoro_tts" {
 				delete(d.ModelOptions[m.Family], "text_chunk_mode")
 				d.ModelOptions[m.Family]["text_chunk_size"] = float64(120)
