@@ -407,12 +407,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
             NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
             return ["id": message["id"]!, "result": true]
         }
-        if ["voice.import", "model.import", "model.directory", "storage.directory"].contains(method) {
+        if ["voice.import", "model.directory", "storage.directory"].contains(method) {
             let panel = NSOpenPanel()
-            panel.canChooseDirectories = ["model.directory", "storage.directory"].contains(method) || (data["directory"] as? Bool == true)
+            panel.canChooseDirectories = method != "voice.import"
             panel.canChooseFiles = !panel.canChooseDirectories
             panel.allowsMultipleSelection = false
-            if panel.canChooseFiles { panel.allowedContentTypes = method == "voice.import" ? [.audio] : [UTType(filenameExtension: "gguf") ?? .data] }
+            if panel.canChooseFiles { panel.allowedContentTypes = [.audio] }
             let response = await withCheckedContinuation { continuation in panel.beginSheetModal(for: window) { continuation.resume(returning: $0) } }
             guard response == .OK, let url = panel.url else { return ["id": message["id"]!, "result": NSNull()] }
             data["path"] = url.path

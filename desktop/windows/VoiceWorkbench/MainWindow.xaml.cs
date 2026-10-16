@@ -458,20 +458,9 @@ public partial class MainWindow : Window
                 case "voice.import":
                     var audio = new OpenFileDialog { Filter = HostL10n.T("音频文件", "Audio Files") + "|*.wav;*.mp3;*.m4a;*.aac;*.flac;*.ogg;*.opus;*.aiff;*.aif;*.wma;*.webm", Title = HostL10n.T("选择 1–60 秒的音色参考", "Choose a 1–60 Second Voice Reference") };
                     result = audio.ShowDialog(this) == true ? await service.CallAsync(method, new { path = audio.FileName }) : null; break;
-                case "model.import":
                 case "model.directory":
-                    string? selected = null;
-                    if (method == "model.directory" || (data.TryGetProperty("directory", out var directory) && directory.GetBoolean()))
-                    {
-                        var folder = new OpenFolderDialog { Title = HostL10n.T("选择模型目录", "Choose Model Folder") };
-                        if (folder.ShowDialog(this) == true) selected = folder.FolderName;
-                    }
-                    else
-                    {
-                        var file = new OpenFileDialog { Filter = HostL10n.T("GGUF 模型", "GGUF Model") + "|*.gguf", Title = HostL10n.T("导入 audio.cpp IndexTTS 模型", "Import audio.cpp IndexTTS Model") };
-                        if (file.ShowDialog(this) == true) selected = file.FileName;
-                    }
-                    result = selected is null ? null : await service.CallAsync(method, new { path = selected }); break;
+                    var folder = new OpenFolderDialog { Title = HostL10n.T("选择模型目录", "Choose Model Folder") };
+                    result = folder.ShowDialog(this) == true ? await service.CallAsync(method, new { path = folder.FolderName }) : null; break;
                 case "model.directory.open":
                     var state = (await service.CallAsync("state.get", new { })).GetProperty("state");
                     string modelDirectory = state.GetProperty("preferences").GetProperty("modelDirectory").GetString() ?? Path.Combine(service.Root, "models");

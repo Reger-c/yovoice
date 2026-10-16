@@ -142,7 +142,7 @@ func (m ModelPackage) URL(source string) (string, error) {
 // FileURL 返回模型包内某个文件的下载地址。
 func (m ModelPackage) FileURL(source, path string) (string, error) {
 	if path == "" {
-		return "", msg.Err(msg.ErrModelImportRequired, nil)
+		return "", msg.Err(msg.ErrModelUnsupported, nil)
 	}
 	revision := m.Revision
 	if revision == "" {

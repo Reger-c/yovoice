@@ -95,59 +95,9 @@ func (w *Workbench) DownloadModel(id string) error {
 		return w.register(id, dest, true)
 	})
 }
-func (w *Workbench) ImportModel(path string) error {
-	return w.begin("import", msg.ActivityImport, nil, nil, func(ctx context.Context) error {
-		paths := []string{path}
-		info, e := os.Stat(path)
-		if e != nil {
-			return e
-		}
-		if info.IsDir() {
-			paths, e = filepath.Glob(filepath.Join(path, "*.gguf"))
-			if e != nil {
-				return e
-			}
-		}
-		count := 0
-		for _, p := range paths {
-			if e = ctx.Err(); e != nil {
-				return e
-			}
-			size := download.FileSize(p)
-			if !slices.ContainsFunc(catalog.Models, func(m catalog.ModelPackage) bool {
-				return slices.ContainsFunc(m.PackageFiles(), func(f catalog.ModelFile) bool { return f.SHA256 == m.SHA256 && f.Size == size })
-			}) {
-				continue
-			}
-			hash, e := download.Hash(ctx, p)
-			if e != nil {
-				return e
-			}
-			for _, m := range catalog.Models {
-				if m.SHA256 == hash {
-					path := p
-					if len(m.Files) > 0 {
-						// 多文件模型只认完整的模型目录：主模型旁需有其余文件。
-						if path = packageRoot(m, p); path == "" {
-							continue
-						}
-					}
-					if e = w.register(m.ID, path, false); e != nil {
-						return e
-					}
-					count++
-				}
-			}
-		}
-		if count == 0 {
-			return msg.Err(msg.ErrModelImportNone, nil)
-		}
-		return nil
-	})
-}
 
-// ForgetModel 移除模型登记。应用自己下载的模型同时删除文件释放空间；用户导入的模型只解除登记，保留本地文件。
-// 生成等主操作进行中不能移除（会停止推理引擎）；下载或导入其他模型时可同时移除。
+// ForgetModel 移除模型登记。应用自己下载的模型同时删除文件释放空间；模型目录中原有的模型只解除登记，保留本地文件。
+// 生成等主操作进行中不能移除（会停止推理引擎）；下载其他模型时可同时移除。
 func (w *Workbench) ForgetModel(id string) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()

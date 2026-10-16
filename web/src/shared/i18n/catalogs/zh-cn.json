@@ -56,9 +56,6 @@
   "@yovoice.activity.generate": {
     "defaultMessage": "准备生成"
   },
-  "@yovoice.activity.import": {
-    "defaultMessage": "正在识别并校验模型"
-  },
   "@yovoice.activity.interrupted": {
     "defaultMessage": "上次操作已中断，可重新开始"
   },
@@ -548,9 +545,6 @@
   "@yovoice.error.modelForgetBlocked": {
     "defaultMessage": "此模型暂不可移除，请先结束相关操作。"
   },
-  "@yovoice.error.modelImportNone": {
-    "defaultMessage": "没有识别到兼容的 GGUF，请选择模型列表中列出的 audio.cpp 模型包。"
-  },
   "@yovoice.error.modelMoved": {
     "defaultMessage": "模型文件已移动，请重新导入。"
   },
@@ -847,9 +841,6 @@
   },
   "@yovoice.settings.importDirectory": {
     "defaultMessage": "指定目录"
-  },
-  "@yovoice.settings.importGguf": {
-    "defaultMessage": "导入 GGUF"
   },
   "@yovoice.settings.inUse": {
     "defaultMessage": "正在使用"
@@ -1399,9 +1390,6 @@
   },
   "@yovoice.reference.omniTranscriptHelp": {
     "defaultMessage": "原文须与参考音频一致。"
-  },
-  "@yovoice.error.modelImportRequired": {
-    "defaultMessage": "该模型包尚未发布到下载源，请导入已验证的 Kokoro 多语言 GGUF 包。"
   },
   "@yovoice.settings.modelDesc.kokoro": {
     "defaultMessage": "内置音色 · 多语言"
@@ -2465,12 +2453,6 @@
   "@yovoice.settings.available": {
     "defaultMessage": "可下载"
   },
-  "@yovoice.settings.importLocal": {
-    "defaultMessage": "导入本地模型"
-  },
-  "@yovoice.settings.importLocalHint": {
-    "defaultMessage": "已有 GGUF 文件时可直接导入，无需下载。"
-  },
   "@yovoice.settings.soundfontIntro": {
     "defaultMessage": "编曲渲染配乐时使用的 General MIDI 音色库，和语音、音乐模型分开管理。"
   },
@@ -3040,9 +3022,6 @@
   },
   "@yovoice.setup.download": {
     "defaultMessage": "下载"
-  },
-  "@yovoice.setup.import": {
-    "defaultMessage": "导入"
   },
   "@yovoice.setup.otherModel": {
     "defaultMessage": "换一个"
