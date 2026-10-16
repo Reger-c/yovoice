@@ -7,6 +7,7 @@ import { ArrowDown, ChevronDown, FastForward, Maximize, Minimize, Pause, Play, R
 import { call, mediaUrl } from '../../shared/lib/client';
 import { noticeMessage } from '../../shared/lib/call-error';
 import { formatTime, type Generation } from '../../shared/workbench';
+import { alignLyrics, vocalActivity, type VocalActivity } from './lyric-align';
 import { activeLyric, lyricRows, lyricTimeline, type LyricLine } from './lyric-timing';
 import { splitTags } from './music-draft';
 import { coverPalette, SongCover } from './song-cover';
@@ -18,11 +19,11 @@ const skipStep = 10;
 // 校准时撤销一行后往回退的秒数，方便重新听到这一句的开头。
 const undoRewind = 3;
 
-// 读取整首音频，算出每 50ms 的响度（0~1），只用于动效，失败时不起伏。
-async function loudness(url: string) {
+// 读取整首音频：算出每 50ms 的响度（0~1）给动效用，并找出有人声的片段给歌词定位；失败时不起伏、歌词按时长估算。
+async function analyse(url: string): Promise<{ envelope: number[]; activity?: VocalActivity; duration?: number }> {
   const context = new AudioContext();
   try {
-    const response = await fetch(url); if (!response.ok) return [];
+    const response = await fetch(url); if (!response.ok) return { envelope: [] };
     const buffer = await context.decodeAudioData(await response.arrayBuffer());
     const data = buffer.getChannelData(0), size = Math.max(1, Math.round(buffer.sampleRate * envelopeStep));
     const values = Array.from({ length: Math.ceil(data.length / size) }, (_, i) => {
@@ -31,14 +32,15 @@ async function loudness(url: string) {
       return Math.sqrt(sum / Math.max(1, count));
     });
     const peak = Math.max(...values, 1e-6);
-    return values.map(value => value / peak);
-  } catch { return []; } finally { await context.close(); }
+    const activity = vocalActivity(data, buffer.numberOfChannels > 1 ? buffer.getChannelData(1) : data, buffer.sampleRate);
+    return { envelope: values.map(value => value / peak), activity, duration: buffer.duration };
+  } catch { return { envelope: [] }; } finally { await context.close(); }
 }
 
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // 音乐播放页：仿 Apple Music 的全屏播放，左侧封面与播放控制，右侧滚动歌词；方便录屏，静置时自动隐藏控件和鼠标。
-// 歌词时间默认按时长估算，可以边听边逐行校准，校准结果随版本保存。
+// 歌词时间先按音频里的人声片段自动定位，判断不可靠时按时长估算；可以边听边逐行校准，校准结果随版本保存。
 export function NowPlaying({ item, title, close, onError }: { item: Generation; title: string; close: () => void; onError: (message: string) => void }) {
   const t = useTranslator();
   const audio = useRef<HTMLAudioElement>(null);
@@ -55,9 +57,12 @@ export function NowPlaying({ item, title, close, onError }: { item: Generation; 
   const [times, setTimes] = useState(item.lyricTimes);
   const [sync, setSync] = useState<number[] | null>(null);
   const envelope = useRef<number[]>([]);
+  // 音频分析得到的人声片段，用来自动定位歌词。
+  const [voice, setVoice] = useState<{ activity: VocalActivity; duration: number } | null>(null);
   const lyrics = item.settings.instrumental ? '' : item.settings.lyrics ?? '';
   const rows = useMemo(() => lyricRows(lyrics), [lyrics]);
-  const timeline = useMemo(() => lyricTimeline(lyrics, duration, times), [lyrics, duration, times]);
+  const auto = useMemo(() => voice ? alignLyrics(rows, voice.activity, voice.duration) ?? undefined : undefined, [rows, voice]);
+  const timeline = useMemo(() => lyricTimeline(lyrics, duration, times ?? auto), [lyrics, duration, times, auto]);
   // 校准时逐行显示，不补前奏；刚标记的一行视为当前句，下一行是待标记的目标。
   const lines: LyricLine[] = sync ? rows.map(row => ({ ...row, start: 0, end: 0 })) : timeline;
   const current = sync ? sync.length - 1 : activeLyric(lines, time);
@@ -72,7 +77,11 @@ export function NowPlaying({ item, title, close, onError }: { item: Generation; 
       resource = value;
       if (disposed) { if (value.startsWith('blob:')) URL.revokeObjectURL(value); return; }
       setUrl(value);
-      void loudness(value).then(values => { if (!disposed) envelope.current = values; });
+      void analyse(value).then(result => {
+        if (disposed) return;
+        envelope.current = result.envelope;
+        if (result.activity && result.duration) setVoice({ activity: result.activity, duration: result.duration });
+      });
     }, (error: Error) => { if (!disposed) onError(error.message); });
     return () => { disposed = true; if (resource.startsWith('blob:')) URL.revokeObjectURL(resource); };
   }, [item.fileName, onError]);
@@ -227,7 +236,7 @@ export function NowPlaying({ item, title, close, onError }: { item: Generation; 
         <Button className="now-playing-glass" size="sm" variant="ghost" label={t('@yovoice.music.syncCancel')} onClick={() => setSync(null)} />
         <Button className="now-playing-mark" size="sm" variant="ghost" icon={<ArrowDown />} label={t('@yovoice.music.syncNext')} isDisabled={!url} onClick={mark} />
       </HStack> : rows.length ? <HStack className="now-playing-note now-playing-chrome" gap={2} vAlign="center">
-        <small>{t(times ? '@yovoice.music.lyricsSynced' : '@yovoice.music.lyricsEstimated')}</small>
+        <small>{t(times ? '@yovoice.music.lyricsSynced' : auto ? '@yovoice.music.lyricsAnalyzed' : '@yovoice.music.lyricsEstimated')}</small>
         <Button className="now-playing-glass" size="sm" variant="ghost" label={t(times ? '@yovoice.music.resyncLyrics' : '@yovoice.music.syncLyrics')} isDisabled={!url} onClick={startSync} />
         {times ? <Button className="now-playing-glass" size="sm" variant="ghost" label={t('@yovoice.music.syncReset')} onClick={() => save(undefined)} /> : null}
       </HStack> : null}

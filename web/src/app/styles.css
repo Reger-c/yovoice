@@ -780,11 +780,8 @@
   .now-playing-stage { flex: 1; min-height: 0; padding: var(--spacing-12) clamp(var(--spacing-6), 6vw, calc(var(--spacing-12) * 3)); column-gap: clamp(var(--spacing-8), 6vw, calc(var(--spacing-12) * 2)); }
   .now-playing-solo { justify-content: center; }
   .now-playing-side { flex: none; width: min(46vh, 32vw); }
-  /* 封面：播放时随响度轻微放大，暂停时缩小并减弱投影（仿 Apple Music）。 */
-  .now-playing-art { transform: scale(calc(1 + var(--now-playing-level) * .03)); transition: transform var(--duration-fast) linear; }
-  .now-playing[data-playing="false"] .now-playing-art { transform: scale(.86); transition: transform var(--duration-slow) var(--ease-standard); }
-  .now-playing-art .song-cover { box-shadow: 0 var(--spacing-8) calc(var(--spacing-12) * 1.5) hsl(var(--now-playing-hue) 40% 4% / calc(45% + var(--now-playing-level) * 25%)); transition: box-shadow var(--duration-slow) var(--ease-standard); }
-  .now-playing[data-playing="false"] .now-playing-art .song-cover { box-shadow: 0 var(--spacing-4) var(--spacing-8) hsl(var(--now-playing-hue) 40% 4% / 35%); }
+  /* 封面固定大小，不随播放状态缩放。 */
+  .now-playing-art .song-cover { box-shadow: 0 var(--spacing-8) calc(var(--spacing-12) * 1.5) hsl(var(--now-playing-hue) 40% 4% / 50%); }
   .now-playing-title, .now-playing-line { color: var(--now-playing-ink); }
   .now-playing-title { font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); line-height: 1.25; overflow-wrap: anywhere; }
   .now-playing-tags, .now-playing-times, .now-playing-note, .now-playing-sync { color: var(--now-playing-muted); }
@@ -826,7 +823,6 @@
   @media (max-width: 760px) { .now-playing-stage { flex-direction: column; row-gap: var(--spacing-6); } .now-playing-side { width: min(70vw, 36vh); } }
   @media (prefers-reduced-motion: reduce) {
     .now-playing, .now-playing[data-leaving], .now-playing-sync, .now-playing::before, .now-playing::after, .now-playing-line[data-instrumental][data-state="current"] { animation: none; }
-    .now-playing-art, .now-playing[data-playing="false"] .now-playing-art { transform: none; }
     .now-playing-line { transition-delay: 0s; }
   }
 }

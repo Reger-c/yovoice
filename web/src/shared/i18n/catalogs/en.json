@@ -3057,7 +3057,10 @@
     "defaultMessage": "Sync again"
   },
   "@yovoice.music.syncReset": {
-    "defaultMessage": "Use estimate"
+    "defaultMessage": "Clear sync"
+  },
+  "@yovoice.music.lyricsAnalyzed": {
+    "defaultMessage": "Lyric timing placed from the vocals; sync to refine"
   },
   "@yovoice.music.lyricsSynced": {
     "defaultMessage": "Lyric timing synced"

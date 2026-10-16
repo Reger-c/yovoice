@@ -3,7 +3,7 @@
 export interface LyricLine { text: string; start: number; end: number; instrumental?: boolean }
 
 // 估算一句的音节数：中日韩文字每字一拍，拉丁文按元音组计，其余符号不计。
-function syllables(line: string) {
+export function syllables(line: string) {
   const cjk = line.match(/[぀-ヿ㐀-鿿가-힯]/g)?.length ?? 0;
   const latin = (line.match(/[\p{Script=Latin}']+/gu) ?? []).reduce((sum, word) => sum + Math.max(1, word.match(/[aeiouyàâäéèêëîïôöùûü]+/gi)?.length ?? 0), 0);
   return cjk + latin;
@@ -36,7 +36,18 @@ function lyricItems(lyrics: string) {
 }
 
 // 播放页显示的行（演唱行与器乐间隔），校准时逐行记录开始时间；不含估算时补的前奏。
-export const lyricRows = (lyrics: string) => lyricItems(lyrics).filter(item => item.text || item.instrumental).map(({ text, instrumental }) => ({ text, ...(instrumental ? { instrumental } : {}) }));
+// breakBefore 标出新段落的第一行，音频对齐时段落之间允许较长的间奏。
+export interface LyricRow { text: string; instrumental?: boolean; breakBefore?: boolean }
+export function lyricRows(lyrics: string) {
+  const rows: LyricRow[] = [];
+  let pending = false;
+  for (const item of lyricItems(lyrics)) {
+    if (!item.text && !item.instrumental) { pending = true; continue; }
+    rows.push({ text: item.text, ...(item.instrumental ? { instrumental: true } : {}), ...(pending && rows.length ? { breakBefore: true } : {}) });
+    pending = false;
+  }
+  return rows;
+}
 
 // times 是校准过的每行开始时间，行数对得上时直接使用，否则按音节估算。
 export function lyricTimeline(lyrics: string, duration: number, times?: number[]): LyricLine[] {
@@ -44,7 +55,7 @@ export function lyricTimeline(lyrics: string, duration: number, times?: number[]
   if (!items.some(item => item.text) || !(duration > 0)) return [];
   const rows = lyricRows(lyrics);
   if (times?.length === rows.length) {
-    const lines = rows.map((row, index) => ({ ...row, start: times[index], end: times[index + 1] ?? duration }));
+    const lines = rows.map(({ text, instrumental }, index) => ({ text, ...(instrumental ? { instrumental } : {}), start: times[index], end: times[index + 1] ?? duration }));
     // 第一句之前留出前奏，显示为省略号。
     return times[0] > 1 && !rows[0].instrumental ? [{ text: '', start: 0, end: times[0], instrumental: true }, ...lines] : lines;
   }

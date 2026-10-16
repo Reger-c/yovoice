@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { seedState } from './seed';
 import { emptyState } from '../src/shared/workbench';
 import { createMusicDraft } from '../src/features/music/music-draft';
+import { songLyrics, syntheticSong, wavBytes } from './synthetic-song';
 
 test('新建音乐作品：示例、风格标签、段落标记、纯音乐与参数持久化', async ({ page }, testInfo) => {
   await page.goto('/');
@@ -153,7 +154,7 @@ test('音乐历史版本：工具栏进入历史页，播放页、复用和删�
   await expect(transport.getByRole('button', { name: '历史版本', exact: true })).toHaveCount(0);
 });
 
-test('播放页逐行校准歌词：按键标记、撤销，校准结果随版本保存并可恢复估算', async ({ page }) => {
+test('播放页逐行校准歌词：按键标记、撤销，校准结果随版本保存并可清除', async ({ page }) => {
   const draft = { ...createMusicDraft('zh-CN'), id: 'f'.repeat(32) };
   const state = emptyState();
   state.drafts = [draft];
@@ -197,10 +198,38 @@ test('播放页逐行校准歌词：按键标记、撤销，校准结果随版�
   expect(saved).toHaveLength(4);
   expect(saved[0]).toBe(0);
   expect([...saved].sort((a, b) => a - b)).toEqual(saved);
-  // 恢复估算后清除保存的时间。
-  await playing.getByRole('button', { name: '恢复估算', exact: true }).click();
+  // 清除校准后不再使用保存的时间。
+  await playing.getByRole('button', { name: '清除校准', exact: true }).click();
   await expect(playing.getByText('歌词时间按歌曲时长估算')).toBeVisible();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('voice-workbench-v1')!).history[0].lyricTimes)).toBeUndefined();
   await playing.getByRole('button', { name: '关闭播放页', exact: true }).click();
   await expect(playing).toHaveCount(0);
+});
+
+test('播放页按音频里的人声自动定位歌词，点歌词跳到这一句实际开始唱的位置', async ({ page }) => {
+  const song = syntheticSong(songLyrics, .3);
+  const draft = { ...createMusicDraft('zh-CN'), id: 'e'.repeat(32) };
+  const state = emptyState();
+  state.drafts = [draft];
+  state.history = [{ id: 'song', title: draft.title, fileName: 'song.wav', createdAt: '2026-09-15T12:00:00Z', duration: song.duration, settings: { ...draft, lyrics: songLyrics } }];
+  await page.goto('/');
+  await page.evaluate(async (data: string) => {
+    const bytes = Uint8Array.from(atob(data), char => char.charCodeAt(0));
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open('voice-workbench-audio', 1);
+      request.onupgradeneeded = () => request.result.createObjectStore('audio');
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => { const db = request.result; const tx = db.transaction('audio', 'readwrite'); tx.objectStore('audio').put(new Blob([bytes], { type: 'audio/wav' }), 'song.wav'); tx.oncomplete = () => { db.close(); resolve(); }; };
+    });
+  }, Buffer.from(wavBytes(song.left, song.right, song.rate)).toString('base64'));
+  await seedState(page, state); await page.reload();
+  await page.locator('.player .transport').getByRole('button', { name: '播放页', exact: true }).click();
+  const playing = page.getByRole('dialog', { name: `${draft.title} · 播放页` });
+  await expect(playing.getByText('歌词时间按人声自动定位，可再校准')).toBeVisible();
+  // 点副歌第一句，播放位置跳到它实际开始唱的时间附近；点击后会继续播放，所以记录跳转那一刻的位置。
+  const index = song.rows.findIndex(row => row.text === '就这样一起走到天亮');
+  await playing.locator('audio').evaluate((audio: HTMLAudioElement) => audio.addEventListener('seeking', () => { audio.dataset.seekedTo = String(audio.currentTime); }));
+  await playing.getByRole('list', { name: '歌词' }).getByText('就这样一起走到天亮', { exact: true }).click();
+  await expect.poll(() => playing.locator('audio').evaluate((audio: HTMLAudioElement) => Number(audio.dataset.seekedTo ?? -1))).toBeGreaterThan(song.starts[index] - .6);
+  expect(Number(await playing.locator('audio').getAttribute('data-seeked-to'))).toBeLessThan(song.starts[index] + .6);
 });
