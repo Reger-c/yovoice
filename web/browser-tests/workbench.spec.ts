@@ -245,7 +245,8 @@ test('版本切换仅试听，不改正文参数且不再显示版本操作菜�
     return Math.abs(control.y + control.height / 2 - wave.y - wave.height / 2);
   })).toBeLessThan(1);
   await selector.click();
-  await expect(page.getByRole('option')).toHaveCount(2);
+  await expect(page.getByRole('option', { name: /版本 \d/ })).toHaveCount(2);
+  await expect(page.getByRole('option', { name: '版本记录', exact: true })).toBeVisible();
   // 历史选择器优先向下展开，底部空间不足时避让，保持菜单在视口内。
   await expect.poll(async () => {
     const menu = await page.locator('.astryx-selector-popup:visible').boundingBox();
@@ -256,7 +257,13 @@ test('版本切换仅试听，不改正文参数且不再显示版本操作菜�
   await page.getByRole('option', { name: /版本 1/ }).click();
   await expect(page.getByLabel('正文', { exact: true })).toHaveValue(draft.text);
   await expect(page.getByRole('button', { name: '版本操作', exact: true })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: '保存为角色', exact: true })).toBeVisible();
+  // 工具栏只放导出和“音频操作”菜单，删除单独分组；“保存为角色”保存的是右侧面板的设置，放在角色选择里。
+  const transport = page.locator('.player .transport');
+  await expect(transport.getByRole('button', { name: '导出音频', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '保存为角色', exact: true })).toHaveCount(0);
+  await transport.getByRole('button', { name: '音频操作', exact: true }).click();
+  await expect(page.getByRole('menuitem')).toHaveText(['保存为参考音频', '打开音频位置', '删除版本 1']);
+  await page.keyboard.press('Escape');
   await expect(page.getByRole('radio', { name: '文字指导', exact: true })).toBeChecked();
   await expect(page.getByRole('combobox', { name: '模型', exact: true })).toContainText('IndexTTS 2.5');
   await expect.poll(() => page.locator('footer audio').evaluate((audio: HTMLAudioElement) => audio.duration)).toBe(1);

@@ -67,6 +67,16 @@ test('多轨分割、移动、静音播放、调整高度和重载', async ({ pa
   await expect(page.locator('.player-lane-actions').getByRole('button', { name: '新增音轨', exact: true })).toBeVisible();
   await page.getByRole('button', { name: '新增音轨', exact: true }).click();
   await expect(page.locator('.multitrack-row')).toHaveCount(2);
+  // 轨头显示音轨名，删除音轨放在设置面板里，且只能删除空轨。
+  await expect(page.locator('.multitrack-name')).toHaveText(['音轨 1', '音轨 2']);
+  await expect(page.locator('.multitrack-label').getByRole('button', { name: /^删除/ })).toHaveCount(0);
+  await page.getByRole('button', { name: '音轨 1 设置', exact: true }).click();
+  await expect(page.getByRole('button', { name: '删除音轨 1（仅空轨）', exact: true })).toBeDisabled();
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: '音轨 2 设置', exact: true }).click();
+  await expect(page.getByRole('button', { name: '删除音轨 2（仅空轨）', exact: true })).toBeEnabled();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: '删除音轨 2（仅空轨）', exact: true })).toHaveCount(0);
   await expectPlaybackHitArea(page);
   const addTrackBox = (await page.getByRole('button', { name: '新增音轨', exact: true }).boundingBox())!;
   const laneBox = (await page.locator('.multitrack-lane').first().boundingBox())!;

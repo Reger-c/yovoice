@@ -2472,7 +2472,7 @@
     "defaultMessage": "Fewer tags"
   },
   "@yovoice.settings.tabSoundfonts": {
-    "defaultMessage": "Sound fonts"
+    "defaultMessage": "Score sound fonts"
   },
   "@yovoice.settings.downloads": {
     "defaultMessage": "Downloads"
@@ -2632,9 +2632,6 @@
   },
   "@yovoice.score.roleOf": {
     "defaultMessage": "Role for {name}"
-  },
-  "@yovoice.settings.aiGroup": {
-    "defaultMessage": "AI writing"
   },
   "@yovoice.settings.aiTimeout": {
     "defaultMessage": "Request timeout"

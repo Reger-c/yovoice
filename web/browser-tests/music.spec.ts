@@ -116,8 +116,10 @@ test('删除音乐历史版本：确认后移除，删当前版本自动切到�
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toHaveAttribute('data-current', 'true');
 
-  // 播放器旁的历史选择器也能删除当前版本，删完列表清空。
-  await page.locator('.player-history').getByRole('button', { name: '删除版本 1', exact: true }).click();
+  // 播放器左侧只放版本下拉；当前版本可从工具栏的“音频操作”菜单删除，删完列表清空。
+  await expect(page.locator('.player-history').getByRole('button')).toHaveCount(0);
+  await page.locator('.player .transport').getByRole('button', { name: '音频操作', exact: true }).click();
+  await page.getByRole('menuitem', { name: '删除版本 1', exact: true }).click();
   await page.getByRole('dialog').getByRole('button', { name: '删除版本', exact: true }).click();
   await expect(rows).toHaveCount(0);
   await expect(page.getByText('每次生成都会在这里留下一个版本', { exact: false })).toBeVisible();

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { seedState } from './seed';
+import { saveAsCharacter } from './project-actions';
 import { SubtitleParser } from '../src/features/create/subtitle-parser';
 import { emptyState, synthesisSettings } from '../src/shared/workbench';
 
@@ -122,5 +123,17 @@ test('选择台词编辑对应说话人，末尾新增继承上一句并持久�
   expect(saved.subtitles.speakers[1].settings.voiceDescription).toBe('低沉');
   expect(saved.subtitles.cues[3].speakerId).toBe('1');
   expect(saved.text).toBe('第一句\n第二句\n第三句\n新增的一句');
+
+  // 说话人的声音设置也能在角色选择里直接存为角色，保存后应用到该说话人。
+  await page.getByLabel('第 2 句台词', { exact: true }).click();
+  await saveAsCharacter(page);
+  const editor = page.getByTestId('character-editor');
+  await expect(editor.getByLabel('角色名称')).toHaveValue('Bob');
+  await editor.getByRole('button', { name: '保存并应用', exact: true }).click();
+  await expect(editor).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => {
+    const state = JSON.parse(localStorage.getItem('voice-workbench-v1')!);
+    return state.characters.length === 1 && state.drafts[0].subtitles.speakers[1].characterId === state.characters[0].id;
+  })).toBe(true);
 });
 

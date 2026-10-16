@@ -165,6 +165,7 @@
   .multitrack-label { width: var(--audio-label-width); flex-shrink: 0; padding: var(--spacing-0-5) var(--spacing-2); position: sticky; left: 0; background: var(--color-background-surface); z-index: 2; border-right: var(--border-width) solid var(--color-border); }
   .multitrack-ruler-row { height: var(--audio-ruler-height); flex-shrink: 0; align-items: center; }
   .multitrack-ruler-row .multitrack-label { padding-block: 0; text-align: center; }
+  .multitrack-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--app-ink); }
   .multitrack-ruler { position: relative; flex: 1; min-width: 0; align-self: stretch; justify-content: center; }
   .multitrack-ruler small { height: var(--spacing-4); border-left: var(--border-width) solid var(--app-line); padding-left: var(--spacing-1); font-size: var(--font-size-xs); font-variant-numeric: tabular-nums; }
   .multitrack-scroll { background: var(--app-surface); }
@@ -242,7 +243,9 @@
   .history-version-date { white-space: nowrap; color: var(--app-muted); font-size: var(--app-small-font); font-variant-numeric: tabular-nums; }
   .timeline-lane { flex: 1; min-width: 0; overflow-x: auto; padding: 0; background: var(--app-surface); }
   .timeline-content { flex-shrink: 0; min-width: 100%; }
-  @media (max-width: 1100px) { .transport { flex-wrap: wrap; } .transport-controls { position: static; transform: none; margin-left: auto; } .transport-end { width: 100%; justify-content: flex-end; padding-bottom: var(--spacing-2); } }
+  /* 播放器按自身宽度收拢：先收起音量滑杆（保留静音按钮），仍放不下时工具组才自然换行，不再在窄窗口强制折成两行挤占波形。 */
+  .player { container-type: inline-size; }
+  @container (max-width: 44rem) { .player .volume-control input { display: none; } }
   .time-ruler { position: relative; height: var(--audio-ruler-height); flex-shrink: 0; }
   .time-ruler small { position: absolute; top: 0; height: var(--spacing-4); border-left: 1px solid var(--app-line); padding-left: var(--spacing-1); font-size: var(--font-size-xs); font-variant-numeric: tabular-nums; }
   .waveform { width: 100%; position: relative; height: var(--spacing-10); margin-block: var(--spacing-1); flex-shrink: 0; background: color-mix(in srgb, var(--app-wave) 12%, var(--app-white)); border: 1px solid color-mix(in srgb, var(--app-wave) 25%, var(--app-white)); border-radius: var(--radius-element); }
@@ -410,7 +413,7 @@
       z-index: 10;
     }
   }
-  @media (max-width: 1190px) { :root { --app-nav: calc(var(--spacing-10) * 4.5); --app-inspector: calc(var(--spacing-8) * 11); --app-editor-font: var(--font-size-lg); --app-title-font: var(--font-size-3xl); } .player { gap: var(--spacing-3); } }
+  @media (max-width: 1190px) { :root { --app-nav: calc(var(--spacing-10) * 4.5); --app-inspector: calc(var(--spacing-8) * 11); --app-editor-font: var(--font-size-lg); --app-title-font: var(--font-size-3xl); } }
   @media (max-width: 900px) { :root { --app-nav: calc(var(--spacing-10) * 4); --app-inspector: calc(var(--spacing-8) * 11); } .sidebar { padding-inline: var(--spacing-2); } .settings-page,.library-page { padding: var(--spacing-5) var(--spacing-6) var(--spacing-6); } }
   @media (max-width: 600px) { :root { --app-nav: calc(var(--spacing-8) * 2); --app-player: calc(var(--spacing-9) * 2); --app-title-font: var(--font-size-3xl); --app-editor-font: var(--font-size-lg); } .nav-item { font-size: 0; justify-content: center; padding: var(--spacing-2); gap: 0; } .new-project { font-size: 0; gap: 0; padding: var(--spacing-2); } .recent-projects { display: none; } .writing { min-height: calc(var(--spacing-10) * 14); padding-top: var(--spacing-5); } .sidebar { padding-bottom: var(--spacing-2); } .audio-panel { margin: var(--spacing-2); } .play-main { min-width: var(--spacing-10); min-height: var(--spacing-10); } .volume-control input { display: none; } .timeline .transport { min-height: var(--spacing-12); } .transport-time { font-size: var(--font-size-xs); } .transport { padding-inline: var(--spacing-2); } .time-ruler small:nth-child(even) { visibility: hidden; } .settings-page,.library-page { padding: var(--spacing-5); } }
   @media (max-width: 600px) {

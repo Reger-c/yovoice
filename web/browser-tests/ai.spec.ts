@@ -10,6 +10,11 @@ test('AI 服务：未配置时引导到设置，左侧选服务、右侧直接�
   await expect(page.getByRole('tab', { name: 'AI 服务', selected: true })).toBeVisible();
   const panel = page.getByRole('tabpanel', { name: 'AI 服务' });
 
+  // 请求超时对所有服务生效，和服务配置放在同一页，修改后写入偏好设置。
+  await panel.getByRole('combobox', { name: '请求超时', exact: true }).click();
+  await page.getByRole('option', { name: '20 分钟', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('voice-workbench-v1')!).preferences.aiTimeout)).toBe(1200);
+
   // 固定地址的服务只显示地址和协议；密钥保存后只显示掩码，不回填。
   await panel.getByRole('button', { name: 'DeepSeek', exact: true }).click();
   await expect(panel.getByText('https://api.deepseek.com', { exact: true })).toBeVisible();

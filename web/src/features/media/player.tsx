@@ -14,7 +14,8 @@ import type { Track } from '../../shared/workbench';
 // 头像素材仅在展示库列表时加载，避免进入创作首屏主包。
 const SeededAvatar = lazy(() => import('../../shared/ui/seeded-avatar').then(module => ({ default: module.SeededAvatar })));
 
-export function Player({ track, onError, suspended, compact = false, historyControl, actions, laneActions, avatar, inline, onProgress, seekRequest }: { onProgress?: (time: number, playing: boolean) => void; seekRequest?: { time: number; nonce: number }; inline?: { label: string; select: () => void }; avatar?: { seed: string; label: string; disabled?: boolean; select: () => void }; actions?: ReactNode; laneActions?: ReactNode; historyControl?: ReactNode; compact?: boolean; suspended: boolean; track: Track | null; onError: (message: string) => void }) {
+// reveal=false 时由调用方在自己的菜单里提供“打开音频位置”，工具栏不再单独放文件夹按钮。
+export function Player({ track, onError, suspended, compact = false, historyControl, actions, laneActions, avatar, inline, onProgress, seekRequest, reveal = true }: { reveal?: boolean; onProgress?: (time: number, playing: boolean) => void; seekRequest?: { time: number; nonce: number }; inline?: { label: string; select: () => void }; avatar?: { seed: string; label: string; disabled?: boolean; select: () => void }; actions?: ReactNode; laneActions?: ReactNode; historyControl?: ReactNode; compact?: boolean; suspended: boolean; track: Track | null; onError: (message: string) => void }) {
   const t = useTranslator();
   const resizable = !compact && !avatar && !inline && !!laneActions;
   const panel = useAudioPanel(!!track || !!historyControl, resizable ? 'audio-player-compact-height' : undefined);
@@ -164,7 +165,7 @@ export function Player({ track, onError, suspended, compact = false, historyCont
         </HStack>
         <TrackZoom value={zoom} change={setZoom} disabled={!duration} />
         {actions}
-        {track?.kind === 'outputs' ? <Button label={t('@yovoice.player.reveal')} isIconOnly icon={<FolderOpen size={17} />} size="sm" variant="ghost" onClick={() => { void call('media.reveal', { kind: track.kind, id: track.id }).catch(e => onError(noticeMessage(e))); }} /> : null}
+        {reveal && track?.kind === 'outputs' ? <Button label={t('@yovoice.player.reveal')} isIconOnly icon={<FolderOpen size={17} />} size="sm" variant="ghost" onClick={() => { void call('media.reveal', { kind: track.kind, id: track.id }).catch(e => onError(noticeMessage(e))); }} /> : null}
 
     </PlaybackToolbar>
     <HStack className="timeline" gap={0}>

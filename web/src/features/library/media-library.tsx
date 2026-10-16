@@ -73,10 +73,10 @@ export function MediaLibrary({ page, state, query, onQueryChange, track, auditio
     noResults={t('@yovoice.library.noSearchResults')}
     empty={<LibraryEmpty icon={<Clock3 />} art={voices ? <WaveRing seed="empty-voice" duration={12}><HStack className="empty-ring-mark" gap={0} hAlign="center" vAlign="center"><Mic /></HStack></WaveRing> : undefined} title={t(voices ? '@yovoice.library.emptyVoicesTitle' : '@yovoice.library.emptyHistoryTitle')}
       action={voices ? <Button label={t('@yovoice.library.addFirstVoice')} size="sm" icon={<Plus />} onClick={addVoice} /> : null} />}>
-    {/* 参考音频：头像外围一圈声波，点卡片试听；存根显示时长。 */}
+    {/* 参考音频：头像外围一圈声波，点卡片试听；顶部标出来源（导入或来自生成），存根显示时长。 */}
     {voices ? filteredVoices.map((voice, index) => <Ticket key={voice.id} index={index} className="voice-row"
       cover={<WaveRing seed={voice.id} duration={voice.duration}><Player compact avatar={{ seed: voice.id, label: t('@yovoice.app.audition', { name: voice.name }), select: () => audition({ ...voice, kind: 'voices', subtitle: t('@yovoice.app.subtitleReference') }) }} suspended={suspended} track={track?.id === voice.id ? track : null} onError={onError} /></WaveRing>}
-      eyebrow={[voice.fileName.split('.').pop()?.toUpperCase(), voice.source].filter(Boolean).join(' · ')}
+      eyebrow={voice.source === 'generation' ? t('@yovoice.voice.sourceGeneration') : voice.source === 'import' ? t('@yovoice.voice.sourceImport') : undefined}
       title={<h3 onPointerEnter={overflowTitle}>{voice.name}</h3>} excerpt={voice.referenceText?.trim()}
       stub={<TicketStamp value={clock(voice.duration)} unit={t('@yovoice.library.duration')} />}
       actions={picked ? <CheckboxInput label={t('@yovoice.library.pickVoice', { name: voice.name })} isLabelHidden value={picked.has(voice.id)} onChange={checked => toggle(voice.id, checked)} />
