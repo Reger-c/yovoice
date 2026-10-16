@@ -1,6 +1,7 @@
 package workbench
 
 import (
+	"math"
 	"os"
 	"slices"
 	"strings"
@@ -67,6 +68,41 @@ func (w *Workbench) RenameMedia(kind, id, name string) error {
 			for i := range s.History {
 				if s.History[i].ID == id {
 					s.History[i].Title = name
+				}
+			}
+		}
+	}, true)
+}
+
+// 校准歌词最多记录的行数，与正文长度上限同一量级。
+const maxLyricTimes = 2000
+
+// SetLyricTimes 保存播放页校准的歌词时间：每行的开始秒数，按顺序不减，不超过音频时长；空列表恢复按时长估算。
+func (w *Workbench) SetLyricTimes(id string, times []float64) error {
+	w.edit.Lock()
+	defer w.edit.Unlock()
+	if _, e := w.MediaFile("outputs", id); e != nil {
+		return e
+	}
+	i := slices.IndexFunc(w.Store.Read().History, func(g schema.Generation) bool { return g.ID == id })
+	if i < 0 {
+		return msg.Err(msg.ErrAudioMissing, nil)
+	}
+	duration := w.Store.Read().History[i].Duration
+	if len(times) > maxLyricTimes {
+		return msg.Err(msg.ErrRequestInvalid, nil)
+	}
+	for j, t := range times {
+		if math.IsNaN(t) || t < 0 || t > duration+1 || (j > 0 && t < times[j-1]) {
+			return msg.Err(msg.ErrRequestInvalid, nil)
+		}
+	}
+	return w.Store.Update(func(s *schema.State) {
+		for i := range s.History {
+			if s.History[i].ID == id {
+				s.History[i].LyricTimes = slices.Clone(times)
+				if len(times) == 0 {
+					s.History[i].LyricTimes = nil
 				}
 			}
 		}

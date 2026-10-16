@@ -28,13 +28,14 @@ func Call(ctx context.Context, w *workbench.Workbench, method string, data json.
 		}
 	}()
 	var p struct {
-		ID            string `json:"id"`
-		Kind          string `json:"kind"`
-		Name          string `json:"name"`
-		Path          string `json:"path"`
-		Base64        string `json:"base64"`
-		ReferenceText string `json:"referenceText"`
-		Model         string `json:"model"`
+		ID            string    `json:"id"`
+		Kind          string    `json:"kind"`
+		Name          string    `json:"name"`
+		Path          string    `json:"path"`
+		Base64        string    `json:"base64"`
+		ReferenceText string    `json:"referenceText"`
+		Model         string    `json:"model"`
+		Times         []float64 `json:"times"`
 	}
 	if len(data) == 0 || string(data) == "null" {
 		return nil, msg.Err(msg.ErrRequestInvalid, nil)
@@ -115,6 +116,8 @@ func Call(ctx context.Context, w *workbench.Workbench, method string, data json.
 		return true, w.RenameMedia(p.Kind, p.ID, p.Name)
 	case "media.delete":
 		return true, w.DeleteMedia(p.Kind, p.ID)
+	case "generation.lyricTimes":
+		return true, w.SetLyricTimes(p.ID, p.Times)
 	case "preferences.save":
 		preferences := schema.Preferences{DownloadSource: "modelscope", Backend: "cpu", UiLocale: schema.UiLocaleZhCN}
 		if e := json.Unmarshal(data, &preferences); e != nil {

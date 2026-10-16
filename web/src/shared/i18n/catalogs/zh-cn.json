@@ -3043,5 +3043,38 @@
   },
   "@yovoice.setup.installing": {
     "defaultMessage": "正在安装…"
+  },
+  "@yovoice.music.rewind": {
+    "defaultMessage": "后退 {n} 秒"
+  },
+  "@yovoice.music.forward": {
+    "defaultMessage": "前进 {n} 秒"
+  },
+  "@yovoice.music.syncLyrics": {
+    "defaultMessage": "校准歌词"
+  },
+  "@yovoice.music.resyncLyrics": {
+    "defaultMessage": "重新校准"
+  },
+  "@yovoice.music.syncReset": {
+    "defaultMessage": "恢复估算"
+  },
+  "@yovoice.music.lyricsSynced": {
+    "defaultMessage": "歌词时间已校准"
+  },
+  "@yovoice.music.syncHint": {
+    "defaultMessage": "每一行开始唱时按 ↓ 或点“下一行”，按退格撤销上一行"
+  },
+  "@yovoice.music.syncNext": {
+    "defaultMessage": "下一行"
+  },
+  "@yovoice.music.syncUndo": {
+    "defaultMessage": "撤销"
+  },
+  "@yovoice.music.syncCancel": {
+    "defaultMessage": "取消校准"
+  },
+  "@yovoice.music.syncProgress": {
+    "defaultMessage": "{done} / {total} 行"
   }
 }

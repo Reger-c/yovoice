@@ -88,6 +88,14 @@ export async function previewCall<T>(method: string, data: unknown): Promise<T> 
     if (index < 0) state.drafts.unshift(draft); else state.drafts[index] = draft;
     publish(); return true as T;
   }
+  if (method === 'generation.lyricTimes') {
+    const { id, times } = data as { id: string; times: number[] };
+    const item = state.history.find(v => v.id === id);
+    if (!item) throw new CallError('@yovoice.error.audioMissing');
+    if (times.length > 2000 || times.some((t, i) => !(t >= 0) || t > item.duration + 1 || (i > 0 && t < times[i - 1]))) throw new CallError('@yovoice.error.requestInvalid');
+    state.history = state.history.map(v => v.id === id ? { ...v, lyricTimes: times.length ? [...times] : undefined } : v);
+    publish(); return true as T;
+  }
   if (method === 'media.rename' || method === 'media.delete') {
     const { kind, id, name } = data as { kind: string; id: string; name: string };
     if (!['voices', 'outputs'].includes(kind)) throw new CallError('@yovoice.error.audioKindInvalid');
