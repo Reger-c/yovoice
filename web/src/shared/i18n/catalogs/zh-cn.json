@@ -3057,7 +3057,10 @@
     "defaultMessage": "重新校准"
   },
   "@yovoice.music.syncReset": {
-    "defaultMessage": "恢复估算"
+    "defaultMessage": "清除校准"
+  },
+  "@yovoice.music.lyricsAnalyzed": {
+    "defaultMessage": "歌词时间按人声自动定位，可再校准"
   },
   "@yovoice.music.lyricsSynced": {
     "defaultMessage": "歌词时间已校准"
