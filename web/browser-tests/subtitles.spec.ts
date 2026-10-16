@@ -25,6 +25,9 @@ test('字幕格式保留时间、人名和多行文本，拒绝损坏输入', ()
 test('导入新作品、统一角色映射、逐句分配和重载持久化', async ({ page }, testInfo) => {
   const state = emptyState();
   state.characters = [{ id: 'a'.repeat(32), name: '旁白角色', settings: { ...synthesisSettings(state.drafts[0]), modelId: 'voxcpm2-q8', voiceDescription: '温柔' }, demoText: '' }];
+  // 模型和推理引擎都已就绪，准备清单不出现，下面按编辑区自身的布局对齐。
+  state.models = [{ id: 'index-2.5-q8', path: 'index-2.5-q8.gguf', managed: true }, { id: 'voxcpm2-q8', path: 'voxcpm2-q8.gguf', managed: true }];
+  Object.assign(state, { runtimePath: 'runtime', runtimeBackend: 'cpu', runtimeVersion: '1.0.0' });
   await page.goto('/');
   await seedState(page, state);
   await page.reload();
@@ -55,6 +58,7 @@ test('导入新作品、统一角色映射、逐句分配和重载持久化', as
   const titleBox = await page.getByLabel('作品名称').boundingBox();
   const newBox = await page.getByTestId('nav-new').boundingBox();
   expect(Math.abs(titleBox!.y + titleBox!.height / 2 - newBox!.y - newBox!.height / 2)).toBeLessThan(2);
+  await expect(page.locator('.setup-checklist')).toHaveCount(0);
   const textBox = await page.getByLabel('第 1 句台词', { exact: true }).boundingBox();
   const navBox = await page.locator('.nav-item').first().boundingBox();
   expect(Math.abs(textBox!.y + textBox!.height / 2 - navBox!.y - navBox!.height / 2)).toBeLessThan(2);

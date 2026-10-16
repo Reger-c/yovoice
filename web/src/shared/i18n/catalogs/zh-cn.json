@@ -107,14 +107,8 @@
   "@yovoice.app.expandSidebar": {
     "defaultMessage": "展开侧栏"
   },
-  "@yovoice.app.historyPlaceholder": {
-    "defaultMessage": "历史版本"
-  },
   "@yovoice.app.historyVersion": {
     "defaultMessage": "版本 {n}"
-  },
-  "@yovoice.app.historyVersions": {
-    "defaultMessage": "当前作品历史"
   },
   "@yovoice.app.loading": {
     "defaultMessage": "正在打开工作台…"
@@ -2135,18 +2129,6 @@
   "@yovoice.music.lyricsPlaceholder": {
     "defaultMessage": "写下歌词，用 [verse]、[chorus] 等标记段落。留空时由模型自由哼唱。"
   },
-  "@yovoice.music.takes": {
-    "defaultMessage": "版本"
-  },
-  "@yovoice.music.takeCount": {
-    "defaultMessage": "{count} 个版本"
-  },
-  "@yovoice.music.take": {
-    "defaultMessage": "版本 {n}"
-  },
-  "@yovoice.music.noTakes": {
-    "defaultMessage": "每次生成都会在这里留下一个版本，方便对比和挑选。"
-  },
   "@yovoice.music.generate": {
     "defaultMessage": "生成歌曲"
   },
@@ -2966,15 +2948,6 @@
   "@yovoice.app.pageError.reload": {
     "defaultMessage": "重新加载"
   },
-  "@yovoice.app.deleteVersion": {
-    "defaultMessage": "删除版本 {n}"
-  },
-  "@yovoice.app.deleteVersionTitle": {
-    "defaultMessage": "删除版本 {n}？"
-  },
-  "@yovoice.app.deleteVersionConfirm": {
-    "defaultMessage": "删除版本"
-  },
   "@yovoice.library.batchDelete": {
     "defaultMessage": "批量删除"
   },
@@ -3002,7 +2975,94 @@
   "@yovoice.app.exportVersion": {
     "defaultMessage": "导出音频"
   },
-  "@yovoice.app.allVersions": {
-    "defaultMessage": "版本记录"
+  "@yovoice.history.generations": {
+    "defaultMessage": "历史生成"
+  },
+  "@yovoice.library.searchGenerations": {
+    "defaultMessage": "搜索历史生成"
+  },
+  "@yovoice.library.emptyGenerationsTitle": {
+    "defaultMessage": "暂无历史生成"
+  },
+  "@yovoice.music.nowPlaying": {
+    "defaultMessage": "播放页"
+  },
+  "@yovoice.music.nowPlayingTitle": {
+    "defaultMessage": "{title} · 播放页"
+  },
+  "@yovoice.music.openNowPlaying": {
+    "defaultMessage": "在播放页打开 {name}"
+  },
+  "@yovoice.music.closeNowPlaying": {
+    "defaultMessage": "关闭播放页"
+  },
+  "@yovoice.music.fullscreen": {
+    "defaultMessage": "全屏"
+  },
+  "@yovoice.music.exitFullscreen": {
+    "defaultMessage": "退出全屏"
+  },
+  "@yovoice.music.seekLyric": {
+    "defaultMessage": "从这一句开始播放"
+  },
+  "@yovoice.music.lyricsEstimated": {
+    "defaultMessage": "歌词时间按歌曲时长估算"
+  },
+  "@yovoice.setup.label": {
+    "defaultMessage": "生成前的准备"
+  },
+  "@yovoice.setup.title": {
+    "defaultMessage": "开始生成前还需准备 {count} 项"
+  },
+  "@yovoice.setup.hint": {
+    "defaultMessage": "每一步都可以在这里完成，全部就绪后自动收起。"
+  },
+  "@yovoice.setup.model": {
+    "defaultMessage": "下载模型"
+  },
+  "@yovoice.setup.soundfont": {
+    "defaultMessage": "下载音色库"
+  },
+  "@yovoice.setup.engine": {
+    "defaultMessage": "安装推理引擎"
+  },
+  "@yovoice.setup.engineDetail": {
+    "defaultMessage": "audio.cpp，在本机运行模型"
+  },
+  "@yovoice.setup.engineUpdate": {
+    "defaultMessage": "当前模型需要更新推理引擎"
+  },
+  "@yovoice.setup.voice": {
+    "defaultMessage": "选一个声音"
+  },
+  "@yovoice.setup.voiceDetail": {
+    "defaultMessage": "当前模型按参考音频克隆声音"
+  },
+  "@yovoice.setup.download": {
+    "defaultMessage": "下载"
+  },
+  "@yovoice.setup.import": {
+    "defaultMessage": "导入"
+  },
+  "@yovoice.setup.otherModel": {
+    "defaultMessage": "换一个"
+  },
+  "@yovoice.setup.install": {
+    "defaultMessage": "安装"
+  },
+  "@yovoice.setup.update": {
+    "defaultMessage": "更新"
+  },
+  "@yovoice.setup.chooseVoice": {
+    "defaultMessage": "选择参考音频"
+  },
+  "@yovoice.setup.done": {
+    "defaultMessage": "已完成"
+  },
+  "@yovoice.setup.downloading": {
+    "defaultMessage": "已下载 {received} / {total}"
+  },
+  "@yovoice.setup.installing": {
+    "defaultMessage": "正在安装…"
   }
 }

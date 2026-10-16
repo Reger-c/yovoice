@@ -107,14 +107,8 @@
   "@yovoice.app.expandSidebar": {
     "defaultMessage": "Expand sidebar"
   },
-  "@yovoice.app.historyPlaceholder": {
-    "defaultMessage": "History"
-  },
   "@yovoice.app.historyVersion": {
     "defaultMessage": "Version {n}"
-  },
-  "@yovoice.app.historyVersions": {
-    "defaultMessage": "Project history"
   },
   "@yovoice.app.loading": {
     "defaultMessage": "Opening workbench…"
@@ -2135,18 +2129,6 @@
   "@yovoice.music.lyricsPlaceholder": {
     "defaultMessage": "Write lyrics and mark sections with [verse], [chorus] and so on. Leave empty to let the model hum along."
   },
-  "@yovoice.music.takes": {
-    "defaultMessage": "Versions"
-  },
-  "@yovoice.music.takeCount": {
-    "defaultMessage": "{count} versions"
-  },
-  "@yovoice.music.take": {
-    "defaultMessage": "Version {n}"
-  },
-  "@yovoice.music.noTakes": {
-    "defaultMessage": "Each generation becomes a version here, so you can compare and keep the best one."
-  },
   "@yovoice.music.generate": {
     "defaultMessage": "Generate song"
   },
@@ -2966,15 +2948,6 @@
   "@yovoice.app.pageError.reload": {
     "defaultMessage": "Reload"
   },
-  "@yovoice.app.deleteVersion": {
-    "defaultMessage": "Delete version {n}"
-  },
-  "@yovoice.app.deleteVersionTitle": {
-    "defaultMessage": "Delete version {n}?"
-  },
-  "@yovoice.app.deleteVersionConfirm": {
-    "defaultMessage": "Delete version"
-  },
   "@yovoice.library.batchDelete": {
     "defaultMessage": "Bulk delete"
   },
@@ -3002,7 +2975,94 @@
   "@yovoice.app.exportVersion": {
     "defaultMessage": "Export audio"
   },
-  "@yovoice.app.allVersions": {
-    "defaultMessage": "Version history"
+  "@yovoice.history.generations": {
+    "defaultMessage": "Generation history"
+  },
+  "@yovoice.library.searchGenerations": {
+    "defaultMessage": "Search generations"
+  },
+  "@yovoice.library.emptyGenerationsTitle": {
+    "defaultMessage": "Nothing generated yet"
+  },
+  "@yovoice.music.nowPlaying": {
+    "defaultMessage": "Now playing"
+  },
+  "@yovoice.music.nowPlayingTitle": {
+    "defaultMessage": "Now playing · {title}"
+  },
+  "@yovoice.music.openNowPlaying": {
+    "defaultMessage": "Open {name} in Now playing"
+  },
+  "@yovoice.music.closeNowPlaying": {
+    "defaultMessage": "Close Now playing"
+  },
+  "@yovoice.music.fullscreen": {
+    "defaultMessage": "Full screen"
+  },
+  "@yovoice.music.exitFullscreen": {
+    "defaultMessage": "Exit full screen"
+  },
+  "@yovoice.music.seekLyric": {
+    "defaultMessage": "Play from this line"
+  },
+  "@yovoice.music.lyricsEstimated": {
+    "defaultMessage": "Lyric timing is estimated from the song length"
+  },
+  "@yovoice.setup.label": {
+    "defaultMessage": "Setup before generating"
+  },
+  "@yovoice.setup.title": {
+    "defaultMessage": "{count} left before you can generate"
+  },
+  "@yovoice.setup.hint": {
+    "defaultMessage": "Finish each step right here. This card hides once everything is ready."
+  },
+  "@yovoice.setup.model": {
+    "defaultMessage": "Download a model"
+  },
+  "@yovoice.setup.soundfont": {
+    "defaultMessage": "Download a sound font"
+  },
+  "@yovoice.setup.engine": {
+    "defaultMessage": "Install the engine"
+  },
+  "@yovoice.setup.engineDetail": {
+    "defaultMessage": "audio.cpp runs models on this computer"
+  },
+  "@yovoice.setup.engineUpdate": {
+    "defaultMessage": "This model needs a newer engine"
+  },
+  "@yovoice.setup.voice": {
+    "defaultMessage": "Choose a voice"
+  },
+  "@yovoice.setup.voiceDetail": {
+    "defaultMessage": "This model clones the voice from reference audio"
+  },
+  "@yovoice.setup.download": {
+    "defaultMessage": "Download"
+  },
+  "@yovoice.setup.import": {
+    "defaultMessage": "Import"
+  },
+  "@yovoice.setup.otherModel": {
+    "defaultMessage": "Choose another"
+  },
+  "@yovoice.setup.install": {
+    "defaultMessage": "Install"
+  },
+  "@yovoice.setup.update": {
+    "defaultMessage": "Update"
+  },
+  "@yovoice.setup.chooseVoice": {
+    "defaultMessage": "Choose reference audio"
+  },
+  "@yovoice.setup.done": {
+    "defaultMessage": "Done"
+  },
+  "@yovoice.setup.downloading": {
+    "defaultMessage": "{received} of {total}"
+  },
+  "@yovoice.setup.installing": {
+    "defaultMessage": "Installing…"
   }
 }

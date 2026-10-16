@@ -62,8 +62,13 @@ test('真实 WAV 导入、播放、裁剪和空状态', async ({ page }) => {
   wav.write('RIFF'); wav.writeUInt32LE(wav.length - 8, 4); wav.write('WAVEfmt ', 8); wav.writeUInt32LE(16, 16); wav.writeUInt16LE(1, 20); wav.writeUInt16LE(1, 22); wav.writeUInt32LE(16000, 24); wav.writeUInt32LE(32000, 28); wav.writeUInt16LE(2, 32); wav.writeUInt16LE(16, 34); wav.write('data', 36); wav.writeUInt32LE(wav.length - 44, 40);
   for (let i = 0; i < 32000; i++) wav.writeInt16LE(Math.round(Math.sin(i * 440 * Math.PI * 2 / 16000) * 8000), 44 + i * 2);
   await page.locator('input[type=file][accept^="audio/"]').setInputFiles({ name: '测试音色.wav', mimeType: 'audio/wav', buffer: wav });
+  // 新用户的准备清单：模型、推理引擎和参考音频在创作区就地完成，选好的步骤标为已完成。
+  const setup = page.locator('.setup-checklist').getByRole('listitem');
+  await expect(setup).toHaveText([/下载模型/, /安装推理引擎/, /选一个声音/]);
   await page.getByRole('button', { name: '使用所选参考音频', exact: true }).click();
   await expect(page.getByRole('button', { name: '测试音色', exact: true })).toBeVisible();
+  await expect(setup.nth(2)).toHaveAttribute('data-done', 'true');
+  await expect(setup.nth(2)).toContainText('已完成');
   await page.getByRole('button', { name: '试听当前音色' }).click();
   await expect(page.getByRole('button', { name: '暂停', exact: true })).toBeVisible();
   await page.getByRole('button', { name: '暂停', exact: true }).click();
@@ -211,7 +216,7 @@ test('选中文字显示发音浮层，键盘与鼠标交互应用后只修改�
 
 
 
-test('版本切换仅试听，不改正文参数且不再显示版本操作菜单', async ({ page }) => {
+test('语音生成只有历史生成：工具栏进入历史页，试听不改正文，删除在历史页', async ({ page }) => {
   const state = emptyState();
   const draft = state.drafts[0];
   state.history = [
@@ -234,60 +239,48 @@ test('版本切换仅试听，不改正文参数且不再显示版本操作菜�
     });
   });
   await seedState(page, state); await page.reload();
-  const selector = page.getByRole('combobox', { name: '当前作品历史' });
-  await expect(selector).toContainText('版本 2');
-  await expect(page.locator('.player-history').getByRole('combobox', { name: '当前作品历史' })).toBeVisible();
-  await expect(page.locator('.transport').getByRole('combobox', { name: '当前作品历史' })).toHaveCount(0);
+  // 语音生成定位为临时生成：播放器左侧不再有版本下拉，也没有“新增音轨”。
+  await expect(page.getByRole('combobox', { name: '当前作品历史' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '新增音轨', exact: true })).toHaveCount(0);
   await expect(page.locator('.player .waveform')).toBeVisible();
-  await expect.poll(() => page.locator('.player').evaluate(panel => {
-    const control = panel.querySelector('[role="combobox"]')!.getBoundingClientRect();
-    const wave = panel.querySelector('.waveform')!.getBoundingClientRect();
-    return Math.abs(control.y + control.height / 2 - wave.y - wave.height / 2);
-  })).toBeLessThan(1);
-  await selector.click();
-  await expect(page.getByRole('option', { name: /版本 \d/ })).toHaveCount(2);
-  await expect(page.getByRole('option', { name: '版本记录', exact: true })).toBeVisible();
-  // 历史选择器优先向下展开，底部空间不足时避让，保持菜单在视口内。
-  await expect.poll(async () => {
-    const menu = await page.locator('.astryx-selector-popup:visible').boundingBox();
-    const trigger = await selector.boundingBox();
-    return !!menu && !!trigger && (menu.y >= trigger.y + trigger.height || menu.y + menu.height <= trigger.y)
-      && menu.y >= 0 && menu.y + menu.height <= page.viewportSize()!.height;
-  }).toBe(true);
-  await page.getByRole('option', { name: /版本 1/ }).click();
-  await expect(page.getByLabel('正文', { exact: true })).toHaveValue(draft.text);
-  await expect(page.getByRole('button', { name: '版本操作', exact: true })).toHaveCount(0);
-  // 工具栏只放导出和“音频操作”菜单，删除单独分组；“保存为角色”保存的是右侧面板的设置，放在角色选择里。
+  await expect.poll(() => page.locator('footer audio').evaluate((audio: HTMLAudioElement) => audio.duration)).toBe(1);
+  // 工具栏放导出、历史生成和“音频操作”菜单；删除只在历史页；“保存为角色”在右侧角色选择里。
   const transport = page.locator('.player .transport');
   await expect(transport.getByRole('button', { name: '导出音频', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: '保存为角色', exact: true })).toHaveCount(0);
   await transport.getByRole('button', { name: '音频操作', exact: true }).click();
-  await expect(page.getByRole('menuitem')).toHaveText(['保存为参考音频', '打开音频位置', '删除版本 1']);
+  await expect(page.getByRole('menuitem')).toHaveText(['保存为参考音频', '打开音频位置']);
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('radio', { name: '文字指导', exact: true })).toBeChecked();
-  await expect(page.getByRole('combobox', { name: '模型', exact: true })).toContainText('IndexTTS 2.5');
-  await expect.poll(() => page.locator('footer audio').evaluate((audio: HTMLAudioElement) => audio.duration)).toBe(1);
-  await selector.click(); await page.getByRole('option', { name: /版本 2/ }).click();
+
+  // 历史生成汇总所有语音作品的结果，不分版本；改过名的显示名称，其余显示正文。
+  await openProjectHistory(page);
+  await expect(page.getByRole('heading', { name: '历史生成', exact: true })).toBeVisible();
+  const rows = page.locator('.history-item');
+  await expect(rows.locator('h3')).toHaveText(['新版正文', '旧版正文', '其他作品']);
+  await expect(rows.locator('.history-meta').filter({ hasText: '版本' })).toHaveCount(0);
+  await page.getByRole('button', { name: `试听${draft.title}`, exact: true }).nth(1).click();
+  await expect(rows.nth(1).locator('audio')).toHaveCount(1);
+  await rows.first().getByRole('button', { name: `删除音频${draft.title}`, exact: true }).click();
+  await page.getByRole('button', { name: '取消', exact: true }).click();
+  await expect(rows).toHaveCount(3);
+  await rows.first().getByRole('button', { name: `删除音频${draft.title}`, exact: true }).click();
+  await page.getByRole('button', { name: '删除音频', exact: true }).click();
+  await expect(rows).toHaveCount(2);
+  await expect(page.locator('.history-item audio')).toHaveCount(0);
+
+  // 返回作品：试听和删除都不改正文与参数。
+  await page.getByRole('button', { name: '返回', exact: true }).click();
   await expect(page.getByLabel('正文', { exact: true })).toHaveValue(draft.text);
   await expect(page.getByRole('radio', { name: '文字指导', exact: true })).toBeChecked();
-  await page.locator('.recent-projects .project-link').first().click();
-  await openProjectHistory(page);
-  await page.getByRole('button', { name: `删除音频${draft.title}`, exact: true }).first().click();
-  await page.getByRole('button', { name: '取消', exact: true }).click();
-  await expect(page.locator('.history-item')).toHaveCount(2);
-  await page.getByRole('button', { name: `试听${draft.title}`, exact: true }).first().click();
-  await page.getByRole('button', { name: `删除音频${draft.title}`, exact: true }).first().click();
-  await page.getByRole('button', { name: '删除音频', exact: true }).click();
-  await expect(page.locator('.history-item')).toHaveCount(1);
-  await expect(page.locator('.history-item audio')).toHaveCount(0);
-  await page.locator('.recent-projects .project-link').first().click();
-  await expect(selector).toContainText('版本 1');
+  await expect(page.getByRole('combobox', { name: '模型', exact: true })).toContainText('IndexTTS 2.5');
   await page.reload();
-  await expect(selector).toContainText('版本 1');
+  await expect(transport.getByRole('button', { name: '导出音频', exact: true })).toBeVisible();
+  // 新建的语音作品没有自己的音频，但仍能从工具栏查看历史生成。
   await page.getByTestId('nav-new').click();
   await page.getByRole('menuitem', { name: '语音生成', exact: true }).click();
-  await expect(selector).toHaveCount(0);
   await expect(page.getByRole('button', { name: '播放', exact: true })).toBeDisabled();
+  await expect(transport.getByRole('button', { name: '导出音频', exact: true })).toHaveCount(0);
+  await expect(transport.getByRole('button', { name: '历史生成', exact: true })).toBeVisible();
 });
 
 
@@ -360,7 +353,7 @@ test('作品音频读不到时播放器直接显示不可用，不主动弹出�
     });
   });
   await seedState(page, state); await page.reload();
-  await expect(page.getByRole('combobox', { name: '当前作品历史' })).toContainText('版本 1');
+  await expect(page.locator('.player .transport').getByRole('button', { name: '历史生成', exact: true })).toBeVisible();
   await expect(page.locator('.player .waveform-unavailable')).toHaveText('音频文件不存在或无法读取');
   await expect(page.locator('.player').getByRole('button', { name: '播放', exact: true })).toBeDisabled();
   await expect(page.getByRole('alert')).toHaveCount(0);
