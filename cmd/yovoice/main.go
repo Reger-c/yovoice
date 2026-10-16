@@ -34,7 +34,6 @@ const usage = `yovoice：独立本地语音生成，无需桌面 App。
   yovoice setup [--backend metal|cpu|vulkan|cuda|cuda13]
   yovoice models list
   yovoice models download MODEL [--source modelscope|huggingface|mirror]
-  yovoice models import FILE
   yovoice voices list
   yovoice voices import FILE [--name NAME]
   yovoice generate --text-file FILE --reference AUDIO --output WAV
@@ -96,7 +95,7 @@ func run(ctx context.Context, args []string, out, progress io.Writer) error {
 		}
 	}
 	switch command {
-	case "serve", "mcp", "status", "setup", "models list", "models download", "models import", "voices list", "voices import", "generate":
+	case "serve", "mcp", "status", "setup", "models list", "models download", "voices list", "voices import", "generate":
 	default:
 		return fmt.Errorf("未知命令 %q；使用 --help 查看用法", command)
 	}
@@ -189,7 +188,7 @@ func run(ctx context.Context, args []string, out, progress io.Writer) error {
 	if fs.NArg() != 0 {
 		return fmt.Errorf("多余参数：%s", strings.Join(fs.Args(), " "))
 	}
-	if (command == "models download" || command == "models import" || command == "voices import") && operand == "" {
+	if (command == "models download" || command == "voices import") && operand == "" {
 		return fmt.Errorf("缺少模型 ID 或文件路径")
 	}
 	if command == "generate" {
@@ -399,9 +398,6 @@ func run(ctx context.Context, args []string, out, progress io.Writer) error {
 		result = w.Store.Read().Voices
 	case "voices import":
 		result, err = w.ImportVoice(ctx, operand, name)
-	case "models import":
-		err = waitModel(func() error { return w.ImportModel(operand) })
-		result = w.Store.Read().Models
 	case "setup":
 		p := w.Store.Read().Preferences
 		p.Backend = backend

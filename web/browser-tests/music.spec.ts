@@ -50,8 +50,12 @@ test('新建音乐作品：示例、风格标签、段落标记、纯音乐与�
   expect(saved.lyrics).toContain('[bridge]');
   await expect(page.getByRole('radio', { name: '纯音乐' })).toBeChecked();
 
-  // 未安装模型时生成会打开模型设置；配音作品的模型列表不包含音乐模型。
+  // 未安装模型时生成不再跳到设置页：准备清单就地提示下载模型和推理引擎，“换一个”打开模型设置；配音作品的模型列表不包含音乐模型。
   await page.getByRole('button', { name: '生成歌曲', exact: true }).click();
+  const setup = page.locator('.setup-checklist');
+  await expect(setup).toHaveAttribute('data-attention', 'true');
+  await expect(setup.getByRole('listitem')).toHaveText([/下载模型/, /安装推理引擎/]);
+  await setup.getByRole('button', { name: '换一个', exact: true }).click();
   await expect(page.getByRole('tab', { name: '模型', selected: true })).toBeVisible();
   await page.getByTestId('nav-music').click();
   await expect(page.locator('.project-library-row:visible .record-cover')).toHaveCount(1);
@@ -85,42 +89,61 @@ test('选中 YuE2：隐藏时长与纯音乐，长度由歌词决定', async ({ 
   await page.screenshot({ path: testInfo.outputPath('music-yue2.png') });
 });
 
-test('删除音乐历史版本：确认后移除，删当前版本自动切到相邻版本', async ({ page }) => {
+test('音乐历史版本：工具栏进入历史页，播放页、复用和删除都在这里', async ({ page }) => {
   const draft = { ...createMusicDraft('zh-CN'), id: 'e'.repeat(32) };
   const state = emptyState();
   state.drafts = [draft];
-  const take = (id: string, hour: number) => ({ id, title: draft.title, fileName: `${id}.wav`, createdAt: `2026-09-15T${String(hour).padStart(2, '0')}:00:00Z`, duration: 1, settings: { ...draft } });
-  state.history = [take('v3', 12), take('v2', 11), take('v1', 10)];
+  const take = (id: string, hour: number, lyrics: string) => ({ id, title: draft.title, fileName: `${id}.wav`, createdAt: `2026-09-15T${String(hour).padStart(2, '0')}:00:00Z`, duration: 30, settings: { ...draft, text: `style ${id}`, lyrics } });
+  state.history = [take('v3', 12, '[verse]\n第三版的歌词'), take('v2', 11, '[verse]\n第二版的第一句\n第二版的第二句'), take('v1', 10, '[verse]\n第一版的歌词')];
   await page.addInitScript(value => { if (!localStorage.getItem('voice-workbench-v1')) localStorage.setItem('voice-workbench-v1', value); }, JSON.stringify(state));
   await page.goto('/');
-  const rows = page.locator('.music-take-row');
+  // 编辑区不再有版本列表；播放器工具栏只放导出、播放页和历史版本入口。
+  await expect(page.locator('.music-take-row')).toHaveCount(0);
+  const transport = page.locator('.player .transport');
+  await expect(transport.getByRole('button', { name: '导出音频', exact: true })).toBeVisible();
+  await expect(transport.getByRole('button', { name: '播放页', exact: true })).toBeVisible();
+  await transport.getByRole('button', { name: '历史版本', exact: true }).click();
+  await expect(page.getByRole('heading', { name: `${draft.title} · 历史版本` })).toBeVisible();
+  const rows = page.locator('.history-item');
   await expect(rows).toHaveCount(3);
-  await expect(rows.first()).toHaveAttribute('data-current', 'true');
+  await expect(rows.locator('.history-meta small:first-child')).toHaveText(['版本 3', '版本 2', '版本 1']);
 
-  // 删除非当前版本：取消不删，确认后列表减少，当前版本保持不变。
-  await page.getByRole('button', { name: '删除版本 1', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: '删除版本 1？' });
+  // 播放页：滚动歌词按段落估算时间，器乐间隔显示为省略号，关闭后回到历史页。
+  await rows.nth(1).getByRole('button', { name: '在播放页打开 style v2', exact: true }).click();
+  const playing = page.getByRole('dialog', { name: `${draft.title} · 播放页` });
+  await expect(playing).toBeVisible();
+  await expect(playing.getByRole('list', { name: '歌词' }).getByRole('listitem')).toHaveText(['• • •', '第二版的第一句', '第二版的第二句']);
+  await expect(playing.getByText('歌词时间按歌曲时长估算')).toBeVisible();
+  await playing.getByRole('button', { name: '关闭播放页', exact: true }).click();
+  await expect(playing).toHaveCount(0);
+  await expect(rows).toHaveCount(3);
+
+  // 复用这一版：风格和歌词写回当前作品，回到创作页。
+  await rows.nth(1).getByRole('button', { name: '音频操作', exact: true }).click();
+  await expect(page.getByRole('menuitem')).toHaveText(['导出音频', '复用这一版的风格和歌词']);
+  await page.getByRole('menuitem', { name: '复用这一版的风格和歌词', exact: true }).click();
+  await expect(page.getByLabel('风格', { exact: true })).toHaveValue('style v2');
+  await expect(page.getByLabel('歌词', { exact: true })).toHaveValue(/第二版的第一句/);
+
+  // 删除只在历史页：取消不删，确认后列表减少。
+  await transport.getByRole('button', { name: '历史版本', exact: true }).click();
+  await rows.nth(2).getByRole('button', { name: `删除音频${draft.title}`, exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: '删除这条音频？' });
   await expect(dialog).toBeVisible();
   await dialog.getByRole('button', { name: '取消', exact: true }).click();
   await expect(rows).toHaveCount(3);
-  await page.getByRole('button', { name: '删除版本 1', exact: true }).click();
-  await page.getByRole('dialog').getByRole('button', { name: '删除版本', exact: true }).click();
+  await rows.nth(2).getByRole('button', { name: `删除音频${draft.title}`, exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: '删除音频', exact: true }).click();
   await expect(rows).toHaveCount(2);
-  await expect(rows.first()).toHaveAttribute('data-current', 'true');
-
-  // 删除最新版本：较早的版本不会被误当成新生成，但会作为相邻版本自动选中。
-  await page.locator('.music-take-row').nth(1).getByRole('button', { name: '版本 1', exact: true }).click();
-  await expect(rows.nth(1)).toHaveAttribute('data-current', 'true');
-  await page.getByRole('button', { name: '删除版本 2', exact: true }).click();
-  await page.getByRole('dialog').getByRole('button', { name: '删除版本', exact: true }).click();
-  await expect(rows).toHaveCount(1);
-  await expect(rows.first()).toHaveAttribute('data-current', 'true');
-
-  // 播放器旁的历史选择器也能删除当前版本，删完列表清空。
-  await page.locator('.player-history').getByRole('button', { name: '删除版本 1', exact: true }).click();
-  await page.getByRole('dialog').getByRole('button', { name: '删除版本', exact: true }).click();
-  await expect(rows).toHaveCount(0);
-  await expect(page.getByText('每次生成都会在这里留下一个版本', { exact: false })).toBeVisible();
+  await expect(rows.locator('.history-meta small:first-child')).toHaveText(['版本 2', '版本 1']);
+  for (let n = 2; n > 0; n--) {
+    await rows.first().getByRole('button', { name: `删除音频${draft.title}`, exact: true }).click();
+    await page.getByRole('dialog').getByRole('button', { name: '删除音频', exact: true }).click();
+    await expect(rows).toHaveCount(n - 1);
+  }
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('voice-workbench-v1')!).history);
   expect(saved).toEqual([]);
+  // 版本删完后工具栏不再显示历史版本入口。
+  await page.getByRole('button', { name: '返回', exact: true }).click();
+  await expect(transport.getByRole('button', { name: '历史版本', exact: true })).toHaveCount(0);
 });

@@ -41,13 +41,7 @@ yovoice models download index-2.5-q8
 
 GPU backends require compatible hardware and drivers. Run `setup` again to switch backends.
 
-Model downloads use ModelScope by default. Add `--source huggingface` or `--source mirror` to change the source. Downloads resume after interruption and are verified automatically. To register an existing supported GGUF file:
-
-```sh
-yovoice models import /absolute/path/model.gguf
-```
-
-Only model packages recognized by yovoice are accepted. See [model selection](models.md) for input requirements and examples.
+Model downloads use ModelScope by default. Add `--source huggingface` or `--source mirror` to change the source. Downloads resume after interruption and are verified automatically. Only the model packages listed by yovoice can be installed; see [model selection](models.md) for input requirements and examples.
 
 ## Generate speech
 

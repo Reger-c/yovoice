@@ -165,6 +165,7 @@
   .multitrack-label { width: var(--audio-label-width); flex-shrink: 0; padding: var(--spacing-0-5) var(--spacing-2); position: sticky; left: 0; background: var(--color-background-surface); z-index: 2; border-right: var(--border-width) solid var(--color-border); }
   .multitrack-ruler-row { height: var(--audio-ruler-height); flex-shrink: 0; align-items: center; }
   .multitrack-ruler-row .multitrack-label { padding-block: 0; text-align: center; }
+  .multitrack-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--app-ink); }
   .multitrack-ruler { position: relative; flex: 1; min-width: 0; align-self: stretch; justify-content: center; }
   .multitrack-ruler small { height: var(--spacing-4); border-left: var(--border-width) solid var(--app-line); padding-left: var(--spacing-1); font-size: var(--font-size-xs); font-variant-numeric: tabular-nums; }
   .multitrack-scroll { background: var(--app-surface); }
@@ -217,7 +218,6 @@
   .player audio { display: none; }
   .player.player-single { height: auto; }
   .player.player-single .timeline { flex: none; min-height: calc(var(--audio-ruler-height) + var(--audio-row-height)); }
-  .player-lane-actions { padding-top: 0; position: sticky; left: 0; flex-shrink: 0; }
   .multitrack > .transport { border-bottom: var(--border-width) solid var(--app-line); }
   .transport { flex-shrink: 0; position: relative; min-height: var(--spacing-9); width: 100%; padding-inline: var(--spacing-3); }
   .transport-time { font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; color: var(--app-ink); }
@@ -234,15 +234,13 @@
   .volume-control input::-webkit-slider-thumb { appearance: none; width: var(--spacing-3); height: var(--spacing-3); border: 2px solid var(--app-ink); border-radius: var(--radius-full); background: var(--app-white); }
   .volume-control input:focus-visible { outline: 2px solid var(--app-wave); outline-offset: var(--spacing-1); }
   .timeline { flex: 1; min-height: 0; overflow: auto; width: 100%; border-top: 1px solid var(--app-line); }
-  .player-history { width: var(--audio-label-width); flex-shrink: 0; border-right: var(--border-width) solid var(--app-line); padding-top: var(--audio-ruler-height); }
-  .player-version-row { height: var(--audio-row-height); flex-shrink: 0; }
-  .player-version-row > * { width: 100%; min-width: 0; }
-  .player-history > * { min-width: 0; }
-  [popover]:has(.history-version-date) { min-width: calc(var(--spacing-8) * 6); }
-  .history-version-date { white-space: nowrap; color: var(--app-muted); font-size: var(--app-small-font); font-variant-numeric: tabular-nums; }
   .timeline-lane { flex: 1; min-width: 0; overflow-x: auto; padding: 0; background: var(--app-surface); }
   .timeline-content { flex-shrink: 0; min-width: 100%; }
-  @media (max-width: 1100px) { .transport { flex-wrap: wrap; } .transport-controls { position: static; transform: none; margin-left: auto; } .transport-end { width: 100%; justify-content: flex-end; padding-bottom: var(--spacing-2); } }
+  /* 播放器按自身宽度收拢：先收起音量滑杆（保留静音按钮），仍放不下时工具组才自然换行，不再在窄窗口强制折成两行挤占波形。 */
+  .player { container-type: inline-size; }
+  @container (max-width: 44rem) { .player .volume-control input { display: none; } }
+  /* 再窄时“播放页”“历史”只留图标，悬停显示名称。 */
+  @container (max-width: 60rem) { .player .player-tool.astryx-button { font-size: 0; gap: 0; } }
   .time-ruler { position: relative; height: var(--audio-ruler-height); flex-shrink: 0; }
   .time-ruler small { position: absolute; top: 0; height: var(--spacing-4); border-left: 1px solid var(--app-line); padding-left: var(--spacing-1); font-size: var(--font-size-xs); font-variant-numeric: tabular-nums; }
   .waveform { width: 100%; position: relative; height: var(--spacing-10); margin-block: var(--spacing-1); flex-shrink: 0; background: color-mix(in srgb, var(--app-wave) 12%, var(--app-white)); border: 1px solid color-mix(in srgb, var(--app-wave) 25%, var(--app-white)); border-radius: var(--radius-element); }
@@ -410,7 +408,7 @@
       z-index: 10;
     }
   }
-  @media (max-width: 1190px) { :root { --app-nav: calc(var(--spacing-10) * 4.5); --app-inspector: calc(var(--spacing-8) * 11); --app-editor-font: var(--font-size-lg); --app-title-font: var(--font-size-3xl); } .player { gap: var(--spacing-3); } }
+  @media (max-width: 1190px) { :root { --app-nav: calc(var(--spacing-10) * 4.5); --app-inspector: calc(var(--spacing-8) * 11); --app-editor-font: var(--font-size-lg); --app-title-font: var(--font-size-3xl); } }
   @media (max-width: 900px) { :root { --app-nav: calc(var(--spacing-10) * 4); --app-inspector: calc(var(--spacing-8) * 11); } .sidebar { padding-inline: var(--spacing-2); } .settings-page,.library-page { padding: var(--spacing-5) var(--spacing-6) var(--spacing-6); } }
   @media (max-width: 600px) { :root { --app-nav: calc(var(--spacing-8) * 2); --app-player: calc(var(--spacing-9) * 2); --app-title-font: var(--font-size-3xl); --app-editor-font: var(--font-size-lg); } .nav-item { font-size: 0; justify-content: center; padding: var(--spacing-2); gap: 0; } .new-project { font-size: 0; gap: 0; padding: var(--spacing-2); } .recent-projects { display: none; } .writing { min-height: calc(var(--spacing-10) * 14); padding-top: var(--spacing-5); } .sidebar { padding-bottom: var(--spacing-2); } .audio-panel { margin: var(--spacing-2); } .play-main { min-width: var(--spacing-10); min-height: var(--spacing-10); } .volume-control input { display: none; } .timeline .transport { min-height: var(--spacing-12); } .transport-time { font-size: var(--font-size-xs); } .transport { padding-inline: var(--spacing-2); } .time-ruler small:nth-child(even) { visibility: hidden; } .settings-page,.library-page { padding: var(--spacing-5); } }
   @media (max-width: 600px) {
@@ -425,29 +423,13 @@
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
   @media (forced-colors: active) { .waveform line { stroke: CanvasText; } .astryx-button { border: 1px solid ButtonText; } }
   .character-editor { width: 100%; height: 100%; min-height: 0; }
-  /* 音乐作品：创作区可滚动，版本封面是页面唯一的强调色块。 */
+  /* 音乐作品：创作区可滚动；版本在“版本记录”里，播放页使用版本封面。 */
   .music-editor { flex: 1; min-height: 0; overflow-y: auto; padding-block: var(--spacing-4) var(--spacing-6); }
   .music-editor h2 { font-size: var(--app-ui-font); }
   .music-style textarea { font-size: calc(var(--app-ui-font) + var(--spacing-0-5)); }
   .music-tag-group { min-width: var(--spacing-10); }
   .music-tag.astryx-button { border-radius: var(--radius-full); }
-  .music-instrumental, .music-empty { padding: var(--spacing-4); border-radius: var(--radius-container); background: var(--app-surface); color: var(--app-muted); line-height: 1.8; }
-  /* 版本列表参照 remiqora：一行一个版本，封面缩略图 + 标题与时间 + 风格标签 + 时长，右侧是复用参数。 */
-  .music-takes { border: var(--border-width) solid var(--app-line); border-radius: var(--radius-container); overflow: hidden; }
-  .music-take-row { padding-inline-end: var(--spacing-2); transition: background var(--duration-fast) var(--ease-standard); }
-  .music-take-row + .music-take-row { border-top: var(--border-width) solid var(--app-line); }
-  .music-take-row:hover { background: color-mix(in srgb, var(--app-surface) 60%, transparent); }
-  .music-take-row[data-current="true"] { background: var(--app-surface); }
-  .music-take.astryx-button { min-width: 0; height: auto; padding: var(--spacing-2); border-radius: 0; justify-content: flex-start; text-align: left; white-space: normal; background: transparent; }
-  .music-take.astryx-button > * > * { flex: 1 1 auto; min-width: 0; }
-  .music-take-cover { position: relative; flex: none; width: var(--spacing-12); height: var(--spacing-12); }
-  .music-take-cover .song-cover { position: absolute; inset: 0; width: 100%; border-radius: var(--radius-element); }
-  .music-take-state { position: relative; color: var(--app-white); opacity: 0; transition: opacity var(--duration-fast) var(--ease-standard); }
-  .music-take:hover .music-take-state, .music-take[aria-current="true"] .music-take-state { opacity: 1; }
-  .music-take-text { min-width: 0; }
-  .music-take-date { color: var(--app-muted); font-variant-numeric: tabular-nums; }
-  .music-take-tags { min-width: 0; overflow: hidden; flex-wrap: nowrap; color: var(--app-muted); }
-  .music-take-tags > * { flex: none; }
+  .music-instrumental { padding: var(--spacing-4); border-radius: var(--radius-container); background: var(--app-surface); color: var(--app-muted); line-height: 1.8; }
   .song-cover { display: block; width: 100%; max-width: 100%; height: auto; aspect-ratio: 1; border-radius: var(--radius-container); background: var(--app-ink); }
   .project-avatars .song-cover { width: var(--spacing-10); border-radius: var(--radius-element); }
   /* 编曲作品：音块总览用深底发光块呈现每个声部，声部表按角色色点区分。 */
@@ -459,7 +441,6 @@
   .score-section-row { padding: var(--spacing-2) var(--spacing-3); }
   .score-section-row + .score-section-row { border-top: var(--border-width) solid var(--app-line); }
   .score-section-time { color: var(--app-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .music-take-duration { flex: none; color: var(--app-muted); font-family: var(--app-mono); font-variant-numeric: tabular-nums; }
   /* 设置页：每组一张白卡片，行高、内边距和字号统一；标题与说明左对齐，控件右对齐。 */
   .settings-panel { width: 100%; padding-block: 0 var(--spacing-8); }
   .settings-intro { color: var(--app-muted); }
@@ -766,4 +747,54 @@
     .ai-composer, .ai-composer-body, .score-track { animation: none; }
     .ai-composer[data-status="running"]::after { animation: none; opacity: .5; width: 100%; }
   }
+}
+
+@layer app {
+  /* 生成前的准备清单：创作区顶部一张卡片，三步横排、窄时换行；点生成但还没就绪时描边提示一下。 */
+  .setup-checklist { flex-shrink: 0; margin-bottom: var(--spacing-4); transition: box-shadow var(--duration-slow) var(--ease-standard); }
+  .setup-checklist[data-attention="true"] { box-shadow: 0 0 0 var(--spacing-0-5) var(--app-accent); }
+  .setup-title { font-size: var(--app-ui-font); font-weight: var(--font-weight-semibold); }
+  .setup-hint, .setup-step-detail { color: var(--app-muted); }
+  .setup-step { flex-basis: 0; min-width: calc(var(--spacing-10) * 4); }
+  .setup-step-icon { flex: none; margin-top: var(--spacing-0-5); color: var(--app-muted); }
+  .setup-step[data-done="true"] .setup-step-icon { color: var(--color-icon-green); }
+  .setup-step[data-done="true"] b { color: var(--app-muted); font-weight: var(--font-weight-normal); }
+  .setup-step progress { width: 100%; }
+
+  /* 音乐播放页：全屏深色舞台，背景取封面的两种颜色缓慢流动并随响度起伏；左侧封面与控制，右侧滚动歌词。 */
+  .now-playing { --now-playing-level: 0; --now-playing-ink: hsl(var(--now-playing-hue) 25% 96%); position: relative; width: 100%; height: 100dvh; overflow: hidden; isolation: isolate; color: var(--now-playing-ink);
+    background: radial-gradient(120% 90% at 15% 20%, hsl(var(--now-playing-hue) 45% 24%), transparent 60%), radial-gradient(110% 90% at 85% 80%, hsl(var(--now-playing-accent) 45% 20%), transparent 60%), hsl(var(--now-playing-hue) 30% 7%); }
+  .now-playing::before, .now-playing::after { content: ""; position: absolute; z-index: -1; width: 70vmax; height: 70vmax; border-radius: var(--radius-full); filter: blur(10vmax); opacity: calc(.3 + var(--now-playing-level) * .35); animation: now-playing-drift 28s ease-in-out infinite alternate; }
+  .now-playing::before { left: -15vmax; top: -20vmax; background: hsl(var(--now-playing-hue) 50% 34%); }
+  .now-playing::after { right: -20vmax; bottom: -25vmax; background: hsl(var(--now-playing-accent) 50% 30%); animation-delay: -14s; animation-direction: alternate-reverse; }
+  @keyframes now-playing-drift { from { transform: translate(0, 0) scale(1); } to { transform: translate(12vmax, 8vmax) scale(1.15); } }
+  .now-playing .astryx-button { color: inherit; }
+  .now-playing-bar { position: absolute; top: var(--spacing-4); right: var(--spacing-4); z-index: 1; }
+  .now-playing-chrome { transition: opacity var(--duration-slow) var(--ease-standard); }
+  .now-playing[data-idle="true"] { cursor: none; }
+  .now-playing[data-idle="true"] .now-playing-chrome { opacity: 0; pointer-events: none; }
+  .now-playing-stage { flex: 1; min-height: 0; padding: var(--spacing-12) clamp(var(--spacing-6), 6vw, calc(var(--spacing-12) * 3)); column-gap: clamp(var(--spacing-8), 6vw, calc(var(--spacing-12) * 2)); }
+  .now-playing-solo { justify-content: center; }
+  .now-playing-side { flex: none; width: min(46vh, 32vw); }
+  .now-playing-art { transform: scale(calc(1 + var(--now-playing-level) * .025)); transition: transform var(--duration-fast) linear; }
+  .now-playing[data-playing="false"] .now-playing-art { transform: scale(.94); transition-duration: var(--duration-slow); }
+  .now-playing-art .song-cover { box-shadow: 0 var(--spacing-6) var(--spacing-12) hsl(var(--now-playing-hue) 40% 4% / 60%); }
+  .now-playing-title, .now-playing-line { color: var(--now-playing-ink); }
+  .now-playing-title { font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); line-height: 1.25; overflow-wrap: anywhere; }
+  .now-playing-tags, .now-playing-times, .now-playing-note { color: color-mix(in srgb, var(--now-playing-ink) 62%, transparent); }
+  .now-playing-times { font-variant-numeric: tabular-nums; }
+  .now-playing-progress { width: 100%; height: var(--spacing-1); margin: 0; appearance: none; border-radius: var(--radius-full); cursor: pointer;
+    background: linear-gradient(to right, var(--now-playing-ink) var(--now-playing-progress), color-mix(in srgb, var(--now-playing-ink) 22%, transparent) 0); }
+  .now-playing-progress::-webkit-slider-thumb { appearance: none; width: var(--spacing-3); height: var(--spacing-3); border-radius: var(--radius-full); background: var(--now-playing-ink); }
+  .now-playing-toggle.astryx-button { width: var(--spacing-12); height: var(--spacing-12); }
+  .now-playing-lyrics { position: relative; flex: 1; min-width: 0; height: 100%; overflow-y: auto; padding-block: 40vh; mask-image: linear-gradient(transparent, black 22%, black 78%, transparent); }
+  .now-playing-line { margin: 0; padding-block: var(--spacing-2); font-size: clamp(var(--font-size-xl), 2.6vw, var(--font-size-4xl)); font-weight: var(--font-weight-bold); line-height: 1.35; cursor: pointer; opacity: .3; filter: blur(var(--spacing-0-5)); transform: scale(.94); transform-origin: left center;
+    transition: opacity var(--duration-slow) var(--ease-standard), filter var(--duration-slow) var(--ease-standard), transform var(--duration-slow) var(--ease-standard); }
+  .now-playing-line[data-state="past"] { opacity: .42; }
+  .now-playing-line[data-state="current"] { opacity: 1; filter: none; transform: none; }
+  .now-playing-line:hover { opacity: .8; filter: none; }
+  .now-playing-line[data-instrumental] { letter-spacing: .3em; }
+  .now-playing-note { position: absolute; left: var(--spacing-6); bottom: var(--spacing-4); }
+  @media (max-width: 760px) { .now-playing-stage { flex-direction: column; row-gap: var(--spacing-6); } .now-playing-side { width: min(70vw, 36vh); } }
+  @media (prefers-reduced-motion: reduce) { .now-playing::before, .now-playing::after { animation: none; } .now-playing-art, .now-playing[data-playing="false"] .now-playing-art { transform: none; } }
 }

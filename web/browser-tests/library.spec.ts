@@ -1,16 +1,16 @@
-import { openProjectHistory } from './project-actions';
+import { openProjectHistory, saveAsCharacter } from './project-actions';
 import { seedState } from './seed';
 import { test, expect } from '@playwright/test';
 import { emptyState } from '../src/shared/workbench';
 
 test('角色退出保存、无修改退出、另存为和应用保留正文', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: '保存为角色', exact: true }).click();
+  await saveAsCharacter(page);
   const dialog = page.getByTestId('character-editor');
   await dialog.getByRole('button', { name: '返回', exact: true }).click();
   await expect(dialog).toHaveCount(0);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('voice-workbench-v1') ?? '{}').characters ?? [])).toHaveLength(0);
-  await page.getByRole('button', { name: '保存为角色', exact: true }).click();
+  await saveAsCharacter(page);
   await dialog.getByLabel('角色名称').fill('温柔旁白');
   await dialog.getByLabel('试听台词').fill('这是一句试听台词。');
   await dialog.getByRole('button', { name: '保存角色', exact: true }).click();

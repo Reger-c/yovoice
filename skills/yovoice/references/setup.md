@@ -47,13 +47,7 @@ yovoice models download index-2.5-q8 --source mirror
 
 下载前说明所选模型大小、来源及模型使用协议，并遵循用户授权。下载支持断点续传并校验摘要；失败后可重复同一命令。不要同时在同一数据目录启动多个命令。
 
-已有兼容 GGUF 时直接登记，文件保持在原路径：
-
-```sh
-yovoice models import /absolute/index-tts2_5-q8_0.gguf
-```
-
-登记需要匹配目录中的已知模型及 SHA-256；不接受任意 GGUF。完成后用 `models list --json` 确认，不自行修改状态文件。
+模型只能通过 `models download` 安装，不支持导入本地 GGUF。完成后用 `models list --json` 确认，不自行修改状态文件。
 
 ## 音频转换器
 

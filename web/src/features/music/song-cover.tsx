@@ -7,11 +7,17 @@ function random(seed: string) {
   return () => (state = (state * 1664525 + 1013904223) >>> 0) / 4294967296;
 }
 
+// 封面的主色与强调色，播放页背景沿用同一组颜色。
+export function coverPalette(seed: string) {
+  const next = random(seed);
+  const hue = Math.floor(next() * 360), accent = (hue + 40 + next() * 120) % 360;
+  return { hue, accent, next };
+}
+
 export function drawCover(canvas: HTMLCanvasElement, seed: string, time = 0) {
   const context = canvas.getContext('2d');
   if (!context) return;
-  const next = random(seed); const { width, height } = canvas;
-  const hue = Math.floor(next() * 360), accent = (hue + 40 + next() * 120) % 360;
+  const { hue, accent, next } = coverPalette(seed); const { width, height } = canvas;
   const ground = context.createLinearGradient(0, 0, width, height);
   ground.addColorStop(0, `hsl(${hue} 30% 12%)`); ground.addColorStop(1, `hsl(${accent} 32% 26%)`);
   context.fillStyle = ground; context.fillRect(0, 0, width, height);

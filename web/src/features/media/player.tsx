@@ -2,8 +2,6 @@ import { PlaybackToolbar, TrackZoom } from './playback-toolbar';
 import { lazy, Suspense, useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@astryxdesign/core/Button';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
-import { ResizeHandle } from '@astryxdesign/core/Resizable';
-import { useAudioPanel } from './use-audio-panel';
 import { useTranslator } from '@astryxdesign/core/i18n';
 import { Play, Pause, Square, FolderOpen, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react';
 import { call, mediaUrl } from '../../shared/lib/client';
@@ -14,10 +12,9 @@ import type { Track } from '../../shared/workbench';
 // 头像素材仅在展示库列表时加载，避免进入创作首屏主包。
 const SeededAvatar = lazy(() => import('../../shared/ui/seeded-avatar').then(module => ({ default: module.SeededAvatar })));
 
-export function Player({ track, onError, suspended, compact = false, historyControl, actions, laneActions, avatar, inline, onProgress, seekRequest }: { onProgress?: (time: number, playing: boolean) => void; seekRequest?: { time: number; nonce: number }; inline?: { label: string; select: () => void }; avatar?: { seed: string; label: string; disabled?: boolean; select: () => void }; actions?: ReactNode; laneActions?: ReactNode; historyControl?: ReactNode; compact?: boolean; suspended: boolean; track: Track | null; onError: (message: string) => void }) {
+// reveal=false 时由调用方在自己的菜单里提供“打开音频位置”，工具栏不再单独放文件夹按钮。
+export function Player({ track, onError, suspended, compact = false, actions, avatar, inline, onProgress, seekRequest, reveal = true }: { reveal?: boolean; onProgress?: (time: number, playing: boolean) => void; seekRequest?: { time: number; nonce: number }; inline?: { label: string; select: () => void }; avatar?: { seed: string; label: string; disabled?: boolean; select: () => void }; actions?: ReactNode; compact?: boolean; suspended: boolean; track: Track | null; onError: (message: string) => void }) {
   const t = useTranslator();
-  const resizable = !compact && !avatar && !inline && !!laneActions;
-  const panel = useAudioPanel(!!track || !!historyControl, resizable ? 'audio-player-compact-height' : undefined);
   const audio = useRef<HTMLAudioElement>(null);
   const lane = useRef<HTMLElement>(null);
   const [zoom, setZoom] = useState(1);
@@ -152,8 +149,7 @@ export function Player({ track, onError, suspended, compact = false, historyCont
     <small className="preview-time">{formatTime(duration)}</small>
     <Button label={volume === 0 ? t('@yovoice.player.unmute') : t('@yovoice.player.mute')} isIconOnly icon={volume === 0 ? <VolumeX size={16} /> : <Volume2 size={16} />} size="sm" variant="ghost" onClick={() => { const next = volume === 0 ? 1 : 0; setVolume(next); if (audio.current) audio.current.volume = next; }} />
   </HStack>;
-  return <VStack as="footer" className={`player audio-panel ${resizable ? '' : 'player-single'}`.trim()} gap={0} style={resizable ? { height: panel.size } : undefined}>
-    {resizable ? <ResizeHandle label={t('@yovoice.timeline.resize')} direction="vertical" pillPlacement="center" isReversed resizable={panel.props} /> : null}
+  return <VStack as="footer" className="player audio-panel player-single" gap={0}>
     {media}
     <PlaybackToolbar time={time} duration={duration} playing={playing} disabled={!url || !!failure || suspended} toggle={toggle}
       beforePlay={<Button label={t('@yovoice.player.skipStart')} isIconOnly icon={<SkipBack size={16} />} size="sm" variant="ghost" isDisabled={!url || !!failure} onClick={() => seek(0)} />}
@@ -164,14 +160,10 @@ export function Player({ track, onError, suspended, compact = false, historyCont
         </HStack>
         <TrackZoom value={zoom} change={setZoom} disabled={!duration} />
         {actions}
-        {track?.kind === 'outputs' ? <Button label={t('@yovoice.player.reveal')} isIconOnly icon={<FolderOpen size={17} />} size="sm" variant="ghost" onClick={() => { void call('media.reveal', { kind: track.kind, id: track.id }).catch(e => onError(noticeMessage(e))); }} /> : null}
+        {reveal && track?.kind === 'outputs' ? <Button label={t('@yovoice.player.reveal')} isIconOnly icon={<FolderOpen size={17} />} size="sm" variant="ghost" onClick={() => { void call('media.reveal', { kind: track.kind, id: track.id }).catch(e => onError(noticeMessage(e))); }} /> : null}
 
     </PlaybackToolbar>
     <HStack className="timeline" gap={0}>
-      {historyControl || laneActions ? <VStack className="player-history" gap={0}>
-        {historyControl ? <HStack className="player-version-row" gap={0} vAlign="center" paddingInline={2}>{historyControl}</HStack> : null}
-        {laneActions ? <HStack className="player-lane-actions" gap={0} paddingInline={2}>{laneActions}</HStack> : null}
-      </VStack> : null}
       <VStack className="timeline-lane" ref={lane} gap={0}>
         <VStack className="timeline-content" gap={0} style={{ width: `${zoom * 100}%` }}>
         <HStack className="time-ruler" aria-hidden="true">{ticks.map(tick => <small key={tick} style={{ left: `${tick / scale * 100}%` }}>{Number(tick.toFixed(2))}s</small>)}</HStack>

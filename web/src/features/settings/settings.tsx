@@ -7,9 +7,9 @@ import { Selector } from '../../shared/selector';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { Switch } from '@astryxdesign/core/Switch';
 import { useTranslator } from '@astryxdesign/core/i18n';
-import { FolderOpen, FolderCog, FilePlus, ArrowUpRight } from 'lucide-react';
+import { FolderOpen, FolderCog, ArrowUpRight } from 'lucide-react';
 import { call, isMac } from '../../shared/lib/client';
-import { aiTimeoutDefault, runtimeStatus, type EngineInfo, type ModelPackage, type State, type Draft, type UiLocale } from '../../shared/workbench';
+import { runtimeStatus, type EngineInfo, type ModelPackage, type State, type Draft, type UiLocale } from '../../shared/workbench';
 import { CallError } from '../../shared/lib/call-error';
 import { AISettings } from './ai-settings';
 import { ModelGroups } from './model-list';
@@ -18,9 +18,6 @@ import { overflowTitle } from '../../shared/ui/overflow-title';
 import { UpdateSettings } from '../update/update-settings';
 import { LocalAPISettings } from './local-api-settings';
 import { StorageSettings } from './storage-settings';
-
-// AI 请求超时的可选值（秒）。
-const aiTimeouts = [60, 120, 300, 600, 1200, 1800];
 
 export function Settings({ state, catalog, engine, draft, run, focus }: { focus?: { tab: string; modelId: string; request: number }; state: State; catalog: ModelPackage[]; engine: EngineInfo; draft: Draft; run: (task: () => Promise<unknown>) => void }) {
   const t = useTranslator();
@@ -72,13 +69,6 @@ export function Settings({ state, catalog, engine, draft, run, focus }: { focus?
         </SettingsRow>
       </SettingsGroup>
       <StorageSettings state={state} run={run} busy={busy || modelBusy} />
-      <SettingsGroup title={t('@yovoice.settings.aiGroup')}>
-        <SettingsRow label={t('@yovoice.settings.aiTimeout')} hint={t('@yovoice.settings.aiTimeoutHint')}>
-          <Selector size="sm" label={t('@yovoice.settings.aiTimeout')} isLabelHidden value={String(preferences.aiTimeout || aiTimeoutDefault)} width="calc(var(--spacing-10) * 5)"
-            options={aiTimeouts.map(seconds => ({ value: String(seconds), label: t(seconds === aiTimeoutDefault ? '@yovoice.settings.minutesDefault' : '@yovoice.settings.minutes', { n: seconds / 60 }) }))}
-            onChange={value => run(() => call('preferences.save', { ...preferences, aiTimeout: Number(value) === aiTimeoutDefault ? undefined : Number(value) }))} />
-        </SettingsRow>
-      </SettingsGroup>
       <LocalAPISettings run={run} />
       <SettingsGroup title={t('@yovoice.settings.diagnosticsGroup')}>
         <SettingsRow label={t('@yovoice.settings.diagnostics')} hint={t('@yovoice.settings.diagnosticsHint')}>
@@ -93,9 +83,6 @@ export function Settings({ state, catalog, engine, draft, run, focus }: { focus?
         <SettingsRow className="settings-directory" label={t('@yovoice.settings.modelDirectory')} hint={<span className="model-path" onPointerEnter={overflowTitle}>{preferences.modelDirectory ?? t('@yovoice.settings.defaultDirectory')}</span>}>
           <Button size="sm" label={t('@yovoice.settings.changeLocation')} icon={<FolderCog size={16} />} isDisabled={modelBusy} onClick={() => run(() => call('model.directory'))} />
           <Button size="sm" label={t('@yovoice.settings.openFolder')} icon={<FolderOpen size={16} />} onClick={() => run(() => call('model.directory.open'))} />
-        </SettingsRow>
-        <SettingsRow label={t('@yovoice.settings.importLocal')} hint={t('@yovoice.settings.importLocalHint')}>
-          <Button size="sm" label={t('@yovoice.settings.importGguf')} icon={<FilePlus size={16} />} isDisabled={modelBusy} onClick={() => run(() => call('model.import'))} />
         </SettingsRow>
       </SettingsGroup>
       <ModelGroups models={catalog.filter(model => model.family !== 'soundfont')} state={state} draft={draft} run={run} />
