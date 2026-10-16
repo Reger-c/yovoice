@@ -1,17 +1,22 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useEffectEvent, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Button } from '@astryxdesign/core/Button';
 import { Dialog } from '@astryxdesign/core/Dialog';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { useTranslator } from '@astryxdesign/core/i18n';
-import { Maximize, Minimize, Pause, Play, SkipBack, X } from 'lucide-react';
-import { mediaUrl } from '../../shared/lib/client';
+import { ArrowDown, ChevronDown, FastForward, Maximize, Minimize, Pause, Play, Rewind } from 'lucide-react';
+import { call, mediaUrl } from '../../shared/lib/client';
+import { noticeMessage } from '../../shared/lib/call-error';
 import { formatTime, type Generation } from '../../shared/workbench';
-import { activeLyric, lyricTimeline } from './lyric-timing';
+import { activeLyric, lyricRows, lyricTimeline, type LyricLine } from './lyric-timing';
 import { splitTags } from './music-draft';
 import { coverPalette, SongCover } from './song-cover';
 
 // 包络的时间分辨率（秒）：封面与背景随响度起伏。
 const envelopeStep = 0.05;
+// 快退、快进的步长（秒）。
+const skipStep = 10;
+// 校准时撤销一行后往回退的秒数，方便重新听到这一句的开头。
+const undoRewind = 3;
 
 // 读取整首音频，算出每 50ms 的响度（0~1），只用于动效，失败时不起伏。
 async function loudness(url: string) {
@@ -30,7 +35,10 @@ async function loudness(url: string) {
   } catch { return []; } finally { await context.close(); }
 }
 
+const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 // 音乐播放页：仿 Apple Music 的全屏播放，左侧封面与播放控制，右侧滚动歌词；方便录屏，静置时自动隐藏控件和鼠标。
+// 歌词时间默认按时长估算，可以边听边逐行校准，校准结果随版本保存。
 export function NowPlaying({ item, title, close, onError }: { item: Generation; title: string; close: () => void; onError: (message: string) => void }) {
   const t = useTranslator();
   const audio = useRef<HTMLAudioElement>(null);
@@ -42,10 +50,18 @@ export function NowPlaying({ item, title, close, onError }: { item: Generation; 
   const [duration, setDuration] = useState(item.duration);
   const [idle, setIdle] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  // times 是已保存的校准时间；sync 是正在校准时已标记的行开始时间，null 表示不在校准。
+  const [times, setTimes] = useState(item.lyricTimes);
+  const [sync, setSync] = useState<number[] | null>(null);
   const envelope = useRef<number[]>([]);
   const lyrics = item.settings.instrumental ? '' : item.settings.lyrics ?? '';
-  const lines = useMemo(() => lyricTimeline(lyrics, duration), [lyrics, duration]);
-  const current = activeLyric(lines, time);
+  const rows = useMemo(() => lyricRows(lyrics), [lyrics]);
+  const timeline = useMemo(() => lyricTimeline(lyrics, duration, times), [lyrics, duration, times]);
+  // 校准时逐行显示，不补前奏；刚标记的一行视为当前句，下一行是待标记的目标。
+  const lines: LyricLine[] = sync ? rows.map(row => ({ ...row, start: 0, end: 0 })) : timeline;
+  const current = sync ? sync.length - 1 : activeLyric(lines, time);
+  const focus = sync ? Math.min(sync.length, lines.length - 1) : current, syncing = sync !== null;
   const { hue, accent } = coverPalette(item.id);
   const tags = splitTags(item.settings.text).slice(0, 4);
 
@@ -60,17 +76,57 @@ export function NowPlaying({ item, title, close, onError }: { item: Generation; 
     }, (error: Error) => { if (!disposed) onError(error.message); });
     return () => { disposed = true; if (resource.startsWith('blob:')) URL.revokeObjectURL(resource); };
   }, [item.fileName, onError]);
+  // 弹窗打开时焦点落在播放页本身，不选中关闭按钮，空格直接控制播放。
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => stage.current?.focus({ preventScroll: true }));
+    return () => cancelAnimationFrame(frame);
+  }, []);
+  const play = () => audio.current?.play().catch((error: DOMException) => { if (error.name !== 'NotAllowedError' && error.name !== 'AbortError') onError('@yovoice.error.audioPlayFailed'); });
   const toggle = () => {
     const element = audio.current;
     if (!element) return;
-    if (!element.paused) { element.pause(); return; }
-    element.play().catch((error: DOMException) => { if (error.name !== 'NotAllowedError' && error.name !== 'AbortError') onError('@yovoice.error.audioPlayFailed'); });
+    if (!element.paused) element.pause(); else void play();
   };
-  const seek = (value: number) => { if (audio.current) audio.current.currentTime = value; setTime(value); };
+  const seek = (value: number) => {
+    const next = Math.max(0, Math.min(duration || 0, value));
+    if (audio.current) audio.current.currentTime = next;
+    setTime(next);
+  };
+  // 退出时先播放收起动画，动画结束再关闭；减少动态效果时直接关闭。
+  const leave = () => {
+    if (leaving) return;
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
+    if (reducedMotion()) { close(); return; }
+    setLeaving(true);
+  };
+  useEffect(() => {
+    if (!leaving) return;
+    const timer = setTimeout(close, 600);
+    return () => clearTimeout(timer);
+  }, [leaving, close]);
+
+  const save = (next: number[] | undefined) => {
+    void call('generation.lyricTimes', { id: item.id, times: next ?? [] }).then(() => setTimes(next), (error: unknown) => onError(noticeMessage(error)));
+  };
+  // 从头播放开始校准；开头是器乐段落时它从 0 秒开始，自动标好。
+  const startSync = () => { setSync(rows[0]?.instrumental ? [0] : []); seek(0); void play(); stage.current?.focus({ preventScroll: true }); };
+  // 标记下一行从当前播放位置开始；最后一行标完即保存并退出校准。
+  const mark = () => {
+    if (!sync || !audio.current) return;
+    const next = [...sync, Math.max(audio.current.currentTime, sync.at(-1) ?? 0)];
+    if (next.length < rows.length) { setSync(next); return; }
+    setSync(null); save(next);
+  };
+  const undo = () => {
+    if (!sync?.length) return;
+    const last = sync.at(-1)!;
+    setSync(sync.slice(0, -1)); seek(last - undoRewind);
+  };
+
   // 播放中逐帧把当前响度写进样式变量，不经过 React 渲染。
   useEffect(() => {
     const element = audio.current, root = stage.current;
-    if (!playing || !element || !root || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (!playing || !element || !root || reducedMotion()) return;
     let frame = 0, level = 0;
     const tick = () => {
       const target = envelope.current[Math.floor(element.currentTime / envelopeStep)] ?? 0;
@@ -81,22 +137,21 @@ export function NowPlaying({ item, title, close, onError }: { item: Generation; 
     frame = requestAnimationFrame(tick);
     return () => { cancelAnimationFrame(frame); root.style.setProperty('--now-playing-level', '0'); };
   }, [playing]);
-  // 当前句滚到歌词区中间。
+  // 当前句（校准时是待标记的一行）滚到歌词区中间。
   useEffect(() => {
-    const box = lyricsBox.current, line = box?.querySelector<HTMLElement>(`[data-index="${current}"]`);
+    const box = lyricsBox.current, line = box?.querySelector<HTMLElement>(`[data-index="${focus}"]`);
     if (!box || !line) return;
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    box.scrollTo({ top: line.offsetTop - box.clientHeight / 2 + line.clientHeight / 2, behavior: reduced ? 'auto' : 'smooth' });
-  }, [current]);
-  // 播放中鼠标静置 2.5 秒后隐藏控件和指针，录屏时画面只留封面与歌词。
+    box.scrollTo({ top: line.offsetTop - box.clientHeight / 2 + line.clientHeight / 2, behavior: reducedMotion() ? 'auto' : 'smooth' });
+  }, [focus, syncing]);
+  // 播放中鼠标静置 2.5 秒后隐藏控件和指针，录屏时画面只留封面与歌词；校准时保持显示。
   const lastActive = useRef(0);
   const wake = () => { lastActive.current = performance.now(); if (idle) setIdle(false); };
   useEffect(() => {
-    if (!playing) return;
+    if (!playing || sync) return;
     lastActive.current = performance.now();
     const timer = setInterval(() => { if (performance.now() - lastActive.current > 2500) setIdle(true); }, 500);
     return () => clearInterval(timer);
-  }, [playing]);
+  }, [playing, sync]);
   useEffect(() => {
     const change = () => setFullscreen(document.fullscreenElement === stage.current);
     document.addEventListener('fullscreenchange', change);
@@ -106,19 +161,38 @@ export function NowPlaying({ item, title, close, onError }: { item: Generation; 
     if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
     else void stage.current?.requestFullscreen().catch(() => undefined);
   };
+  // 播放页是模态弹窗，按键在整个文档上监听，焦点落在哪里都能控制播放和校准。
+  const keys = useEffectEvent((event: globalThis.KeyboardEvent) => {
+    wake();
+    if (event.target instanceof HTMLInputElement || (event.key === ' ' || event.key === 'Enter') && event.target instanceof HTMLButtonElement) return;
+    const action = event.key === ' ' ? toggle
+      : sync && (event.key === 'ArrowDown' || event.key === 'Enter') ? mark
+        : sync && event.key === 'Backspace' ? undo
+          : !sync && event.key === 'ArrowLeft' ? () => seek(time - skipStep)
+            : !sync && event.key === 'ArrowRight' ? () => seek(time + skipStep) : null;
+    if (!action) return;
+    event.preventDefault(); action();
+  });
+  useEffect(() => {
+    const listener = (event: globalThis.KeyboardEvent) => keys(event);
+    document.addEventListener('keydown', listener);
+    return () => document.removeEventListener('keydown', listener);
+  }, []);
   const progress = duration ? time / duration * 100 : 0;
-  return <Dialog className="now-playing-dialog" isOpen variant="fullscreen" padding={0} aria-label={t('@yovoice.music.nowPlayingTitle', { title })} onOpenChange={open => { if (!open) close(); }}>
-    <VStack ref={stage} className="now-playing" data-playing={playing} data-idle={idle} gap={0}
+  const lineState = (index: number) => index === current ? 'current' : index < current ? 'past' : 'next';
+  return <Dialog className="now-playing-dialog" isOpen variant="fullscreen" padding={0} aria-label={t('@yovoice.music.nowPlayingTitle', { title })}
+    onOpenChange={open => { if (open) return; if (sync) setSync(null); else leave(); }}>
+    <VStack ref={stage} tabIndex={-1} className="now-playing" data-playing={playing} data-idle={idle && !sync} data-leaving={leaving || undefined} data-syncing={!!sync || undefined} gap={0}
       style={{ '--now-playing-hue': hue, '--now-playing-accent': accent } as CSSProperties}
       onPointerMove={wake} onPointerDown={wake}
-      onKeyDown={event => { wake(); if (event.key === ' ' && !(event.target instanceof HTMLButtonElement || event.target instanceof HTMLInputElement)) { event.preventDefault(); toggle(); } }}>
+      onAnimationEnd={event => { if (leaving && event.target === stage.current) close(); }}>
       <audio hidden ref={audio} src={url || undefined} autoPlay
         onLoadedMetadata={() => { const value = audio.current?.duration; if (value && Number.isFinite(value)) setDuration(value); }}
         onTimeUpdate={() => setTime(audio.current?.currentTime ?? 0)}
         onPlay={() => setPlaying(true)} onPause={() => { setPlaying(false); setIdle(false); }} onEnded={() => setPlaying(false)} />
-      <HStack className="now-playing-bar now-playing-chrome" gap={2} hAlign="end" vAlign="center">
-        {document.fullscreenEnabled ? <Button label={t(fullscreen ? '@yovoice.music.exitFullscreen' : '@yovoice.music.fullscreen')} tooltip={t(fullscreen ? '@yovoice.music.exitFullscreen' : '@yovoice.music.fullscreen')} isIconOnly variant="ghost" icon={fullscreen ? <Minimize /> : <Maximize />} onClick={toggleFullscreen} /> : null}
-        <Button label={t('@yovoice.music.closeNowPlaying')} tooltip={t('@yovoice.music.closeNowPlaying')} isIconOnly variant="ghost" icon={<X />} onClick={close} />
+      <HStack className="now-playing-bar now-playing-chrome" gap={2} hAlign="between" vAlign="center">
+        <Button className="now-playing-glass now-playing-round" label={t('@yovoice.music.closeNowPlaying')} isIconOnly variant="ghost" icon={<ChevronDown />} onClick={leave} />
+        {document.fullscreenEnabled ? <Button className="now-playing-glass now-playing-round" label={t(fullscreen ? '@yovoice.music.exitFullscreen' : '@yovoice.music.fullscreen')} isIconOnly variant="ghost" icon={fullscreen ? <Minimize /> : <Maximize />} onClick={toggleFullscreen} /> : null}
       </HStack>
       <HStack className={`now-playing-stage ${lines.length ? '' : 'now-playing-solo'}`.trim()} gap={0} vAlign="center">
         <VStack className="now-playing-side" gap={6}>
@@ -127,23 +201,36 @@ export function NowPlaying({ item, title, close, onError }: { item: Generation; 
             <h2 className="now-playing-title">{title}</h2>
             <p className="now-playing-tags">{item.settings.instrumental ? t('@yovoice.music.instrumental') : tags.join(' · ')}</p>
           </VStack>
-          <VStack className="now-playing-controls now-playing-chrome" gap={3}>
+          <VStack className="now-playing-controls now-playing-chrome" gap={2}>
             <input className="now-playing-progress" aria-label={t('@yovoice.player.progress')} aria-valuetext={t('@yovoice.player.progressValue', { current: formatTime(time), total: formatTime(duration) })} type="range" min={0} max={duration || 1} step={0.01} value={time} disabled={!url} onChange={event => seek(Number(event.target.value))} style={{ '--now-playing-progress': `${progress}%` } as CSSProperties} />
             <HStack className="now-playing-times" hAlign="between"><small>{formatTime(time)}</small><small>-{formatTime(Math.max(0, duration - time))}</small></HStack>
-            <HStack gap={4} hAlign="center" vAlign="center">
-              <Button label={t('@yovoice.player.skipStart')} isIconOnly variant="ghost" icon={<SkipBack />} isDisabled={!url} onClick={() => seek(0)} />
+            <HStack className="now-playing-transport" gap={6} hAlign="center" vAlign="center">
+              <Button className="now-playing-skip" label={t('@yovoice.music.rewind', { n: skipStep })} isIconOnly variant="ghost" icon={<Rewind fill="currentColor" />} isDisabled={!url} onClick={() => seek(time - skipStep)} />
               <Button className="now-playing-toggle" label={playing ? t('@yovoice.player.pause') : t('@yovoice.player.play')} isIconOnly variant="ghost" icon={playing ? <Pause fill="currentColor" /> : <Play fill="currentColor" />} isDisabled={!url} onClick={toggle} />
+              <Button className="now-playing-skip" label={t('@yovoice.music.forward', { n: skipStep })} isIconOnly variant="ghost" icon={<FastForward fill="currentColor" />} isDisabled={!url} onClick={() => seek(time + skipStep)} />
             </HStack>
           </VStack>
         </VStack>
         {lines.length ? <VStack ref={lyricsBox} className="now-playing-lyrics" gap={0} role="list" aria-label={t('@yovoice.music.lyrics')}>
-          {lines.map((line, index) => <p key={index} role="listitem" data-index={index} className="now-playing-line" data-state={index === current ? 'current' : index < current ? 'past' : 'next'} data-instrumental={line.instrumental || undefined}
-            title={line.instrumental ? undefined : t('@yovoice.music.seekLyric')} onClick={() => { seek(line.start); if (audio.current?.paused) toggle(); }}>
+          {lines.map((line, index) => <p key={`${sync ? 'sync' : 'play'}-${index}`} role="listitem" data-index={index} className="now-playing-line" data-state={lineState(index)}
+            data-target={sync && index === sync.length || undefined} data-instrumental={line.instrumental || undefined}
+            style={{ '--now-playing-distance': Math.min(4, Math.abs(index - focus)) } as CSSProperties}
+            title={sync || line.instrumental ? undefined : t('@yovoice.music.seekLyric')} onClick={() => { if (sync) return; seek(line.start); if (audio.current?.paused) void play(); }}>
             {line.instrumental ? '• • •' : line.text}
           </p>)}
         </VStack> : null}
       </HStack>
-      {lines.length ? <small className="now-playing-note now-playing-chrome">{t('@yovoice.music.lyricsEstimated')}</small> : null}
+      {sync ? <HStack className="now-playing-sync" gap={3} vAlign="center" wrap="wrap" role="group" aria-label={t('@yovoice.music.syncLyrics')}>
+        <small className="now-playing-sync-hint">{t('@yovoice.music.syncHint')}</small>
+        <small className="now-playing-sync-count">{t('@yovoice.music.syncProgress', { done: sync.length, total: rows.length })}</small>
+        <Button className="now-playing-glass" size="sm" variant="ghost" label={t('@yovoice.music.syncUndo')} isDisabled={!sync.length} onClick={undo} />
+        <Button className="now-playing-glass" size="sm" variant="ghost" label={t('@yovoice.music.syncCancel')} onClick={() => setSync(null)} />
+        <Button className="now-playing-mark" size="sm" variant="ghost" icon={<ArrowDown />} label={t('@yovoice.music.syncNext')} isDisabled={!url} onClick={mark} />
+      </HStack> : rows.length ? <HStack className="now-playing-note now-playing-chrome" gap={2} vAlign="center">
+        <small>{t(times ? '@yovoice.music.lyricsSynced' : '@yovoice.music.lyricsEstimated')}</small>
+        <Button className="now-playing-glass" size="sm" variant="ghost" label={t(times ? '@yovoice.music.resyncLyrics' : '@yovoice.music.syncLyrics')} isDisabled={!url} onClick={startSync} />
+        {times ? <Button className="now-playing-glass" size="sm" variant="ghost" label={t('@yovoice.music.syncReset')} onClick={() => save(undefined)} /> : null}
+      </HStack> : null}
     </VStack>
   </Dialog>;
 }

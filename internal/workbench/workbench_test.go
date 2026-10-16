@@ -14,6 +14,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -138,6 +139,23 @@ func TestMediaPersistenceAndRollback(t *testing.T) {
 		s.History = append(s.History, schema.Generation{ID: id, Title: "历史", FileName: id + ".wav", CreatedAt: time.Now(), Duration: 1, Settings: d})
 	}, true))
 	must(t, w.RenameMedia("outputs", id, "重命名历史"))
+	// 歌词校准时间：按顺序保存，乱序、负数或超过时长时拒绝，空列表清除。
+	must(t, w.SetLyricTimes(id, []float64{0.5, 0.5, 0.9}))
+	if got := w.Store.Read().History[len(w.Store.Read().History)-1].LyricTimes; !slices.Equal(got, []float64{0.5, 0.5, 0.9}) {
+		t.Fatal("歌词时间未保存", got)
+	}
+	for _, times := range [][]float64{{0.6, 0.2}, {-1}, {3}} {
+		if w.SetLyricTimes(id, times) == nil {
+			t.Fatal("未拒绝歌词时间", times)
+		}
+	}
+	if w.SetLyricTimes(schema.NewID(), nil) == nil {
+		t.Fatal("未拒绝不存在的版本")
+	}
+	must(t, w.SetLyricTimes(id, nil))
+	if w.Store.Read().History[len(w.Store.Read().History)-1].LyricTimes != nil {
+		t.Fatal("歌词时间未清除")
+	}
 	must(t, w.DeleteMedia("outputs", id))
 	if len(w.Store.Read().History) != 0 {
 		t.Fatal("历史未删除")

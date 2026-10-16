@@ -180,6 +180,8 @@ type Generation struct {
 	Duration  float64            `json:"duration"`
 	Settings  Draft              `json:"settings"`
 	Segment   *GenerationSegment `json:"segment,omitempty"`
+	// LyricTimes 是播放页校准的歌词时间：按顺序记录每一行（含器乐段落）的开始秒数。
+	LyricTimes []float64 `json:"lyricTimes,omitempty"`
 }
 
 // GenerationSegment 保留单句来源；剪辑与原音频通过生成版本关联。
