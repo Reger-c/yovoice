@@ -1,9 +1,6 @@
 import type { Page } from '@playwright/test';
 
+// 语音作品没有列表页，从工作区播放器旁的“版本记录”进入历史版本。
 export async function openProjectHistory(page: Page) {
-  const title = await page.getByLabel('作品名称', { exact: true }).inputValue();
-  await page.getByTestId('nav-text').click();
-  const card = page.locator('.project-library-row:visible').filter({ has: page.getByRole('button', { name: title, exact: true }) });
-  await card.getByRole('button', { name: '更多操作', exact: true }).click();
-  await page.getByRole('menuitem', { name: '历史版本', exact: true }).click();
+  await page.getByRole('button', { name: '版本记录', exact: true }).click();
 }

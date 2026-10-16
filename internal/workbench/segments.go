@@ -85,7 +85,8 @@ func (w *Workbench) generateSegments(ctx context.Context, state schema.State, pa
 			return err
 		}
 		id := schema.NewID()
-		path, err := w.Store.MediaPath("outputs", id+".wav")
+		file := outputFileName(id, time.Now(), part.draft.Text)
+		path, err := w.Store.MediaPath("outputs", file)
 		if err != nil {
 			return err
 		}
@@ -117,7 +118,7 @@ func (w *Workbench) generateSegments(ctx context.Context, state schema.State, pa
 		snapshot := part.draft
 		snapshot.Timeline = nil
 		snapshot.Kind = "text"
-		g := schema.Generation{ID: id, Title: string(title), FileName: id + ".wav", CreatedAt: time.Now().UTC(), Duration: duration, Settings: snapshot, Segment: part.segment}
+		g := schema.Generation{ID: id, Title: string(title), FileName: file, CreatedAt: time.Now().UTC(), Duration: duration, Settings: snapshot, Segment: part.segment}
 		if err = w.Store.Update(func(s *schema.State) { s.History = append([]schema.Generation{g}, s.History...) }, true); err != nil {
 			_ = os.Remove(path)
 			return err

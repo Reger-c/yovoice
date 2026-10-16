@@ -70,6 +70,9 @@ test('从生成记录保存参考音频，删除生成记录后仍保留素材�
   await seedState(page, state); await page.reload();
   await expect(page.getByRole('button', { name: '保存为参考音频', exact: true })).toHaveCount(0);
   await page.locator('.recent-projects .project-link').first().click();
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: '导出音频', exact: true }).click();
+  expect(await (await download).failure()).toBeNull();
   await openProjectHistory(page);
   await page.getByRole('button', { name: '音频操作', exact: true }).click();
   await page.getByRole('menuitem', { name: '保存为参考音频', exact: true }).click();
@@ -130,3 +133,29 @@ test('试听快照区分新台词和固定种子，并忽略对象键顺序', as
 
 
 
+
+test('参考音频批量删除跳过仍在使用的条目', async ({ page }) => {
+  const state = emptyState();
+  const voice = (n: string, name: string) => ({ id: n.repeat(32), name, fileName: n.repeat(32) + '.wav', duration: 3, source: 'import' });
+  state.voices = [voice('a', '试音一'), voice('b', '试音二'), voice('c', '在用音色')];
+  state.drafts[0] = { ...state.drafts[0], title: '在用作品', voiceId: 'c'.repeat(32) };
+  await seedState(page, state);
+  await page.goto('/');
+  await page.getByTestId('nav-characters').click();
+  await page.getByRole('tab', { name: '参考音频', exact: true }).click();
+  await page.getByRole('button', { name: '批量删除', exact: true }).click();
+  await page.getByLabel('选择“试音一”').check();
+  await expect(page.getByRole('button', { name: '删除所选（1）', exact: true })).toBeEnabled();
+  await page.getByLabel('全选').check();
+  await page.getByRole('button', { name: '删除所选（3）', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('button', { name: '删除所选（3）', exact: true }).click();
+  await expect(dialog.getByText('「在用音色」仍被角色或作品使用，未删除', { exact: false })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: '删除所选（1）', exact: true })).toBeVisible();
+  await dialog.getByRole('button', { name: '取消', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '试音一' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: '试音二' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: '在用音色' })).toBeVisible();
+  await page.getByRole('button', { name: '完成', exact: true }).click();
+  await expect(page.getByRole('button', { name: '编辑音色信息', exact: true })).toBeVisible();
+});

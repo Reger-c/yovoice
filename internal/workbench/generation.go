@@ -78,6 +78,27 @@ func (w *Workbench) pruneOrphanHistory(max int) {
 	_ = w.removeGenerations(ids, nil)
 }
 
+// textVersionLimit 是语音生成作品保留的版本数：语音生成定位为快速合成，够反复抽卡挑选即可，不堆积历史。
+const textVersionLimit = 10
+
+// pruneTextVersions 删除语音作品中超出上限的旧版本及其音频；时间线仍在使用的版本保留且不占名额。
+func (w *Workbench) pruneTextVersions(draftID string, max int) {
+	w.edit.Lock()
+	defer w.edit.Unlock()
+	s := w.Store.Read()
+	used := timelineGenerations(s, "")
+	ids, kept := map[string]bool{}, 0
+	for _, g := range s.History {
+		if g.Settings.ID != draftID || g.Segment != nil || used[g.ID] {
+			continue
+		}
+		if kept++; kept > max {
+			ids[g.ID] = true
+		}
+	}
+	_ = w.removeGenerations(ids, nil)
+}
+
 func errorText(code msg.Code, params msg.Params) string {
 	if detail, ok := params["detail"]; ok {
 		return fmt.Sprintf("%s (%v)", code, detail)
@@ -163,7 +184,7 @@ func (w *Workbench) startGeneration(d schema.Draft, previewID, cueID, clipID str
 			return w.generateSegments(ctx, s, parts, clipID)
 		}
 		id := schema.NewID()
-		file := id + ".wav"
+		file := outputFileName(id, time.Now(), outputSummary(d.Text, d.Title))
 		if previewID != "" {
 			id = previewID
 			file = "audition-" + id + ".wav"
@@ -209,6 +230,9 @@ func (w *Workbench) startGeneration(d schema.Draft, previewID, cueID, clipID str
 		}
 		keep = true
 		diag.Log(w.Store.Root, "generation.saved", "project_id", d.ID, "generation_id", id, "model_id", part.model.ID, "duration", duration)
+		if d.Kind == "" || d.Kind == "text" {
+			w.pruneTextVersions(d.ID, textVersionLimit)
+		}
 		return nil
 	}, previewID, d.ID)
 }

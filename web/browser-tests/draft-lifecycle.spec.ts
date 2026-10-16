@@ -7,21 +7,17 @@ test('删除当前作品后不会被自动保存恢复', async ({ page }) => {
   state.drafts = Array.from({ length: 3 }, (_, index) => ({ ...state.drafts[0], id: index.toString(16).padStart(32, '0'), title: `作品 ${index + 1}` }));
   await page.addInitScript(state => { if (!localStorage.getItem('voice-workbench-v1')) localStorage.setItem('voice-workbench-v1', JSON.stringify(state)); }, state);
   await page.goto('/');
-  const main = page.locator('#astryx-app-shell-main');
-  await page.getByTestId('nav-text').click();
-  await main.getByRole('button', { name: '作品 3', exact: true }).click();
+  const recent = page.locator('.recent-projects');
+  await recent.getByRole('button', { name: '作品 3', exact: true }).click();
   await page.getByLabel('正文', { exact: true }).fill('刚刚修改的内容');
-  await page.getByTestId('nav-text').click();
-  await page.locator('.project-library-row').filter({ hasText: '作品 3' }).getByRole('button', { name: '更多操作' }).click();
-  await page.getByRole('menuitem', { name: '删除', exact: true }).click();
+  await recent.getByRole('button', { name: '删除作品：作品 3', exact: true }).click();
   await page.getByRole('dialog').getByRole('button', { name: '删除作品', exact: true }).click();
-  await expect(main.getByRole('button', { name: '作品 3', exact: true })).toHaveCount(0);
-  await main.getByRole('button', { name: '作品 1', exact: true }).click();
+  await expect(recent.getByRole('button', { name: '作品 3', exact: true })).toHaveCount(0);
+  await recent.getByRole('button', { name: '作品 1', exact: true }).click();
   await expect(page.getByLabel('作品名称')).toHaveValue('作品 1');
   await expect(page.getByText('已保存', { exact: true })).toBeVisible();
   await page.reload();
-  await page.getByTestId('nav-text').click();
-  await expect(main.getByRole('button', { name: '作品 1', exact: true })).toBeVisible();
+  await expect(recent.getByRole('button', { name: '作品 1', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: '作品 3', exact: true })).toHaveCount(0);
 });
 
@@ -57,7 +53,6 @@ test('宽屏顶栏切换右侧面板，列表页忽略面板开关', async ({ pa
   await page.getByRole('button', { name: '保存为角色', exact: true }).click();
   await expect(page.getByTestId('character-editor')).toBeVisible();
   await page.getByTestId('nav-text').click();
-  await page.locator('#astryx-app-shell-main').getByRole('button', { name: '清晨旁白', exact: true }).click();
   await expect(page.getByTestId('character-editor')).toBeHidden();
   await page.getByRole('button', { name: '收起右侧面板' }).click();
   await expect(page.locator('.inspector:visible')).toHaveCount(0);
@@ -65,4 +60,23 @@ test('宽屏顶栏切换右侧面板，列表页忽略面板开关', async ({ pa
   await expect(page.getByRole('button', { name: /右侧面板/ })).toHaveCount(0);
   await page.evaluate(() => window.dispatchEvent(new Event('workbench-toggle-inspector')));
   await expect(page.getByTestId('nav-story')).toHaveAttribute('aria-current', 'page');
+});
+
+// 语音生成没有作品列表：从其他分类回到语音生成时直接继续最近的语音作品。
+test('语音生成直接进入最近的语音作品', async ({ page }) => {
+  const state = emptyState();
+  const base = state.drafts[0];
+  state.drafts = [
+    { ...base, id: '1'.repeat(32), title: '较早的台词', updatedAt: '2026-01-01T00:00:00Z' },
+    { ...base, id: '2'.repeat(32), title: '最近的台词', updatedAt: '2026-02-01T00:00:00Z' },
+    { ...base, id: '3'.repeat(32), title: '雨夜故事', kind: 'story', subtitles: { speakers: [], cues: [] }, updatedAt: '2026-03-01T00:00:00Z' },
+  ];
+  await page.addInitScript(state => { if (!localStorage.getItem('voice-workbench-v1')) localStorage.setItem('voice-workbench-v1', JSON.stringify(state)); }, state);
+  await page.goto('/');
+  await page.getByTestId('nav-story').click();
+  await page.locator('.project-library-row').filter({ hasText: '雨夜故事' }).getByRole('button', { name: '雨夜故事', exact: true }).click();
+  await page.getByTestId('nav-text').click();
+  await expect(page.getByLabel('作品名称')).toHaveValue('最近的台词');
+  await expect(page.locator('.project-library-row:visible')).toHaveCount(0);
+  await expect(page.getByTestId('nav-text')).toHaveAttribute('aria-current', 'page');
 });
