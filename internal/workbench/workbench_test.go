@@ -285,7 +285,7 @@ func TestOperationCancellation(t *testing.T) {
 	}
 	// 模型下载使用独立槽位，可与主操作同时进行，且取消互不影响。
 	must(t, w.begin("download", msg.ActivityDownload, nil, ptr("index-2-q8"), func(ctx context.Context) error { <-ctx.Done(); return ctx.Err() }))
-	if e = w.begin("import", msg.ActivityImport, nil, nil, func(context.Context) error { return nil }); e == nil {
+	if e = w.begin("download", msg.ActivityDownload, nil, ptr("voxcpm2-q8"), func(context.Context) error { return nil }); e == nil {
 		t.Fatal("允许并发模型安装")
 	}
 	w.CancelModel()

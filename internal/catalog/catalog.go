@@ -18,6 +18,8 @@ type ModelPackage struct {
 	// Repo 为空时来自 audio.cpp 的模型仓库；音色库等其他资源写明 Hugging Face 仓库路径，
 	// ModelScope 没有镜像时改用 hf-mirror。
 	Repo string `json:"repo,omitempty"`
+	// ModelScope 是 Repo 在 ModelScope 上的同名镜像仓库，填写后 ModelScope 源直接从该仓库下载。
+	ModelScope string `json:"modelScope,omitempty"`
 	// EngineMinimum 是该模型需要的最低内核版本，为空时只要求应用的最低版本。
 	EngineMinimum string   `json:"engineMinimum,omitempty"`
 	Voices        []string `json:"voices,omitempty"`
@@ -140,7 +142,7 @@ func (m ModelPackage) URL(source string) (string, error) {
 // FileURL 返回模型包内某个文件的下载地址。
 func (m ModelPackage) FileURL(source, path string) (string, error) {
 	if path == "" {
-		return "", msg.Err(msg.ErrModelImportRequired, nil)
+		return "", msg.Err(msg.ErrModelUnsupported, nil)
 	}
 	revision := m.Revision
 	if revision == "" {
@@ -150,7 +152,12 @@ func (m ModelPackage) FileURL(source, path string) (string, error) {
 		switch source {
 		case "huggingface":
 			return "https://huggingface.co/" + m.Repo + "/resolve/" + revision + "/" + path, nil
-		case "mirror", "modelscope":
+		case "modelscope":
+			if m.ModelScope != "" {
+				return "https://modelscope.cn/models/" + m.ModelScope + "/resolve/master/" + path, nil
+			}
+			return "https://hf-mirror.com/" + m.Repo + "/resolve/" + revision + "/" + path, nil
+		case "mirror":
 			return "https://hf-mirror.com/" + m.Repo + "/resolve/" + revision + "/" + path, nil
 		}
 		return "", msg.Err(msg.ErrDownloadSource, nil)

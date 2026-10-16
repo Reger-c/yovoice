@@ -19,8 +19,8 @@ func TestFrontendTypesMatchSchema(t *testing.T) {
 	interfaces := tsInterfaces(string(source))
 	// 仅后端保留、界面有意不读写的字段。
 	goOnly := map[string][]string{
-		"AudioClip":    {"fadeIn", "fadeOut"}, // 旧版淡化，读取时忽略
-		"ModelPackage": {"revision", "repo"},  // 下载时固定的仓库与修订号
+		"AudioClip":    {"fadeIn", "fadeOut"},              // 旧版淡化，读取时忽略
+		"ModelPackage": {"revision", "repo", "modelScope"}, // 下载时固定的仓库与修订号
 	}
 	for _, value := range []any{
 		schema.SynthesisSettings{}, schema.SubtitleSpeaker{}, schema.CharacterPerformance{}, schema.SubtitleCue{}, schema.SubtitleDocument{},

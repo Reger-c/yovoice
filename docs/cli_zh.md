@@ -41,13 +41,7 @@ yovoice models download index-2.5-q8
 
 GPU 后端需要兼容的硬件和驱动。切换后端时重新运行 `setup`。
 
-模型默认从 ModelScope 下载，可添加 `--source huggingface` 或 `--source mirror` 切换来源。下载支持断点续传和自动校验。已有受支持的 GGUF 文件可以直接登记：
-
-```sh
-yovoice models import /absolute/path/model.gguf
-```
-
-仅接受 yovoice 已识别的模型包。输入要求和示例见[模型选择](models_zh.md)。
+模型默认从 ModelScope 下载，可添加 `--source huggingface` 或 `--source mirror` 切换来源。下载支持断点续传和自动校验。只能安装 yovoice 列出的模型包，输入要求和示例见[模型选择](models_zh.md)。
 
 ## 生成语音
 

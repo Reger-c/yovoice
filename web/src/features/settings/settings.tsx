@@ -7,7 +7,7 @@ import { Selector } from '../../shared/selector';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { Switch } from '@astryxdesign/core/Switch';
 import { useTranslator } from '@astryxdesign/core/i18n';
-import { FolderOpen, FolderCog, FilePlus, ArrowUpRight } from 'lucide-react';
+import { FolderOpen, FolderCog, ArrowUpRight } from 'lucide-react';
 import { call, isMac } from '../../shared/lib/client';
 import { runtimeStatus, type EngineInfo, type ModelPackage, type State, type Draft, type UiLocale } from '../../shared/workbench';
 import { CallError } from '../../shared/lib/call-error';
@@ -83,9 +83,6 @@ export function Settings({ state, catalog, engine, draft, run, focus }: { focus?
         <SettingsRow className="settings-directory" label={t('@yovoice.settings.modelDirectory')} hint={<span className="model-path" onPointerEnter={overflowTitle}>{preferences.modelDirectory ?? t('@yovoice.settings.defaultDirectory')}</span>}>
           <Button size="sm" label={t('@yovoice.settings.changeLocation')} icon={<FolderCog size={16} />} isDisabled={modelBusy} onClick={() => run(() => call('model.directory'))} />
           <Button size="sm" label={t('@yovoice.settings.openFolder')} icon={<FolderOpen size={16} />} onClick={() => run(() => call('model.directory.open'))} />
-        </SettingsRow>
-        <SettingsRow label={t('@yovoice.settings.importLocal')} hint={t('@yovoice.settings.importLocalHint')}>
-          <Button size="sm" label={t('@yovoice.settings.importGguf')} icon={<FilePlus size={16} />} isDisabled={modelBusy} onClick={() => run(() => call('model.import'))} />
         </SettingsRow>
       </SettingsGroup>
       <ModelGroups models={catalog.filter(model => model.family !== 'soundfont')} state={state} draft={draft} run={run} />

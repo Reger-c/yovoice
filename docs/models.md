@@ -89,10 +89,9 @@ Kokoro generates speech with built-in voices and does not require reference audi
 | --- | --- | --- | --- |
 | `kokoro-82m-q8` | About 190 MB | 49 voices; multilingual, excluding Japanese | Download |
 | `kokoro-82m-bf16` | About 212 MB | Same voices as Q8 | Download |
-| `kokoro-1.0-q8` | About 933 MB | 54 voices; includes Japanese | Import a compatible GGUF |
-| `kokoro-1.1-zh-q8` | About 255 MB | 100 Chinese and 3 English voices; experimental | Import a compatible GGUF |
+| `kokoro-1.1-zh-q8` | About 255 MB | 100 Chinese and 3 English voices; experimental | Download |
 
-The downloadable models support Chinese, American/British English, Spanish, French, Hindi, Italian, and Brazilian Portuguese. Version 1.1-zh uses different voice IDs from version 1.0.
+The official models support Chinese, American/British English, Spanish, French, Hindi, Italian, and Brazilian Portuguese. Version 1.1-zh uses different voice IDs from version 1.0.
 
 ### Generate speech
 

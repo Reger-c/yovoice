@@ -1,4 +1,8 @@
-"""使用 audio.cpp v0.7.4 的转换器生成原生 Kokoro 包；Python 仅用于制作模型。"""
+"""使用 audio.cpp v0.7.4 的转换器生成原生 Kokoro 1.1-zh 包；Python 仅用于制作模型。
+
+可复现发布包的环境：Python 3.12、misaki[zh] 0.9.4（另需 fugashi 供转换器导入日文表）、
+jieba 0.42.1、pypinyin 0.55.0、espeakng-loader 0.2.4、gguf 0.19.0。依赖版本不同时校验值会变。
+"""
 import argparse
 import hashlib
 import importlib.util
@@ -6,7 +10,6 @@ import json
 from pathlib import Path
 
 WEIGHTS = {
-    '1.0': ('kokoro-v1_0.pth', '496dba118d1a58f5f3db2efc88dbdc216e0483fc89fe6e47ee1f2c53f18ad1e4'),
     '1.1-zh': ('kokoro-v1_1-zh.pth', 'b1d8410fa44dfb5c15471fd6c4225ea6b4e9ac7fa03c98e8bea47a9928476e2b'),
 }
 
@@ -50,21 +53,20 @@ def prepare(source, upstream, output, version):
     spec.loader.exec_module(converter)
     original_tables = converter.load_g2p_tables
     config = json.loads((source / 'config.json').read_text())
-    if version == '1.1-zh':
-        def load_tables():
-            files = original_tables()
-            table = chinese_v11(json.loads(files['g2p/zh.json']), config['vocab'])
-            files['g2p/zh.json'] = json.dumps(table, ensure_ascii=False, separators=(',', ':')).encode()
-            return files
-        converter.load_g2p_tables = load_tables
-        def load_weights(source):
-            result = {}
-            converter.flatten_torch_state('', torch.load(source / filename, map_location='cpu'), result)
-            return result
-        converter.load_official_weights = load_weights
+    def load_tables():
+        files = original_tables()
+        table = chinese_v11(json.loads(files['g2p/zh.json']), config['vocab'])
+        files['g2p/zh.json'] = json.dumps(table, ensure_ascii=False, separators=(',', ':')).encode()
+        return files
+    converter.load_g2p_tables = load_tables
+    def load_weights(source):
+        result = {}
+        converter.flatten_torch_state('', torch.load(source / filename, map_location='cpu'), result)
+        return result
+    converter.load_official_weights = load_weights
     voices = sorted(path.stem for path in (source / 'voices').glob('*.pt'))
-    assert len(voices) == (54 if version == '1.0' else 103)
-    languages = ['en-us', 'en-gb', 'es', 'fr-fr', 'hi', 'it', 'ja', 'pt-br', 'zh'] if version == '1.0' else ['en-us', 'en-gb', 'zh']
+    assert len(voices) == 103
+    languages = ['en-us', 'en-gb', 'zh']
     class Writer(converter.ResourceWriter):
         def add_name(self, name):
             super().add_name(f'Kokoro {version} Q8_0')
@@ -73,32 +75,31 @@ def prepare(source, upstream, output, version):
     converter.ResourceWriter = Writer
     model_spec = json.loads((upstream / 'model_specs/kokoro_tts.json').read_text())
     model_spec.update(display_name=f'Kokoro 82M {version}', description=f'Kokoro {version}, {len(voices)} built-in voices, native pronunciation resources.', languages=languages, status='experimental', packages=[])
-    model_spec['ui'].update(builtin_voices=voices, default_voice='zf_xiaobei' if version == '1.0' else 'zf_001')
+    model_spec['ui'].update(builtin_voices=voices, default_voice='zf_001')
     model_spec['ui'].pop('recommended_package', None)
     model_spec.pop('package_defaults', None)
     output.mkdir(parents=True, exist_ok=True)
     spec_path = output / f'kokoro-{version}.json'
     spec_path.write_text(json.dumps(model_spec, ensure_ascii=False))
-    # v1.1-zh 不使用日文词典；只附带中英文资源，避免增加无用体积。
+    # 不使用日文词典；只附带中英文资源，避免增加无用体积。
     original_source = converter.load_official_source
     def load_source(source, multilingual):
         import espeakng_loader
         import importlib.metadata
         config, voices, files, weights = original_source(source, multilingual)
-        if version == '1.1-zh':
-            converter.add_tree(files, Path(espeakng_loader.get_data_path()), 'espeak-ng-data')
-            for name in ['misaki', 'jieba', 'pypinyin']:
-                dist = importlib.metadata.distribution(name)
-                for entry in dist.files or []:
-                    if any(word in entry.name.lower() for word in ['license', 'copying', 'notice']):
-                        files['licenses/' + name + '-' + entry.name] = Path(dist.locate_file(entry)).read_bytes()
+        converter.add_tree(files, Path(espeakng_loader.get_data_path()), 'espeak-ng-data')
+        for name in ['misaki', 'jieba', 'pypinyin']:
+            dist = importlib.metadata.distribution(name)
+            for entry in dist.files or []:
+                if any(word in entry.name.lower() for word in ['license', 'copying', 'notice']):
+                    files['licenses/' + name + '-' + entry.name] = Path(dist.locate_file(entry)).read_bytes()
         repo = Path(__file__).resolve().parents[1]
         files['licenses/Kokoro-Apache-2.0.txt'] = (repo / 'LICENSE').read_bytes()
         files['licenses/espeak-ng-COPYING.txt'] = (repo / 'scripts/licenses/espeak-ng-COPYING.txt').read_bytes()
         return config, voices, files, weights
     converter.load_official_source = load_source
     target = output / f'kokoro-82m-{version}-multilingual-q8_0.gguf'
-    converter.convert(source, target, 'q8_0', True, spec_path, version == '1.0')
+    converter.convert(source, target, 'q8_0', True, spec_path, False)
     print(json.dumps({'path': str(target), 'size': target.stat().st_size, 'sha256': hashlib.sha256(target.read_bytes()).hexdigest(), 'voices': voices}))
 
 

@@ -54,8 +54,7 @@ export function SetupChecklist({ steps, state, attention, chooseVoice, chooseMod
           : t('@yovoice.setup.voiceDetail');
     const action = step.done ? null
       : step.id === 'model' ? (download ? null : <>
-        {step.model?.remotePath ? <Button size="sm" variant="primary" label={t('@yovoice.setup.download')} isDisabled={modelBusy} onClick={() => run(() => call('model.download', { id: step.modelId }))} />
-          : <Button size="sm" label={t('@yovoice.setup.import')} isDisabled={modelBusy} onClick={() => run(() => call('model.import'))} />}
+        <Button size="sm" variant="primary" label={t('@yovoice.setup.download')} isDisabled={modelBusy} onClick={() => run(() => call('model.download', { id: step.modelId }))} />
         <Button size="sm" variant="ghost" label={t('@yovoice.setup.otherModel')} onClick={() => chooseModel(step.modelId)} />
       </>)
         : step.id === 'engine' ? (installing ? null : <Button size="sm" variant="primary" label={t(outdated ? '@yovoice.setup.update' : '@yovoice.setup.install')} isDisabled={busy} onClick={() => run(() => call('runtime.install'))} />)

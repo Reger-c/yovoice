@@ -56,9 +56,6 @@
   "@yovoice.activity.generate": {
     "defaultMessage": "Preparing generation"
   },
-  "@yovoice.activity.import": {
-    "defaultMessage": "Identifying and verifying model"
-  },
   "@yovoice.activity.interrupted": {
     "defaultMessage": "Previous operation was interrupted. You can start again."
   },
@@ -548,9 +545,6 @@
   "@yovoice.error.modelForgetBlocked": {
     "defaultMessage": "This model cannot be removed yet. Finish related operations first."
   },
-  "@yovoice.error.modelImportNone": {
-    "defaultMessage": "No compatible GGUF found. Choose an audio.cpp package listed in the model catalog."
-  },
   "@yovoice.error.modelMoved": {
     "defaultMessage": "The model file was moved. Import it again."
   },
@@ -847,9 +841,6 @@
   },
   "@yovoice.settings.importDirectory": {
     "defaultMessage": "Choose folder"
-  },
-  "@yovoice.settings.importGguf": {
-    "defaultMessage": "Import GGUF"
   },
   "@yovoice.settings.inUse": {
     "defaultMessage": "In use"
@@ -1399,9 +1390,6 @@
   },
   "@yovoice.reference.omniTranscriptHelp": {
     "defaultMessage": "The transcript must match the reference audio."
-  },
-  "@yovoice.error.modelImportRequired": {
-    "defaultMessage": "This package is not on a download source yet. Import the verified Kokoro multilingual GGUF package."
   },
   "@yovoice.settings.modelDesc.kokoro": {
     "defaultMessage": "Preset voices · Multilingual"
@@ -2465,12 +2453,6 @@
   "@yovoice.settings.available": {
     "defaultMessage": "Available"
   },
-  "@yovoice.settings.importLocal": {
-    "defaultMessage": "Import a local model"
-  },
-  "@yovoice.settings.importLocalHint": {
-    "defaultMessage": "Already have a GGUF file? Import it instead of downloading."
-  },
   "@yovoice.settings.soundfontIntro": {
     "defaultMessage": "General MIDI sound fonts used to render scores, managed separately from voice and music models."
   },
@@ -3040,9 +3022,6 @@
   },
   "@yovoice.setup.download": {
     "defaultMessage": "Download"
-  },
-  "@yovoice.setup.import": {
-    "defaultMessage": "Import"
   },
   "@yovoice.setup.otherModel": {
     "defaultMessage": "Choose another"

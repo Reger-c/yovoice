@@ -76,3 +76,21 @@ func TestModelEngineMinimum(t *testing.T) {
 		}
 	}
 }
+
+// 自有仓库的模型在 ModelScope 有镜像时直接从镜像下载，否则 ModelScope 源改用 hf-mirror。
+func TestRepoFileURL(t *testing.T) {
+	m := ModelPackage{Repo: "owner/repo", Revision: "abc", RemotePath: "m.gguf"}
+	if url, _ := m.URL("modelscope"); url != "https://hf-mirror.com/owner/repo/resolve/abc/m.gguf" {
+		t.Fatal(url)
+	}
+	m.ModelScope = "owner/ms-repo"
+	for source, want := range map[string]string{
+		"modelscope":  "https://modelscope.cn/models/owner/ms-repo/resolve/master/m.gguf",
+		"huggingface": "https://huggingface.co/owner/repo/resolve/abc/m.gguf",
+		"mirror":      "https://hf-mirror.com/owner/repo/resolve/abc/m.gguf",
+	} {
+		if url, _ := m.URL(source); url != want {
+			t.Fatal(source, url)
+		}
+	}
+}

@@ -79,8 +79,8 @@ func (w *Workbench) begin(kind string, code msg.Code, params msg.Params, modelID
 	return err
 }
 
-// installKind 判断操作是否属于模型安装：下载与导入只写模型目录，不占用推理引擎。
-func installKind(kind string) bool { return kind == "download" || kind == "import" }
+// installKind 判断操作是否属于模型安装：下载只写模型目录，不占用推理引擎。
+func installKind(kind string) bool { return kind == "download" }
 
 // activitySlot 返回操作在状态中的位置。
 func activitySlot(s *schema.State, kind string) **schema.Activity {

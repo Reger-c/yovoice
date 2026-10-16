@@ -16,7 +16,6 @@ const (
 	ErrVoiceInUse             Code = "@yovoice.error.voiceInUse"
 	ErrCharacterInvalid       Code = "@yovoice.error.characterInvalid"
 
-	ErrModelImportRequired      Code = "@yovoice.error.modelImportRequired"
 	ErrOmniReferenceRequired    Code = "@yovoice.error.omniReferenceRequired"
 	ErrBreezeReferenceRequired  Code = "@yovoice.error.breezeReferenceRequired"
 	ErrVoiceDescriptionRequired Code = "@yovoice.error.voiceDescriptionRequired"
@@ -28,7 +27,6 @@ const (
 	ActivityDownload        Code = "@yovoice.activity.download"
 	ActivityDownloading     Code = "@yovoice.activity.downloading"
 	ActivityVerifying       Code = "@yovoice.activity.verifying"
-	ActivityImport          Code = "@yovoice.activity.import"
 	ActivityRuntimeDownload Code = "@yovoice.activity.runtimeDownload"
 	ActivityRuntimeExtract  Code = "@yovoice.activity.runtimeExtract"
 	ActivityEngineStart     Code = "@yovoice.activity.engineStart"
@@ -84,7 +82,6 @@ const (
 	ErrModelRequired         Code = "@yovoice.error.modelRequired"
 	ErrModelUnsupported      Code = "@yovoice.error.modelUnsupported"
 	ErrModelMoved            Code = "@yovoice.error.modelMoved"
-	ErrModelImportNone       Code = "@yovoice.error.modelImportNone"
 	ErrModelForgetBlocked    Code = "@yovoice.error.modelForgetBlocked"
 	ErrDownloadSource        Code = "@yovoice.error.downloadSource"
 	ErrRuntimeRequired       Code = "@yovoice.error.runtimeRequired"
@@ -183,10 +180,9 @@ func Encode(err error) map[string]any {
 func All() []Code {
 	return []Code{ErrProjectPackage, ErrProjectPackageLimit, ErrTimelineImportDuration, ErrTimelineInvalid, ErrTimelineInUse, ErrSubtitleInvalid, ActivitySubtitle,
 		ErrVoiceInUse, ErrVoiceReferenced, ErrCharacterInvalid,
-		ErrModelImportRequired,
 		ErrOmniReferenceRequired, ErrBreezeReferenceRequired,
 		ErrVoiceDescriptionRequired, ErrOmniAttributes, ErrSpeakerInvalid,
-		ActivityDownload, ActivityDownloading, ActivityVerifying, ActivityImport,
+		ActivityDownload, ActivityDownloading, ActivityVerifying,
 		ActivityRuntimeDownload, ActivityRuntimeExtract, ActivityEngineStart,
 		ActivityGenerate, ActivitySynthesizing, ActivitySavingAudio, ActivityRendering,
 		ActivityCompleted, ActivityCancelled, ActivityPaused, ActivityFailed, ActivityInterrupted, ActivityRelocate,
@@ -199,7 +195,7 @@ func All() []Code {
 		ErrNameLength, ErrDraftLimits, ErrDraftIDInvalid, ErrTextRequired, ErrTitleLength,
 		ErrLanguageUnsupported, ErrModeInvalid, ErrEmotionInvalid, ErrEmotionStrength,
 		ErrEmotionTextRequired, ErrEmotionVoiceRequired, ErrVoiceRequired, ErrVoiceBusyDelete,
-		ErrModelRequired, ErrModelUnsupported, ErrModelMoved, ErrModelImportNone, ErrModelForgetBlocked,
+		ErrModelRequired, ErrModelUnsupported, ErrModelMoved, ErrModelForgetBlocked,
 		ErrDownloadSource, ErrRuntimeRequired, ErrRuntimeMissing, ErrRuntimeUnique,
 		ErrRuntimeArchivePath, ErrRuntimeArchiveLink, ErrRuntimeArchiveSize,
 		ErrEngineStartFailed, ErrEngineStartTimeout, ErrEngineNoAudio,
