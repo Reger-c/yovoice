@@ -53,20 +53,20 @@ test('多轨分割、移动、静音播放、调整高度和重载', async ({ pa
       req.onsuccess = () => { const db = req.result; const tx = db.transaction('audio', 'readwrite'); tx.objectStore('audio').put(new Blob([data], { type: 'audio/wav' }), 'timeline.wav'); tx.oncomplete = () => { db.close(); resolve(); }; };
     });
   });
+  // 语音生成不再提供“新增音轨”；之前已经建好的多轨仍按时间线打开和编辑。
+  draft.timeline = { tracks: [{ id: 'track-1', name: '音轨 1', muted: false, clips: [{ id: 'clip-1', generationId: state.history[0].id, start: 0, offset: 0, duration: 2 }] }, { id: 'track-2', name: '音轨 2', muted: false, clips: [] }] };
   await seedState(page, state); await page.reload();
-  const playerBefore = await page.locator('.player').boundingBox();
-  expect(playerBefore!.height).toBe(148);
-  const settingsBox = (await page.getByTestId('nav-settings').boundingBox())!;
-  expect(Math.abs(settingsBox.y + settingsBox.height - playerBefore!.y - playerBefore!.height)).toBeLessThan(1);
-  expect((await page.locator('.player > .transport').boundingBox())!.height).toBeLessThanOrEqual(37);
-  await expectPlaybackHitArea(page);
-  const playerHandle = await page.getByRole('separator', { name: '调整音轨区高度', exact: true }).boundingBox();
-  await page.mouse.move(playerHandle!.x + playerHandle!.width / 2, playerHandle!.y + playerHandle!.height / 2);
-  await page.mouse.down(); await page.mouse.move(playerHandle!.x + playerHandle!.width / 2, playerHandle!.y - 60, { steps: 5 }); await page.mouse.up();
-  expect((await page.locator('.player').boundingBox())!.height).toBeGreaterThan(playerBefore!.height + 40);
-  await expect(page.locator('.player-lane-actions').getByRole('button', { name: '新增音轨', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: '新增音轨', exact: true }).click();
   await expect(page.locator('.multitrack-row')).toHaveCount(2);
+  // 轨头显示音轨名，删除音轨放在设置面板里，且只能删除空轨。
+  await expect(page.locator('.multitrack-name')).toHaveText(['音轨 1', '音轨 2']);
+  await expect(page.locator('.multitrack-label').getByRole('button', { name: /^删除/ })).toHaveCount(0);
+  await page.getByRole('button', { name: '音轨 1 设置', exact: true }).click();
+  await expect(page.getByRole('button', { name: '删除音轨 1（仅空轨）', exact: true })).toBeDisabled();
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: '音轨 2 设置', exact: true }).click();
+  await expect(page.getByRole('button', { name: '删除音轨 2（仅空轨）', exact: true })).toBeEnabled();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: '删除音轨 2（仅空轨）', exact: true })).toHaveCount(0);
   await expectPlaybackHitArea(page);
   const addTrackBox = (await page.getByRole('button', { name: '新增音轨', exact: true }).boundingBox())!;
   const laneBox = (await page.locator('.multitrack-lane').first().boundingBox())!;
@@ -209,8 +209,10 @@ test('分段音轨自动呈现、裁剪和删除持久化、按编辑结果导�
 
 
 test('音轨末尾上传独立素材，裁剪后保存重载与导出', async ({ page }, testInfo) => {
+  const state = emptyState();
+  state.drafts[0].timeline = { tracks: [{ id: 'track-1', name: '音轨 1', muted: false, clips: [] }] };
   await page.goto('/');
-  await page.getByRole('button', { name: '新增音轨', exact: true }).click();
+  await seedState(page, state); await page.reload();
   const add = page.getByRole('button', { name: '添加音频到音轨 1', exact: true });
   await add.click();
   await page.getByRole('menuitem', { name: '从历史版本添加', exact: true }).click();

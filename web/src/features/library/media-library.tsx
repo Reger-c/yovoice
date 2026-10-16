@@ -4,7 +4,7 @@ import { CheckboxInput } from '@astryxdesign/core/CheckboxInput';
 import { DropdownMenu } from '@astryxdesign/core/DropdownMenu';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { useLocale, useTranslator } from '@astryxdesign/core/i18n';
-import { Clock3, ListChecks, Mic, Play, Plus, Trash2, X, MoreHorizontal } from 'lucide-react';
+import { Clock3, Disc3, ListChecks, Mic, Play, Plus, Trash2, X, MoreHorizontal } from 'lucide-react';
 import { formatTime, projectKind, type Draft, type Generation, type State, type Track, type Voice } from '../../shared/workbench';
 import { MediaActions } from '../media/media-actions';
 import { call, CallError } from '../../shared/lib/client';
@@ -18,17 +18,22 @@ import { overflowTitle } from '../../shared/ui/overflow-title';
 // 存根用的短时长：不足一小时显示 m:ss。
 const clock = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.round(seconds % 60)).padStart(2, '0')}`;
 
-export function MediaLibrary({ page, state, query, onQueryChange, track, audition, stop, suspended, addVoice, editVoice, reuse, onError, controls, project }: {
+export function MediaLibrary({ page, state, query, onQueryChange, track, audition, stop, suspended, addVoice, editVoice, reuse, exportItem, play, onError, controls, project }: {
   controls?: ReactNode; project: Draft;
   page: 'voices' | 'history'; state: State; query: string; onQueryChange: (value: string) => void;
   track: Track | null; audition: (track: Track) => void; stop: () => void; suspended: boolean;
   addVoice: () => void; editVoice: (item: Voice | Generation) => void; reuse: (item: Generation) => void;
+  exportItem: (item: Generation) => void; play: (item: Generation) => void;
   onError: (message: string) => void;
 }) {
   const t = useTranslator();
   const locale = useLocale();
   const voices = page === 'voices';
-  const history = projectKind(project) !== 'story' ? state.history.filter(item => item.settings.id === project.id && !item.segment).sort((a, b) => b.createdAt.localeCompare(a.createdAt)) : [];
+  // 语音生成是临时生成：历史生成列出所有语音作品的结果，不分版本；音乐与编曲的版本记录只属于当前作品，按版本编号。
+  const kind = projectKind(project), quick = kind === 'text';
+  const history = kind === 'story' ? [] : state.history.filter(item => !item.segment && (quick ? projectKind(state.drafts.find(d => d.id === item.settings.id) ?? item.settings) === 'text' : item.settings.id === project.id)).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  // 改过名的音频以名称为标题，否则显示正文（音乐是风格）。
+  const heading = (item: Generation) => item.title !== item.settings.title ? item.title : item.settings.text.trim() || item.title;
   const count = voices ? state.voices.length : history.length;
   const search = query.trim().toLocaleLowerCase();
   const filteredVoices = state.voices.filter(voice => voice.name.toLocaleLowerCase().includes(search));
@@ -66,17 +71,17 @@ export function MediaLibrary({ page, state, query, onQueryChange, track, auditio
     <Button label={t('@yovoice.library.addVoice')} size="sm" icon={<Plus />} onClick={addVoice} />
   </HStack>;
   const dateOptions: Intl.DateTimeFormatOptions = { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' };
-  return <LibraryPage controls={voices ? controls : undefined} title={voices ? t('@yovoice.library.voicesTitle') : `${project.title} · ${t('@yovoice.history.versions')}`}
+  return <LibraryPage controls={voices ? controls : undefined} title={voices ? t('@yovoice.library.voicesTitle') : quick ? t('@yovoice.history.generations') : `${project.title} · ${t('@yovoice.history.versions')}`}
     actions={voices && count > 0 ? voiceActions : voices ? undefined : controls}
-    query={query} onQueryChange={onQueryChange} searchLabel={t(voices ? '@yovoice.library.searchVoices' : '@yovoice.library.searchHistory')}
+    query={query} onQueryChange={onQueryChange} searchLabel={t(voices ? '@yovoice.library.searchVoices' : quick ? '@yovoice.library.searchGenerations' : '@yovoice.library.searchHistory')}
     hasItems={count > 0} hasResults={(voices ? filteredVoices : filteredHistory).length > 0} layout={voices ? 'tickets' : 'list'}
     noResults={t('@yovoice.library.noSearchResults')}
-    empty={<LibraryEmpty icon={<Clock3 />} art={voices ? <WaveRing seed="empty-voice" duration={12}><HStack className="empty-ring-mark" gap={0} hAlign="center" vAlign="center"><Mic /></HStack></WaveRing> : undefined} title={t(voices ? '@yovoice.library.emptyVoicesTitle' : '@yovoice.library.emptyHistoryTitle')}
+    empty={<LibraryEmpty icon={<Clock3 />} art={voices ? <WaveRing seed="empty-voice" duration={12}><HStack className="empty-ring-mark" gap={0} hAlign="center" vAlign="center"><Mic /></HStack></WaveRing> : undefined} title={t(voices ? '@yovoice.library.emptyVoicesTitle' : quick ? '@yovoice.library.emptyGenerationsTitle' : '@yovoice.library.emptyHistoryTitle')}
       action={voices ? <Button label={t('@yovoice.library.addFirstVoice')} size="sm" icon={<Plus />} onClick={addVoice} /> : null} />}>
-    {/* 参考音频：头像外围一圈声波，点卡片试听；存根显示时长。 */}
+    {/* 参考音频：头像外围一圈声波，点卡片试听；顶部标出来源（导入或来自生成），存根显示时长。 */}
     {voices ? filteredVoices.map((voice, index) => <Ticket key={voice.id} index={index} className="voice-row"
       cover={<WaveRing seed={voice.id} duration={voice.duration}><Player compact avatar={{ seed: voice.id, label: t('@yovoice.app.audition', { name: voice.name }), select: () => audition({ ...voice, kind: 'voices', subtitle: t('@yovoice.app.subtitleReference') }) }} suspended={suspended} track={track?.id === voice.id ? track : null} onError={onError} /></WaveRing>}
-      eyebrow={[voice.fileName.split('.').pop()?.toUpperCase(), voice.source].filter(Boolean).join(' · ')}
+      eyebrow={voice.source === 'generation' ? t('@yovoice.voice.sourceGeneration') : voice.source === 'import' ? t('@yovoice.voice.sourceImport') : undefined}
       title={<h3 onPointerEnter={overflowTitle}>{voice.name}</h3>} excerpt={voice.referenceText?.trim()}
       stub={<TicketStamp value={clock(voice.duration)} unit={t('@yovoice.library.duration')} />}
       actions={picked ? <CheckboxInput label={t('@yovoice.library.pickVoice', { name: voice.name })} isLabelHidden value={picked.has(voice.id)} onChange={checked => toggle(voice.id, checked)} />
@@ -84,12 +89,14 @@ export function MediaLibrary({ page, state, query, onQueryChange, track, auditio
       : filteredHistory.map(item => <VStack key={item.id} className="history-item" gap={0}>
             <HStack className="history-row" gap={3} vAlign="center">
               <Button label={t(track?.id === item.id ? '@yovoice.app.collapseAudition' : '@yovoice.app.audition', { name: item.title })} size="sm" variant="ghost" isIconOnly icon={track?.id === item.id ? <X /> : <Play />} onClick={() => audition({ id: item.id, name: item.title, fileName: item.fileName, kind: 'outputs', subtitle: t('@yovoice.app.subtitleOutput') })} />
-              <VStack gap={1} className="history-info"><h3 onPointerEnter={overflowTitle} data-full-text={item.settings.text}>{item.settings.text.trim() || item.title}</h3><HStack className="history-meta" gap={3}><small>{t('@yovoice.app.historyVersion', { n: history.length - history.indexOf(item) })}</small><small>{new Date(item.createdAt).toLocaleString(locale, dateOptions)}</small></HStack></VStack>
+              <VStack gap={1} className="history-info"><h3 onPointerEnter={overflowTitle} data-full-text={item.settings.text}>{heading(item)}</h3><HStack className="history-meta" gap={3}>{quick ? null : <small>{t('@yovoice.app.historyVersion', { n: history.length - history.indexOf(item) })}</small>}<small>{new Date(item.createdAt).toLocaleString(locale, dateOptions)}</small></HStack></VStack>
               <small className="time">{formatTime(item.duration)}</small>
               <HStack className="history-actions" gap={1}>
+                {kind === 'music' ? <Button label={t('@yovoice.music.openNowPlaying', { name: heading(item) })} tooltip={t('@yovoice.music.nowPlaying')} size="sm" variant="ghost" isIconOnly icon={<Disc3 />} onClick={() => { stop(); play(item); }} /> : null}
                 <DropdownMenu className="audio-actions-menu" presentation="popover" alignment="end" hasChevron={false} button={{ label: t('@yovoice.history.audioActions'), size: 'sm', variant: 'ghost', isIconOnly: true, icon: <MoreHorizontal /> }} items={[
-                  { label: t('@yovoice.voice.save'), onClick: () => editVoice(item) },
-                  { label: t('@yovoice.app.reuseSettings'), onClick: () => reuse(item) },
+                  { label: t('@yovoice.app.exportVersion'), onClick: () => exportItem(item) },
+                  ...(quick ? [{ label: t('@yovoice.voice.save'), onClick: () => editVoice(item) }] : []),
+                  { label: t(kind === 'music' ? '@yovoice.music.reuseTake' : '@yovoice.app.reuseSettings'), onClick: () => reuse(item) },
                 ]} />
                 <MediaActions item={{ id: item.id, kind: 'outputs', name: item.title }} beforeDelete={stop} onError={onError} />
               </HStack>

@@ -4,6 +4,7 @@ import { SubtitleParser } from '../src/features/create/subtitle-parser';
 import { Timeline } from '../src/features/media/timeline';
 import { CallError, noticeMessage, parseCallError } from '../src/shared/lib/call-error';
 import { formatCallError, formatNotice } from '../src/shared/i18n/format';
+import { activeLyric, lyricTimeline } from '../src/features/music/lyric-timing';
 import { createDraft, previewStale, projectKind, requiresVoice, synthesisSettings, normalizeDraft, formatBytes, type Character, type Draft } from '../src/shared/workbench';
 
 // 不打开页面，直接校验界面依赖的纯逻辑。
@@ -113,4 +114,21 @@ test('存储容量格式化正确支持字节单位换算', () => {
   expect(formatBytes(1024)).toBe('1.00 KB');
   expect(formatBytes(1024 * 1024 * 5)).toBe('5.00 MB');
   expect(formatBytes(1024 * 1024 * 1024 * 2.5)).toBe('2.50 GB');
+});
+
+test('播放页歌词时间：按音节分配整首时长，空段落是器乐间隔，并补前奏', () => {
+  const lines = lyricTimeline('[intro]\n\n[verse]\n一二三四五六\nhello world\n\n[chorus]\n七八九', 100);
+  expect(lines.map(line => line.instrumental ? '…' : line.text)).toEqual(['…', '一二三四五六', 'hello world', '七八九']);
+  expect(lines[0].start).toBe(0);
+  expect(lines.at(-1)!.end).toBeCloseTo(100);
+  // 时间连续、单调递增，字多的句子更长。
+  lines.slice(1).forEach((line, i) => expect(line.start).toBeCloseTo(lines[i].end));
+  expect(lines[1].end - lines[1].start).toBeGreaterThan(lines[2].end - lines[2].start);
+  expect(activeLyric(lines, 0)).toBe(0);
+  expect(activeLyric(lines, lines[2].start + 0.01)).toBe(2);
+  expect(activeLyric(lines, 1000)).toBe(3);
+  // 开头直接是歌词时补一段前奏；没有歌词或时长未知时不显示歌词。
+  expect(lyricTimeline('第一句', 10)[0].instrumental).toBe(true);
+  expect(lyricTimeline('[instrumental]', 10)).toEqual([]);
+  expect(lyricTimeline('第一句', 0)).toEqual([]);
 });

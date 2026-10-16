@@ -13,11 +13,13 @@ import { OrcaConnect } from '../../shared/ui/orca-connect';
 import { call, CallError } from '../../shared/lib/client';
 import { formatCallError } from '../../shared/i18n/format';
 import aiPresets from '../../shared/lib/ai-presets.json';
-import type { AIProvider, AITest, State } from '../../shared/workbench';
+import { aiTimeoutDefault, type AIProvider, type AITest, type State } from '../../shared/workbench';
 
 export interface AIPreset { key: string; name: string; format: string; baseURL: string; modelsPath: string; keyURL?: string; endpoint: string; plan?: string; icon?: string }
 export const presets = aiPresets as AIPreset[];
 const formats = ['chat_completions', 'responses', 'anthropic_messages'];
+// AI 请求超时的可选值（秒）。
+const aiTimeouts = [60, 120, 300, 600, 1200, 1800];
 
 type Editing = AIProvider & { key: string };
 const fresh = (p: AIPreset): Editing => ({ id: '', preset: p.key, name: '', format: p.format, baseURL: p.baseURL, modelsPath: p.modelsPath, model: '', key: '' });
@@ -172,7 +174,16 @@ export function AISettings({ state, run, focus }: {
     { key: 'local', items: addable.filter(p => p.endpoint !== 'fixed') },
   ].filter(group => group.items.length);
   return <VStack className="settings-panel ai-panel" gap={4} id="ai-panel" role="tabpanel" aria-label={t('@yovoice.settings.tabAI')}>
-    <small className="settings-intro">{t('@yovoice.ai.intro')}</small>
+    {/* 请求超时对所有服务生效，和服务配置放在同一页；放在说明同一行，不挤占下方服务配置的高度。 */}
+    <HStack gap={4} vAlign="center">
+      <small className="settings-intro grow">{t('@yovoice.ai.intro')}</small>
+      <HStack gap={2} vAlign="center">
+        <small className="settings-intro" title={t('@yovoice.settings.aiTimeoutHint')}>{t('@yovoice.settings.aiTimeout')}</small>
+        <Selector size="sm" label={t('@yovoice.settings.aiTimeout')} isLabelHidden value={String(state.preferences.aiTimeout || aiTimeoutDefault)} width="calc(var(--spacing-10) * 4)"
+          options={aiTimeouts.map(seconds => ({ value: String(seconds), label: t(seconds === aiTimeoutDefault ? '@yovoice.settings.minutesDefault' : '@yovoice.settings.minutes', { n: seconds / 60 }) }))}
+          onChange={value => run(() => call('preferences.save', { ...state.preferences, aiTimeout: Number(value) === aiTimeoutDefault ? undefined : Number(value) }))} />
+      </HStack>
+    </HStack>
     <HStack className="ai-split" gap={0}>
       <VStack className="ai-nav" gap={4}>
         {providers.length ? <List header={<small className="ai-nav-head">{t('@yovoice.ai.added')}</small>} density="compact">

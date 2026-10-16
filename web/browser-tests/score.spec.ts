@@ -111,9 +111,13 @@ test('新建编曲作品：示例乐谱、音块总览、声部调整与持久�
   expect(saved.score.tracks.find((t: { id: string }) => t.id === 'pad').level).toBe(-26);
   expect(saved.score.tracks.find((t: { id: string }) => t.id === 'arp').mute).toBe(true);
 
-  // 未安装音色库时渲染会打开独立的音色库页；配音作品的模型列表不包含音色库。
+  // 未安装音色库时渲染不再跳到设置页：创作区顶部的准备清单提示下载音色库，“换一个”打开独立的“编曲音色库”页；配音作品的模型列表不包含音色库。
   await page.getByRole('button', { name: '渲染配乐', exact: true }).click();
-  await expect(page.getByRole('tab', { name: '音色库', selected: true })).toBeVisible();
+  const setup = page.locator('.setup-checklist');
+  await expect(setup).toHaveAttribute('data-attention', 'true');
+  await expect(setup.getByRole('listitem')).toHaveText([/下载音色库/]);
+  await setup.getByRole('button', { name: '换一个', exact: true }).click();
+  await expect(page.getByRole('tab', { name: '编曲音色库', exact: true, selected: true })).toBeVisible();
   await expect(page.locator('[data-model-id="musescore-general-sf2"]')).toContainText('General MIDI 音色库');
   await expect(page.locator('[data-model-id$="-sf2"]')).toHaveCount(3);
   await page.getByTestId('nav-score').click();

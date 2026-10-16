@@ -1,3 +1,4 @@
+import { saveAsCharacter } from './project-actions';
 import { emptyState } from '../src/shared/workbench';
 import { test, expect } from '@playwright/test';
 
@@ -50,7 +51,7 @@ test('宽屏顶栏切换右侧面板，列表页忽略面板开关', async ({ pa
   await page.evaluate(() => window.dispatchEvent(new Event('workbench-toggle-inspector')));
   await expect(inspector).toBeVisible();
   // 先打开过角色编辑器，其隐藏的创作区不能干扰开关（曾取到宽度为 0 的元素而无反应）。
-  await page.getByRole('button', { name: '保存为角色', exact: true }).click();
+  await saveAsCharacter(page);
   await expect(page.getByTestId('character-editor')).toBeVisible();
   await page.getByTestId('nav-text').click();
   await expect(page.getByTestId('character-editor')).toBeHidden();
