@@ -3043,5 +3043,38 @@
   },
   "@yovoice.setup.installing": {
     "defaultMessage": "Installing…"
+  },
+  "@yovoice.music.rewind": {
+    "defaultMessage": "Back {n} seconds"
+  },
+  "@yovoice.music.forward": {
+    "defaultMessage": "Forward {n} seconds"
+  },
+  "@yovoice.music.syncLyrics": {
+    "defaultMessage": "Sync lyrics"
+  },
+  "@yovoice.music.resyncLyrics": {
+    "defaultMessage": "Sync again"
+  },
+  "@yovoice.music.syncReset": {
+    "defaultMessage": "Use estimate"
+  },
+  "@yovoice.music.lyricsSynced": {
+    "defaultMessage": "Lyric timing synced"
+  },
+  "@yovoice.music.syncHint": {
+    "defaultMessage": "Press ↓ or click Next line when each line starts; Backspace undoes the last line"
+  },
+  "@yovoice.music.syncNext": {
+    "defaultMessage": "Next line"
+  },
+  "@yovoice.music.syncUndo": {
+    "defaultMessage": "Undo"
+  },
+  "@yovoice.music.syncCancel": {
+    "defaultMessage": "Cancel sync"
+  },
+  "@yovoice.music.syncProgress": {
+    "defaultMessage": "{done} / {total} lines"
   }
 }

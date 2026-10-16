@@ -258,15 +258,18 @@ test('语音生成只有历史生成：工具栏进入历史页，试听不改�
   const rows = page.locator('.history-item');
   await expect(rows.locator('h3')).toHaveText(['新版正文', '旧版正文', '其他作品']);
   await expect(rows.locator('.history-meta').filter({ hasText: '版本' })).toHaveCount(0);
-  await page.getByRole('button', { name: `试听${draft.title}`, exact: true }).nth(1).click();
-  await expect(rows.nth(1).locator('audio')).toHaveCount(1);
+  // 历史用磁带票根展示，试听时只有这一盒加载音频。
+  await expect(rows.locator('.tape-cover')).toHaveCount(3);
+  await rows.nth(1).getByRole('button', { name: '试听旧版正文', exact: true }).click();
+  await expect(rows.locator('audio[src]')).toHaveCount(1);
+  await expect(rows.nth(1).locator('audio[src]')).toHaveCount(1);
   await rows.first().getByRole('button', { name: `删除音频${draft.title}`, exact: true }).click();
   await page.getByRole('button', { name: '取消', exact: true }).click();
   await expect(rows).toHaveCount(3);
   await rows.first().getByRole('button', { name: `删除音频${draft.title}`, exact: true }).click();
   await page.getByRole('button', { name: '删除音频', exact: true }).click();
   await expect(rows).toHaveCount(2);
-  await expect(page.locator('.history-item audio')).toHaveCount(0);
+  await expect(page.locator('.history-item audio[src]')).toHaveCount(0);
 
   // 返回作品：试听和删除都不改正文与参数。
   await page.getByRole('button', { name: '返回', exact: true }).click();

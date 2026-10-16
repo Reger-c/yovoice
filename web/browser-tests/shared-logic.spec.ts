@@ -4,7 +4,7 @@ import { SubtitleParser } from '../src/features/create/subtitle-parser';
 import { Timeline } from '../src/features/media/timeline';
 import { CallError, noticeMessage, parseCallError } from '../src/shared/lib/call-error';
 import { formatCallError, formatNotice } from '../src/shared/i18n/format';
-import { activeLyric, lyricTimeline } from '../src/features/music/lyric-timing';
+import { activeLyric, lyricRows, lyricTimeline } from '../src/features/music/lyric-timing';
 import { createDraft, previewStale, projectKind, requiresVoice, synthesisSettings, normalizeDraft, formatBytes, type Character, type Draft } from '../src/shared/workbench';
 
 // 不打开页面，直接校验界面依赖的纯逻辑。
@@ -131,4 +131,9 @@ test('播放页歌词时间：按音节分配整首时长，空段落是器乐�
   expect(lyricTimeline('第一句', 10)[0].instrumental).toBe(true);
   expect(lyricTimeline('[instrumental]', 10)).toEqual([]);
   expect(lyricTimeline('第一句', 0)).toEqual([]);
+  // 校准过的时间按行使用：第一句前补前奏，每行持续到下一行开始；行数对不上时退回估算。
+  const lyrics = '[verse]\n第一句\n第二句';
+  expect(lyricRows(lyrics)).toEqual([{ text: '第一句' }, { text: '第二句' }]);
+  expect(lyricTimeline(lyrics, 20, [4, 9])).toEqual([{ text: '', start: 0, end: 4, instrumental: true }, { text: '第一句', start: 4, end: 9 }, { text: '第二句', start: 9, end: 20 }]);
+  expect(lyricTimeline(lyrics, 20, [4]).map(line => line.start)).not.toContain(4);
 });
