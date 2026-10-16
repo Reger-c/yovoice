@@ -163,7 +163,7 @@ func (w *Workbench) startGeneration(d schema.Draft, previewID, cueID, clipID str
 			return w.generateSegments(ctx, s, parts, clipID)
 		}
 		id := schema.NewID()
-		file := id + ".wav"
+		file := outputFileName(id, time.Now(), outputSummary(d.Text, d.Title))
 		if previewID != "" {
 			id = previewID
 			file = "audition-" + id + ".wav"

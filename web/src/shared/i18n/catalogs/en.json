@@ -2977,5 +2977,29 @@
   },
   "@yovoice.app.deleteVersionConfirm": {
     "defaultMessage": "Delete version"
+  },
+  "@yovoice.library.batchDelete": {
+    "defaultMessage": "Bulk delete"
+  },
+  "@yovoice.library.selectAll": {
+    "defaultMessage": "Select all"
+  },
+  "@yovoice.library.pickVoice": {
+    "defaultMessage": "Select “{name}”"
+  },
+  "@yovoice.library.finishPicking": {
+    "defaultMessage": "Done"
+  },
+  "@yovoice.library.deletePicked": {
+    "defaultMessage": "Delete selected ({n})"
+  },
+  "@yovoice.library.deletePickedTitle": {
+    "defaultMessage": "Delete {n} selected reference audio clips?"
+  },
+  "@yovoice.library.deletePickedBody": {
+    "defaultMessage": "The selected reference audio and their files will be permanently deleted. "
+  },
+  "@yovoice.library.batchDeleteReferenced": {
+    "defaultMessage": "“{names}” are still used by characters or projects and were not deleted. Replace or remove those references first."
   }
 }

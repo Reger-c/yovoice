@@ -1,11 +1,15 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Button } from '@astryxdesign/core/Button';
+import { CheckboxInput } from '@astryxdesign/core/CheckboxInput';
 import { DropdownMenu } from '@astryxdesign/core/DropdownMenu';
 import { HStack, VStack } from '@astryxdesign/core/Layout';
 import { useLocale, useTranslator } from '@astryxdesign/core/i18n';
-import { Clock3, Mic, Play, Plus, X, MoreHorizontal } from 'lucide-react';
+import { Clock3, ListChecks, Mic, Play, Plus, Trash2, X, MoreHorizontal } from 'lucide-react';
 import { formatTime, projectKind, type Draft, type Generation, type State, type Track, type Voice } from '../../shared/workbench';
 import { MediaActions } from '../media/media-actions';
+import { call, CallError } from '../../shared/lib/client';
+import { ConfirmDelete } from '../../shared/ui/app-dialog';
+import { formatCallError } from '../../shared/i18n/format';
 import { Player } from '../media/player';
 import { LibraryEmpty, LibraryPage, Ticket, TicketStamp } from './library-layout';
 import { WaveRing } from './wave-ring';
@@ -31,9 +35,39 @@ export function MediaLibrary({ page, state, query, onQueryChange, track, auditio
   const speakerName = (item: Generation) => item.segment?.speakerName || state.characters.find(c => c.id === item.settings.characterId)?.name || t('@yovoice.library.narrator');
   const filteredHistory = history.filter(item => [item.title, item.settings.text, speakerName(item), state.drafts.find(d => d.id === item.settings.id)?.title ?? ''].some(value => value.toLocaleLowerCase().includes(search)))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  // 批量删除参考音频：null 表示未进入选择模式。
+  const [picked, setPicked] = useState<Set<string> | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [batchError, setBatchError] = useState('');
+  const visiblePicked = filteredVoices.filter(voice => picked?.has(voice.id));
+  const toggle = (id: string, checked: boolean) => setPicked(previous => { const next = new Set(previous); if (checked) next.add(id); else next.delete(id); return next; });
+  async function deletePicked() {
+    if (deleting) return;
+    setDeleting(true); setBatchError(''); stop();
+    // 逐条删除；仍被角色或作品使用的参考音频跳过并保留勾选，其余照常删除。
+    const referenced: string[] = []; let failure = '';
+    for (const voice of visiblePicked) {
+      try { await call('media.delete', { kind: 'voices', id: voice.id }); toggle(voice.id, false); }
+      catch (e) { if (e instanceof CallError && e.code === '@yovoice.error.voiceReferenced') referenced.push(voice.name); else failure ||= formatCallError(t, e); }
+    }
+    setDeleting(false);
+    const messages = [referenced.length ? t('@yovoice.library.batchDeleteReferenced', { names: referenced.join('、') }) : '', failure].filter(Boolean);
+    if (messages.length) setBatchError(messages.join(' '));
+    else { setConfirming(false); setPicked(null); }
+  }
+  const allPicked = filteredVoices.length > 0 && visiblePicked.length === filteredVoices.length;
+  const voiceActions = picked ? <HStack gap={2} vAlign="center" wrap="wrap">
+    <CheckboxInput label={t('@yovoice.library.selectAll')} size="sm" value={allPicked ? true : visiblePicked.length ? 'indeterminate' : false} onChange={checked => setPicked(new Set(checked ? filteredVoices.map(voice => voice.id) : []))} />
+    <Button label={t('@yovoice.library.deletePicked', { n: visiblePicked.length })} size="sm" variant="destructive" icon={<Trash2 />} isDisabled={!visiblePicked.length} onClick={() => { setBatchError(''); setConfirming(true); }} />
+    <Button label={t('@yovoice.library.finishPicking')} size="sm" onClick={() => setPicked(null)} />
+  </HStack> : <HStack gap={2} vAlign="center" wrap="wrap">
+    {count > 1 ? <Button label={t('@yovoice.library.batchDelete')} size="sm" variant="secondary" icon={<ListChecks />} onClick={() => setPicked(new Set())} /> : null}
+    <Button label={t('@yovoice.library.addVoice')} size="sm" icon={<Plus />} onClick={addVoice} />
+  </HStack>;
   const dateOptions: Intl.DateTimeFormatOptions = { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' };
   return <LibraryPage controls={voices ? controls : undefined} title={voices ? t('@yovoice.library.voicesTitle') : `${project.title} · ${t('@yovoice.history.versions')}`}
-    actions={voices && count > 0 ? <Button label={t('@yovoice.library.addVoice')} size="sm" icon={<Plus />} onClick={addVoice} /> : voices ? undefined : controls}
+    actions={voices && count > 0 ? voiceActions : voices ? undefined : controls}
     query={query} onQueryChange={onQueryChange} searchLabel={t(voices ? '@yovoice.library.searchVoices' : '@yovoice.library.searchHistory')}
     hasItems={count > 0} hasResults={(voices ? filteredVoices : filteredHistory).length > 0} layout={voices ? 'tickets' : 'list'}
     noResults={t('@yovoice.library.noSearchResults')}
@@ -45,7 +79,8 @@ export function MediaLibrary({ page, state, query, onQueryChange, track, auditio
       eyebrow={[voice.fileName.split('.').pop()?.toUpperCase(), voice.source].filter(Boolean).join(' · ')}
       title={<h3 onPointerEnter={overflowTitle}>{voice.name}</h3>} excerpt={voice.referenceText?.trim()}
       stub={<TicketStamp value={clock(voice.duration)} unit={t('@yovoice.library.duration')} />}
-      actions={<MediaActions onEdit={() => editVoice(voice)} item={{ ...voice, kind: 'voices' }} beforeDelete={stop} onError={onError} />} />)
+      actions={picked ? <CheckboxInput label={t('@yovoice.library.pickVoice', { name: voice.name })} isLabelHidden value={picked.has(voice.id)} onChange={checked => toggle(voice.id, checked)} />
+        : <MediaActions onEdit={() => editVoice(voice)} item={{ ...voice, kind: 'voices' }} beforeDelete={stop} onError={onError} />} />)
       : filteredHistory.map(item => <VStack key={item.id} className="history-item" gap={0}>
             <HStack className="history-row" gap={3} vAlign="center">
               <Button label={t(track?.id === item.id ? '@yovoice.app.collapseAudition' : '@yovoice.app.audition', { name: item.title })} size="sm" variant="ghost" isIconOnly icon={track?.id === item.id ? <X /> : <Play />} onClick={() => audition({ id: item.id, name: item.title, fileName: item.fileName, kind: 'outputs', subtitle: t('@yovoice.app.subtitleOutput') })} />
@@ -62,5 +97,8 @@ export function MediaLibrary({ page, state, query, onQueryChange, track, auditio
             {track?.id === item.id ? <Player compact suspended={suspended} track={track} onError={onError} /> : null}
           </VStack>)}
 
+    {confirming ? <ConfirmDelete title={t('@yovoice.library.deletePickedTitle', { n: visiblePicked.length })}
+      description={t('@yovoice.library.deletePickedBody') + t('@yovoice.media.deleteVoiceExtra')}
+      confirmLabel={t('@yovoice.library.deletePicked', { n: visiblePicked.length })} busy={deleting} error={batchError} onClose={() => setConfirming(false)} onConfirm={() => void deletePicked()} /> : null}
   </LibraryPage>;
 }
