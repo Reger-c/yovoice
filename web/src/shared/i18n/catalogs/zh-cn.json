@@ -3001,5 +3001,11 @@
   },
   "@yovoice.library.batchDeleteReferenced": {
     "defaultMessage": "「{names}」仍被角色或作品使用，未删除，请先替换或移除引用。"
+  },
+  "@yovoice.app.exportVersion": {
+    "defaultMessage": "导出音频"
+  },
+  "@yovoice.app.allVersions": {
+    "defaultMessage": "版本记录"
   }
 }

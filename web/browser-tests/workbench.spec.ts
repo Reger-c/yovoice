@@ -165,8 +165,7 @@ test('真实 WAV 导入、播放、裁剪和空状态', async ({ page }) => {
   await page.getByRole('button', { name: '设置', exact: true }).click();
   await page.getByRole('tab', { name: '模型', exact: true }).click();
   await expect.poll(() => page.locator('audio').evaluateAll(elements => elements.every(el => (el as HTMLAudioElement).paused))).toBeTruthy();
-  await page.locator('.recent-projects .project-link').first().click();
-  await openProjectHistory(page);
+  await page.getByTestId('nav-story').click();
   await expect(page.locator('footer.player')).toBeHidden();
   await page.locator('.recent-projects .project-link').first().click();
   await expect(page.locator('footer.player')).toBeVisible();

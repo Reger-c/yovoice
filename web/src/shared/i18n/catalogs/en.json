@@ -3001,5 +3001,11 @@
   },
   "@yovoice.library.batchDeleteReferenced": {
     "defaultMessage": "“{names}” are still used by characters or projects and were not deleted. Replace or remove those references first."
+  },
+  "@yovoice.app.exportVersion": {
+    "defaultMessage": "Export audio"
+  },
+  "@yovoice.app.allVersions": {
+    "defaultMessage": "Version history"
   }
 }
